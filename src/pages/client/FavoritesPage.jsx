@@ -18,6 +18,7 @@ import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
 import { openDirectChat } from '../../services/directChat'
+import AdBanner from '../../components/common/AdBanner'
 
 export default function FavoritesPage() {
   const { user } = useAuth()
@@ -96,7 +97,9 @@ export default function FavoritesPage() {
             </button>
           </div>
         ) : (
-          <div className="responsive-grid-2 stagger">
+          <div className="flex flex-col gap-3 stagger">
+            <AdBanner />
+            <div className="responsive-grid-2">
             {profs.map(p => (
               <ProfCard
                 key={p.uid}
@@ -108,6 +111,7 @@ export default function FavoritesPage() {
                 onMessage={() => handleMessage(p)}
               />
             ))}
+            </div>
           </div>
         )}
       </div>

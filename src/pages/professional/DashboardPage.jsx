@@ -11,6 +11,7 @@ import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
 import EnablePushBanner from '../../components/common/EnablePushBanner'
 import { ThemeToggle } from '../../contexts/ThemeContext'
+import AdBanner from '../../components/common/AdBanner'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { isPending, isActive, normalizeStatus } from '../../utils/status'
 import { format } from 'date-fns'
@@ -409,6 +410,8 @@ export default function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </Link>
+
+        <AdBanner />
 
         {/* ── Resumo do Mês ──────────────────────────────────── */}
         <div>

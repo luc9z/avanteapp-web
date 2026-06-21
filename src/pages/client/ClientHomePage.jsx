@@ -20,6 +20,7 @@ import { normalizeStatus, isActive } from '../../utils/status'
 import { distanceKm } from '../../utils/geo'
 import EnablePushBanner from '../../components/common/EnablePushBanner'
 import { ThemeToggle } from '../../contexts/ThemeContext'
+import AdBanner from '../../components/common/AdBanner'
 
 const SPECIALTIES = [
   'Pequenos animais', 'Bovinos', 'Equinos', 'Aves', 'Exóticos',
@@ -383,6 +384,7 @@ export default function ClientHomePage() {
             uid={uid}
             message="Ative as notificações para saber na hora quando o veterinário aceitar seu pedido."
           />
+          <AdBanner className="mb-2" />
           <OffersBanner />
         </div>
         {/* Atualizações */}
