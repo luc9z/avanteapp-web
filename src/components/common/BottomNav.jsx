@@ -158,6 +158,7 @@ export function ClientBottomNav() {
              background: isDark ? 'rgba(22,32,22,0.95)' : 'rgba(255,255,255,0.92)',
              boxShadow: isDark ? '0 -2px 12px rgba(0,0,0,0.4)' : '0 -2px 12px rgba(0,0,0,0.07)',
              paddingBottom: 'env(safe-area-inset-bottom)',
+             borderRadius: '20px 20px 0 0',
            }}>
 
         <NavItem to="/home"        icon={<SearchIcon />}   label="Buscar"  isDark={isDark} />
