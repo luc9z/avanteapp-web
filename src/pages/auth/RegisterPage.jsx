@@ -106,6 +106,13 @@ export default function RegisterPage() {
           <button type="submit" disabled={isProcessing} className="btn-primary w-full mt-2">
             {isProcessing ? <Spinner /> : 'Criar conta'}
           </button>
+
+          <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+            Ao criar uma conta, você concorda com os{' '}
+            <Link to="/terms" className="text-primary font-semibold hover:underline">Termos de Uso</Link>{' '}
+            e a{' '}
+            <Link to="/privacy" className="text-primary font-semibold hover:underline">Política de Privacidade</Link>.
+          </p>
         </form>
 
         <p className="text-center text-sm text-gray-500">

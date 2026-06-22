@@ -37,6 +37,8 @@ const FavoritesPage          = lazy(() => import('./pages/client/FavoritesPage')
 const PetsPage               = lazy(() => import('./pages/client/PetsPage'))
 const PlansPage              = lazy(() => import('./pages/professional/PlansPage'))
 const AdminPage              = lazy(() => import('./pages/admin/AdminPage'))
+const TermsPage              = lazy(() => import('./pages/shared/TermsPage'))
+const PrivacyPage            = lazy(() => import('./pages/shared/PrivacyPage'))
 
 function PageLoader() {
   return (
@@ -60,6 +62,8 @@ export default function App() {
           <Route path="/" element={<SplashPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
 
           {/* Compartilhadas (qualquer usuário autenticado) */}
           <Route path="/user-type" element={<Auth><UserTypePage /></Auth>} />
