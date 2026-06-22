@@ -59,7 +59,7 @@ export default function ProfessionalDetailPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-lg font-bold text-primary">Profissional</h1>
+        <h1 className="page-title">Profissional</h1>
         <div className="w-6" />
       </div>
       <p className="text-center py-16 text-gray-400">Profissional não encontrado</p>

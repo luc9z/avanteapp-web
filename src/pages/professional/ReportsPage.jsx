@@ -105,7 +105,7 @@ export default function ReportsPage() {
   return (
     <div className="page-container">
       <div className="topbar">
-        <span className="font-bold text-primary text-lg">Relatórios</span>
+        <span className="page-title">Relatórios</span>
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
           <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
           Tempo real

@@ -72,7 +72,7 @@ export default function PetsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-lg font-bold text-primary">Meus animais</h1>
+        <h1 className="page-title">Meus animais</h1>
         <div className="w-6" />
       </div>
 

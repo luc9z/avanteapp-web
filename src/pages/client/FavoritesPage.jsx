@@ -71,7 +71,7 @@ export default function FavoritesPage() {
   return (
     <div className="page-container">
       <div className="topbar">
-        <h1 className="text-lg font-bold text-primary">Favoritos</h1>
+        <h1 className="page-title">Favoritos</h1>
         {favIds?.length > 0 && (
           <span className="text-xs font-semibold text-gray-400">
             {favIds.length} veterinário{favIds.length > 1 ? 's' : ''}

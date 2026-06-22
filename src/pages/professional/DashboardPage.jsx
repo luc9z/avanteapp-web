@@ -224,7 +224,7 @@ export default function DashboardPage() {
     <div className="page-container">
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar">
-        <span className="font-bold text-primary text-lg">Painel</span>
+        <span className="page-title">Painel</span>
         <div className="flex items-center gap-1">
           <button className="relative p-2" onClick={() => setNotifOpen(true)}>
             <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
