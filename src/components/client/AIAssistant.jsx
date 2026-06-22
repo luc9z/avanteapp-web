@@ -36,15 +36,14 @@ function vetMatchesSpecialties(vet, specs) {
 
 function rankVets(vets, userText) {
   const specs = matchSpecialties(userText)
-  const matching = vets.filter(v => vetMatchesSpecialties(v, specs))
-  const fallback = matching.length === 0 ? vets : matching
-
-  return [...fallback].sort((a, b) => {
-    const fa = isFeatured(a) ? 1 : 0
-    const fb = isFeatured(b) ? 1 : 0
+  // Não descarta ninguém: match de espécie só dá boost. Premium sempre no topo.
+  return [...vets].sort((a, b) => {
+    const fa = isFeatured(a) ? 1 : 0, fb = isFeatured(b) ? 1 : 0
     if (fa !== fb) return fb - fa
-    const oa = a.is_online ? 1 : 0
-    const ob = b.is_online ? 1 : 0
+    const ma = vetMatchesSpecialties(a, specs) ? 1 : 0
+    const mb = vetMatchesSpecialties(b, specs) ? 1 : 0
+    if (ma !== mb) return mb - ma
+    const oa = a.is_online ? 1 : 0, ob = b.is_online ? 1 : 0
     if (oa !== ob) return ob - oa
     return Number(b.averageRating || 0) - Number(a.averageRating || 0)
   }).slice(0, 4)
@@ -435,10 +434,15 @@ function VetSuggestionCard({ vet, onBook }) {
         </span>
 
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0
-                          bg-gradient-to-br from-amber-300 to-orange-400 text-white shadow-sm">
-            {initial}
-          </div>
+          {vet.photoURL ? (
+            <img src={vet.photoURL} alt={vet.name}
+              className="w-11 h-11 rounded-xl object-cover flex-shrink-0 shadow-sm" />
+          ) : (
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0
+                            bg-gradient-to-br from-amber-300 to-orange-400 text-white shadow-sm">
+              {initial}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm text-gray-900 truncate mt-1">{vet.name}</p>
             <p className="text-xs text-amber-700/70 truncate mt-0.5">{specs}</p>
@@ -462,9 +466,14 @@ function VetSuggestionCard({ vet, onBook }) {
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-2xl border border-gray-200 bg-white transition-all">
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0 bg-primary/10 text-primary">
-        {initial}
-      </div>
+      {vet.photoURL ? (
+        <img src={vet.photoURL} alt={vet.name}
+          className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+      ) : (
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0 bg-primary/10 text-primary">
+          {initial}
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm text-gray-900 truncate">{vet.name}</p>
         <p className="text-xs text-gray-400 truncate mt-0.5">{specs}</p>

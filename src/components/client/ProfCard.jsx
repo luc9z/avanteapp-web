@@ -69,9 +69,14 @@ export default function ProfCard({ prof, isFavorite, onToggleFavorite, onView, o
 
       {/* Avatar + status */}
       <div className="relative w-14 h-14 mx-auto mt-2">
-        <div className={`avatar-circle w-14 h-14 text-xl ${featured ? 'bg-amber-50 text-amber-600' : ''}`}>
-          {(prof.name || '?')[0]}
-        </div>
+        {prof.photoURL ? (
+          <img src={prof.photoURL} alt={prof.name}
+            className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-sm" />
+        ) : (
+          <div className={`avatar-circle w-14 h-14 text-xl ${featured ? 'bg-amber-50 text-amber-600' : ''}`}>
+            {(prof.name || '?')[0]}
+          </div>
+        )}
         <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${
           online ? 'bg-green-500' : 'bg-gray-300'
         }`} />

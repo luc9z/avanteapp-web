@@ -86,9 +86,14 @@ export default function ProfessionalDetailPage() {
             </svg>
           </button>
           <div className="flex flex-col items-center gap-3 mt-2">
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-4xl font-bold text-white border-4 border-white/30">
-              {(profile.name || '?')[0]}
-            </div>
+            {profile.photoURL ? (
+              <img src={profile.photoURL} alt={profile.name}
+                className="w-20 h-20 rounded-full object-cover border-4 border-white/30" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center text-4xl font-bold text-white border-4 border-white/30">
+                {(profile.name || '?')[0]}
+              </div>
+            )}
             <div className="text-center">
               <h1 className="text-xl font-bold text-white">{profile.name}</h1>
               <p className="text-white/70 text-sm">Médico Veterinário</p>
