@@ -9,7 +9,7 @@ import Spinner from '../../components/common/Spinner'
 import Stars from '../../components/common/Stars'
 import { ClientBottomNav } from '../../components/common/BottomNav'
 import ScheduleSheet from '../../components/client/ScheduleSheet'
-import { isOnlineCheck } from '../../components/client/ProfCard'
+import { isOnlineCheck, isFeatured } from '../../components/client/ProfCard'
 import { openDirectChat } from '../../services/directChat'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
@@ -195,7 +195,7 @@ export default function ProfessionalDetailPage() {
             )}
           </div>
 
-          <OffersBanner className="mt-2" />
+          <OffersBanner className="mt-2" audience="client" />
         </div>
       </div>
 
@@ -209,17 +209,34 @@ export default function ProfessionalDetailPage() {
           >
             {isOnlineCheck(profile) ? 'Solicitar atendimento' : 'Agendar atendimento'}
           </button>
-          <button
-            onClick={handleMessage}
-            title="Conversar antes de solicitar"
-            className="w-12 rounded-xl border-2 border-primary/30 text-primary hover:bg-primary/5
-                       active:scale-95 transition-all flex items-center justify-center"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-          </button>
+          {/* Chat antes da solicitação — exclusivo Premium (suspenso para os demais) */}
+          {(() => {
+            const premium = profile && isFeatured(profile)
+            return (
+              <button
+                onClick={premium ? handleMessage : undefined}
+                disabled={!premium}
+                title={premium ? 'Conversar antes de solicitar' : 'Conversa antes do atendimento é exclusiva de veterinários Premium'}
+                className={`relative w-12 rounded-xl border-2 flex items-center justify-center transition-all ${
+                  premium
+                    ? 'border-primary/30 text-primary hover:bg-primary/5 active:scale-95 cursor-pointer'
+                    : 'border-gray-200 text-gray-300 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                {!premium && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm3 8H9V6a3 3 0 016 0v3z" />
+                    </svg>
+                  </span>
+                )}
+              </button>
+            )
+          })()}
         </div>
       </div>
 

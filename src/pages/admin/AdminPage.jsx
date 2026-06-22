@@ -27,55 +27,88 @@ import { friendlyError } from '../../utils/errors'
 
 /* ── Ofertas pré-moldadas (edite à vontade depois de inserir) ──── */
 const OFFER_TEMPLATES = [
+  // ── Para CLIENTES ──
   {
     emoji: '🦴', title: 'Ração premium com 15% OFF',
     subtitle: 'Para cães e gatos · entrega na sua região',
     cta: 'Aproveitar', url: 'https://', active: false, order: 1,
+    size: 'small', audience: 'client', gradient: 'amber',
   },
   {
     emoji: '💉', title: 'Campanha de vacinação',
     subtitle: 'Agende a vacina anual do seu pet com desconto',
     cta: 'Saber mais', url: 'https://', active: false, order: 2,
+    size: 'large', audience: 'client', gradient: 'green',
   },
   {
-    emoji: '🐄', title: 'Suplementos para rebanho',
-    subtitle: 'Linha completa para bovinos e equinos',
-    cta: 'Ver ofertas', url: 'https://', active: false, order: 3,
+    emoji: '🛒', title: 'Pet shop com frete grátis',
+    subtitle: 'Brinquedos, camas e acessórios para o seu pet',
+    cta: 'Ver loja', url: 'https://', active: false, order: 3,
+    size: 'small', audience: 'client', gradient: 'purple',
+  },
+  // ── Para VETERINÁRIOS ──
+  {
+    emoji: '💊', title: 'Distribuidora de medicamentos veterinários',
+    subtitle: 'Condições especiais para profissionais cadastrados',
+    cta: 'Cadastrar', url: 'https://', active: false, order: 4,
+    size: 'large', audience: 'vet', gradient: 'blue',
+  },
+  {
+    emoji: '🩺', title: 'Equipamentos e instrumentais',
+    subtitle: 'Monte seu kit de atendimento a domicílio',
+    cta: 'Ver catálogo', url: 'https://', active: false, order: 5,
+    size: 'small', audience: 'vet', gradient: 'teal',
+  },
+  {
+    emoji: '🎓', title: 'Cursos de especialização',
+    subtitle: 'Atualize-se e atraia mais clientes',
+    cta: 'Conhecer', url: 'https://', active: false, order: 6,
+    size: 'small', audience: 'vet', gradient: 'red',
   },
 ]
 
 /* ── Planos padrão (valores fictícios — ajuste na própria tela) ── */
 export const DEFAULT_PLANS = [
   {
-    id: 'essencial', name: 'Essencial', price: 29.9, billing: 'mensal',
+    id: 'free', name: 'Free', price: 0, billing: 'mensal',
     benefits: [
       'Perfil visível na busca',
       'Receber e aceitar solicitações',
       'Chat com clientes',
       'Agenda de atendimentos',
-      'Relatórios básicos',
     ],
     locked: [
+      'Sem anúncios no painel',
       'Selo de Destaque na busca',
-      'Topo dos resultados',
-      'Relatórios avançados com gráficos',
-      'Prioridade em urgências',
+      'Topo dos resultados da busca',
     ],
   },
   {
-    id: 'destaque', name: 'Destaque', price: 59.9, billing: 'mensal',
+    id: 'essencial', name: 'Essencial', price: 29.9, billing: 'mensal',
+    benefits: [
+      'Tudo do plano Free',
+      'Sem anúncios no painel',
+      'Relatórios completos do mês',
+      'Histórico de atendimentos',
+    ],
+    locked: [
+      'Selo de Destaque na busca',
+      'Topo dos resultados da busca',
+    ],
+  },
+  {
+    id: 'premium', name: 'Premium', price: 59.9, billing: 'mensal',
     benefits: [
       'Tudo do plano Essencial',
       'Selo dourado de Destaque',
       'Topo dos resultados da busca',
-      'Relatórios avançados com gráficos',
-      'Prioridade em solicitações urgentes',
+      'Prioridade nas solicitações',
     ],
     locked: [],
   },
 ]
 
-const EMPTY_OFFER = { emoji: '🐾', title: '', subtitle: '', cta: 'Ver oferta', url: 'https://', active: false, order: 9 }
+const EMPTY_OFFER = { emoji: '🐾', title: '', subtitle: '', cta: 'Ver oferta', url: 'https://', active: false, order: 9, size: 'small', audience: 'all', gradient: 'amber' }
 
 export default function AdminPage() {
   const { user } = useAuth()
@@ -180,7 +213,7 @@ function OffersTab() {
       for (const t of OFFER_TEMPLATES) {
         await addDoc(collection(db, 'offers'), { ...t, createdAt: serverTimestamp() })
       }
-      showToast('3 ofertas modelo inseridas! Edite e ative quando quiser.', 'success')
+      showToast(`${OFFER_TEMPLATES.length} ofertas modelo inseridas (cliente + vet)! Edite e ative quando quiser.`, 'success')
     } catch (e) {
       showToast(friendlyError(e), 'error')
     } finally { setSeeding(false) }
@@ -203,6 +236,7 @@ function OffersTab() {
         emoji: o.emoji || '🐾', title: o.title.trim(), subtitle: (o.subtitle || '').trim(),
         cta: o.cta?.trim() || 'Ver oferta', url: (o.url || '').trim(),
         active: !!o.active, order: Number(o.order) || 9,
+        size: o.size || 'small', audience: o.audience || 'all', gradient: o.gradient || 'amber',
       }
       if (o.id) await updateDoc(doc(db, 'offers', o.id), data)
       else await addDoc(collection(db, 'offers'), { ...data, createdAt: serverTimestamp() })
@@ -228,7 +262,7 @@ function OffersTab() {
         <button onClick={seedTemplates} disabled={seeding}
           className="border-2 border-dashed border-primary/30 text-primary rounded-2xl py-5 text-sm font-bold
                      hover:bg-primary/5 transition-colors">
-          {seeding ? 'Inserindo...' : '✨ Inserir 3 ofertas modelo (ração, vacina, rebanho)'}
+          {seeding ? 'Inserindo...' : '✨ Inserir ofertas modelo (cliente + veterinário)'}
         </button>
       )}
 
@@ -239,6 +273,14 @@ function OffersTab() {
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm text-gray-800 truncate">{o.title}</p>
               <p className="text-xs text-gray-400 truncate">{o.subtitle}</p>
+              <div className="flex gap-1 mt-1">
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                  {{ all: '👥 Todos', client: '🐶 Clientes', vet: '🩺 Vets' }[o.audience || 'all']}
+                </span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
+                  {(o.size || 'small') === 'large' ? '🖼️ Grande' : '➖ Pequeno'}
+                </span>
+              </div>
             </div>
             <button onClick={() => toggleActive(o)}
               className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex-shrink-0 transition-colors ${
@@ -309,6 +351,37 @@ function OffersTab() {
               <input value={editing.url} onChange={e => setEditing(o => ({ ...o, url: e.target.value }))}
                 className="input-field" placeholder="https://loja.exemplo.com.br" />
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Tamanho</label>
+                <select value={editing.size || 'small'} onChange={e => setEditing(o => ({ ...o, size: e.target.value }))}
+                  className="select-field">
+                  <option value="small">Pequeno (faixa)</option>
+                  <option value="large">Grande (banner)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Público</label>
+                <select value={editing.audience || 'all'} onChange={e => setEditing(o => ({ ...o, audience: e.target.value }))}
+                  className="select-field">
+                  <option value="all">Todos</option>
+                  <option value="client">Só clientes</option>
+                  <option value="vet">Só veterinários</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Cor (banner grande)</label>
+              <select value={editing.gradient || 'amber'} onChange={e => setEditing(o => ({ ...o, gradient: e.target.value }))}
+                className="select-field">
+                <option value="amber">Âmbar</option>
+                <option value="blue">Azul</option>
+                <option value="green">Verde</option>
+                <option value="purple">Roxo</option>
+                <option value="red">Vermelho</option>
+                <option value="teal">Turquesa</option>
+              </select>
+            </div>
             <label className="flex items-center gap-2 text-sm text-gray-600 mt-1">
               <input type="checkbox" checked={!!editing.active}
                 onChange={e => setEditing(o => ({ ...o, active: e.target.checked }))}
@@ -364,10 +437,10 @@ function PlansTab() {
       </p>
 
       {plans.map((p, i) => (
-        <div key={p.id} className={`card flex flex-col gap-3 ${p.id === 'destaque' ? 'border-2 border-amber-300' : ''}`}>
+        <div key={p.id} className={`card flex flex-col gap-3 ${(p.id === 'premium' || p.id === 'destaque') ? 'border-2 border-amber-300' : ''}`}>
           <div className="flex items-center justify-between">
             <p className="font-bold text-gray-800">{p.name} <span className="text-[10px] text-gray-300 font-mono">({p.id})</span></p>
-            {p.id === 'destaque' && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">⭐ DESTAQUE</span>}
+            {(p.id === 'premium' || p.id === 'destaque') && <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">⭐ PREMIUM</span>}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>

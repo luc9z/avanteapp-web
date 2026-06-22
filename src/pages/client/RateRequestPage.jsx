@@ -13,6 +13,7 @@ import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
 import { ClientBottomNav } from '../../components/common/BottomNav'
+import OffersBanner from '../../components/client/OffersBanner'
 
 const STAR_LABELS = ['', 'Muito ruim', 'Ruim', 'Regular', 'Bom', 'Excelente!']
 const STAR_COLORS = ['', '#ef4444', '#f97316', '#eab308', '#84cc16', '#f59e0b']
@@ -225,6 +226,8 @@ export default function RateRequestPage() {
             )}
           </button>
         )}
+
+        <OffersBanner audience="client" className="mt-2" />
       </div>
       <ClientBottomNav />
     </div>

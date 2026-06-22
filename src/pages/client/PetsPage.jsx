@@ -16,6 +16,7 @@ import Spinner from '../../components/common/Spinner'
 import Modal from '../../components/common/Modal'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
+import OffersBanner from '../../components/client/OffersBanner'
 import { format } from 'date-fns'
 
 export const SPECIES = ['Cão', 'Gato', 'Bovino', 'Equino', 'Ave', 'Ovino/Caprino', 'Suíno', 'Outro']
@@ -76,6 +77,7 @@ export default function PetsPage() {
       </div>
 
       <div className="px-4 py-4 pb-nav flex flex-col gap-3">
+        <OffersBanner audience="client" />
         {pets === null ? (
           <div className="flex justify-center py-20"><Spinner size={28} color="#375337" /></div>
         ) : pets.length === 0 ? (

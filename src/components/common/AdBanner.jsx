@@ -24,7 +24,7 @@ const GRADIENTS = {
   teal:   'from-teal-400 to-cyan-600',
 }
 
-export default function AdBanner({ className = '' }) {
+export default function AdBanner({ className = '', fallback = null, audience = 'all' }) {
   const [offers, setOffers] = useState([])
   const [index, setIndex] = useState(0)
 
@@ -33,16 +33,22 @@ export default function AdBanner({ className = '' }) {
       collection(db, 'offers'),
       where('active', '==', true),
       where('size', '==', 'large'),
-      limit(6)
+      limit(12)
     ))
       .then(snap => {
         const list = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
+          // Filtra por público-alvo: oferta sem audience (ou 'all') aparece
+          // para todos; com audience específico só aparece pra esse público.
+          .filter(o => {
+            const aud = o.audience || 'all'
+            return aud === 'all' || aud === audience
+          })
           .sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
         setOffers(list)
       })
       .catch(() => {})
-  }, [])
+  }, [audience])
 
   useEffect(() => {
     if (offers.length <= 1) return
@@ -50,7 +56,7 @@ export default function AdBanner({ className = '' }) {
     return () => clearInterval(t)
   }, [offers.length])
 
-  if (offers.length === 0) return null
+  if (offers.length === 0) return fallback ? <div className={className}>{fallback}</div> : null
   const offer = offers[index]
   const grad = GRADIENTS[offer.gradient] || GRADIENTS.amber
   const safeUrl = (offer.url || '').startsWith('https://') ? offer.url : '#'

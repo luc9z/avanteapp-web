@@ -119,7 +119,7 @@ export default function ClientRequestsPage() {
       </div>
 
       <div className="px-4 py-4 pb-nav">
-        <OffersBanner className="mb-4" />
+        <OffersBanner className="mb-4" audience="client" />
         {loading && <div className="flex justify-center py-16"><Spinner size={32} color="#375337" /></div>}
 
         {!loading && (

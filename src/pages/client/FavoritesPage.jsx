@@ -98,7 +98,7 @@ export default function FavoritesPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3 stagger">
-            <AdBanner />
+            <AdBanner audience="client" />
             <div className="responsive-grid-2">
             {profs.map(p => (
               <ProfCard

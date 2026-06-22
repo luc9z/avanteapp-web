@@ -111,7 +111,7 @@ export default function ClientHomePage() {
       snap => {
         const chatsWithUnread = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(c => c.lastMessage && c.lastMessageSenderId && c.lastMessageSenderId !== uid)
+          .filter(c => c.lastMessage && c.lastMessageSenderId && c.lastMessageSenderId !== uid && c[`read_${uid}`] !== true)
         setActiveChats(chatsWithUnread)
       },
       () => {} // ignore permission errors
@@ -384,8 +384,8 @@ export default function ClientHomePage() {
             uid={uid}
             message="Ative as notificações para saber na hora quando o veterinário aceitar seu pedido."
           />
-          <AdBanner className="mb-2" />
-          <OffersBanner />
+          <AdBanner className="mb-2" audience="client" />
+          <OffersBanner audience="client" />
         </div>
         {/* Atualizações */}
         {(activeRequests.some(r => dismissedNotifs[`req-${r.id}`] !== r._kind + r.status) ||
