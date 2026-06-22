@@ -67,7 +67,8 @@ REGRAS:
 - Máx 2-3 frases curtas. Direto e prático.
 - Dúvidas gerais (vacinas, alimentação, comportamento, rotina): responda direto, SEM sugerir agendamento.
 - Sintomas físicos agudos, dor, ferida, emergência, piora repentina, ou pedido de agendamento: oriente e inclua [SUGGEST_BOOKING] no fim.
-- Se incluir [SUGGEST_BOOKING]: mencione o veterinário mais adequado pelo nome.
+- Se incluir [SUGGEST_BOOKING]: mencione UM veterinário pelo nome.
+- Ao escolher o nome, dê PREFERÊNCIA ao que tem ⭐ Destaque (ele aparece primeiro na lista). Só escolha outro se o Destaque claramente não atender a espécie/caso.
 - PROIBIDO: "é fundamental que", "é importante que", discursos longos.
 - Exemplos:
   Pergunta "quando vacinar meu cavalo?" → responda o calendário vacinal, sem [SUGGEST_BOOKING].
@@ -203,7 +204,7 @@ export default function AIAssistant({ open, onClose, onBooking }) {
           max_tokens: 200,
           temperature: 0.4,
           messages: [
-            { role: 'system', content: buildPrompt(vets) },
+            { role: 'system', content: buildPrompt(rankVets(vets, content)) },
             ...newMessages.filter(m => !m.isInitial).slice(-8).map(m => ({ role: m.role, content: m.content })),
           ],
         }),
