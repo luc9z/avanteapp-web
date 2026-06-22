@@ -26,7 +26,8 @@ export default function PrivacyPage() {
           <li><strong>Veterinário:</strong> CRMV, CPF, áreas de atuação, foto e localização de atendimento.</li>
           <li><strong>Tutor:</strong> animais cadastrados, endereços/propriedades, histórico de solicitações.</li>
           <li><strong>Uso:</strong> mensagens de chat, avaliações, favoritos e dados de navegação.</li>
-          <li><strong>Localização:</strong> apenas quando você a compartilha (ex.: enviar localização no chat).</li>
+          <li><strong>Localização do Tutor:</strong> apenas quando você a compartilha voluntariamente (ex.: enviar localização no chat ou marcar o local do atendimento).</li>
+          <li><strong>Localização do Veterinário:</strong> coletada automaticamente pelo dispositivo do profissional e compartilhada em tempo real com o Tutor enquanto o status do atendimento estiver como "A Caminho". A coleta cessa imediatamente ao iniciar ou encerrar o atendimento.</li>
         </ul>
       </LegalSection>
 

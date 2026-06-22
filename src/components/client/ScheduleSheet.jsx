@@ -137,8 +137,13 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
     setSubmitting(true)
     try {
       // Múltiplas solicitações ao mesmo vet são permitidas (sem bloqueio de duplicidade)
-      const clientDoc = await getDoc(doc(db, 'users', user.uid))
+      const [clientDoc, privDoc] = await Promise.all([
+        getDoc(doc(db, 'users', user.uid)),
+        getDoc(doc(db, 'users', user.uid, 'private', 'profile')).catch(() => null),
+      ])
       const clientData = clientDoc.data() || {}
+      const privData = privDoc?.exists?.() ? privDoc.data() : {}
+      const clientPhone = privData.phone || clientData.phone || ''
       const locationText = [selectedProp.label, selectedProp.address].filter(Boolean).join(' — ')
       const chatId = directChatId(user.uid, professional.uid)
 
@@ -147,7 +152,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
         professionalName: professional.name || '',
         clientId: user.uid,
         clientName: clientData.name || user.displayName || 'Cliente',
-        clientContact: clientData.phone || '',
+        clientContact: clientPhone,
         service,
         urgency: urgent ? 'urgent' : 'normal',
         notes: notes.trim(),

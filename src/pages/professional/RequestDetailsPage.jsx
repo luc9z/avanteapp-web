@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, onSnapshot, getDoc, updateDoc, addDoc,
-  collection, serverTimestamp,
+  collection, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -10,10 +10,13 @@ import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
 import { VetBottomNav, ClientBottomNav } from '../../components/common/BottomNav'
-import { format } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { distanceKm, formatKm } from '../../utils/geo'
 import { PetRecords } from '../client/PetsPage'
 import { directChatId } from '../../services/directChat'
+import useVetTracking from '../../hooks/useVetTracking'
+import VetTrackingMap from '../../components/shared/VetTrackingMap'
 
 /* ── Horizontal 4-step tracker ──────────────────────────────────
    1 Pendente → 2 Aceito → 3 Em Andamento → 4 Finalizado
@@ -91,6 +94,13 @@ export default function RequestDetailsPage() {
   const [rejecting, setRejecting] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [dialog, setDialog] = useState(null)
+  const [vetNotes, setVetNotes] = useState('')
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [vetDistKm, setVetDistKm] = useState(null)
+  const notesInitRef = useRef(false)
+
+  // Vet GPS: ativo só quando status = a_caminho e o usuário é o profissional
+  useVetTracking(id, !!(user?.uid && user.uid === req?.professionalId && req?.status === 'a_caminho'))
 
   useEffect(() => {
     if (!id) return
@@ -116,6 +126,28 @@ export default function RequestDetailsPage() {
     } catch (_) {}
   }
 
+  // Init notas do vet uma vez ao carregar
+  useEffect(() => {
+    if (!notesInitRef.current && req?.vetNotes != null) {
+      setVetNotes(req.vetNotes)
+      notesInitRef.current = true
+    }
+  }, [req?.vetNotes])
+
+  // Distância vet → cliente (uma vez, quando vet visualiza)
+  useEffect(() => {
+    if (!req?.client_lat || user?.uid !== req?.professionalId) return
+    if (!('geolocation' in navigator)) return
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const d = distanceKm(coords.latitude, coords.longitude, req.client_lat, req.client_lng)
+        setVetDistKm(d)
+      },
+      () => {},
+      { timeout: 6000, maximumAge: 30000 }
+    )
+  }, [req?.client_lat, req?.client_lng, req?.professionalId, user?.uid])
+
   function askConfirm(title, message, action) {
     setDialog({ title, message, action })
   }
@@ -140,7 +172,14 @@ export default function RequestDetailsPage() {
         status: 'aceito',
         createdAt: serverTimestamp(),
       })
-      await updateDoc(doc(db, 'requests', id), { status: 'aceito', appointmentId: appRef.id })
+      await updateDoc(doc(db, 'requests', id), {
+        status: 'aceito',
+        appointmentId: appRef.id,
+        statusHistory: [
+          ...(req?.statusHistory || []),
+          { status: 'aceito', at: new Date().toISOString() },
+        ],
+      })
       showToast('Solicitação aceita!', 'success')
     } catch (e) { showToast(friendlyError(e), 'error') }
     finally { setAccepting(false) }
@@ -159,17 +198,49 @@ export default function RequestDetailsPage() {
   async function updateStatus(newStatus) {
     setUpdating(true)
     try {
-      const extra = newStatus === 'finalizado'
-        ? { confirmFinish_professional: true, confirmFinish_client: false, finalizedAt: serverTimestamp() }
-        : {}
-      await updateDoc(doc(db, 'requests', id), { status: newStatus, ...extra })
+      const updates = { status: newStatus }
+      if (newStatus === 'finalizado') {
+        updates.confirmFinish_professional = true
+        updates.confirmFinish_client = false
+        updates.finalizedAt = serverTimestamp()
+      }
+      if ((req?.status || '').toLowerCase() === 'a_caminho' && newStatus !== 'a_caminho') {
+        updates.vetLocation = deleteField()
+      }
+      updates.statusHistory = [
+        ...(req?.statusHistory || []),
+        { status: newStatus, at: new Date().toISOString() },
+      ]
+      await updateDoc(doc(db, 'requests', id), updates)
       if (req?.appointmentId) {
-        await updateDoc(doc(db, 'appointments', req.appointmentId), {
-          status: newStatus, updatedAt: serverTimestamp(), ...extra,
-        }).catch(() => {})
+        const apptUpdates = { status: newStatus, updatedAt: serverTimestamp() }
+        if (newStatus === 'finalizado') {
+          apptUpdates.confirmFinish_professional = true
+          apptUpdates.confirmFinish_client = false
+          apptUpdates.finalizedAt = serverTimestamp()
+        }
+        await updateDoc(doc(db, 'appointments', req.appointmentId), apptUpdates).catch(() => {})
       }
     } catch (e) { showToast(friendlyError(e), 'error') }
     finally { setUpdating(false) }
+  }
+
+  async function saveVetNotes() {
+    setSavingNotes(true)
+    try {
+      await updateDoc(doc(db, 'requests', id), { vetNotes })
+      showToast('Anotações salvas.', 'success')
+    } catch (e) { showToast(friendlyError(e), 'error') }
+    finally { setSavingNotes(false) }
+  }
+
+  const clientPhone = client?.phone || req?.clientContact || ''
+
+  function shareWhatsApp() {
+    const digits = clientPhone.replace(/\D/g, '')
+    const number = digits ? `55${digits}` : ''
+    const text = `Olá, ${req.clientName || 'cliente'}! Referente ao atendimento *${req.service}* pelo Avante:\n${window.location.href}`
+    window.open(`https://wa.me/${number}?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
   }
 
   const STATUS_CONFIRM = {
@@ -213,6 +284,11 @@ export default function RequestDetailsPage() {
   const isActiveStatus = currentHStep >= 2 && currentHStep < 4
 
   const badge = statusBadge(status)
+
+  const requestedAt = req.requestedTimestamp?.toDate?.() || null
+  const timeSince = requestedAt
+    ? formatDistanceToNow(requestedAt, { locale: ptBR, addSuffix: true })
+    : null
 
   // Map URL: prefer exact GPS coords, else fall back to address/label text
   const mapUrl = req.client_lat != null
@@ -311,6 +387,27 @@ export default function RequestDetailsPage() {
             </div>
           )}
 
+          {/* ── GPS: mapa ao vivo (cliente) / banner GPS ativo (vet) ── */}
+          {status === 'a_caminho' && !isProf && (
+            <VetTrackingMap
+              vetLocation={req.vetLocation}
+              clientLat={req.client_lat}
+              clientLng={req.client_lng}
+            />
+          )}
+          {status === 'a_caminho' && isProf && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-green-50 border border-green-200">
+              <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+              </span>
+              <div>
+                <p className="text-sm font-bold text-green-700">GPS ativo</p>
+                <p className="text-xs text-green-600">Compartilhando localização com o cliente em tempo real.</p>
+              </div>
+            </div>
+          )}
+
           {/* ── Service details card ──────────────────────── */}
           <div className="card flex flex-col divide-y divide-gray-50">
             {/* Serviço */}
@@ -339,6 +436,23 @@ export default function RequestDetailsPage() {
                 <div>
                   <p className="text-xs text-gray-400">Data/Hora</p>
                   <p className="font-bold text-gray-900 text-sm">{formatDateTime(req.requestedTimestamp)}</p>
+                  {timeSince && <p className="text-xs text-gray-400 mt-0.5">{timeSince}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Distância (vet → cliente, só pro vet) */}
+            {isProf && vetDistKm != null && (
+              <div className="flex items-start gap-3 py-3">
+                <div className="bg-primary/8 p-2 rounded-lg flex-shrink-0 mt-0.5">
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">Distância até o cliente</p>
+                  <p className="font-bold text-gray-900 text-sm">{formatKm(vetDistKm)}</p>
                 </div>
               </div>
             )}
@@ -405,6 +519,39 @@ export default function RequestDetailsPage() {
             </div>
           )}
 
+          {/* ── Histórico de status ───────────────────────── */}
+          <StatusTimeline req={req} />
+
+          {/* ── Notas privadas do vet ─────────────────────── */}
+          {isProf && isActiveStatus && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <p className="font-bold text-gray-800 text-sm">Anotações (visível só para você)</p>
+              </div>
+              <div className="card flex flex-col gap-2 p-3">
+                <textarea
+                  value={vetNotes}
+                  onChange={e => setVetNotes(e.target.value)}
+                  placeholder="Ex.: Animal calmo, necessita sedação leve. Dono pediu receituário..."
+                  rows={3}
+                  className="w-full text-sm text-gray-700 placeholder-gray-400 resize-none outline-none
+                             leading-relaxed bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5"
+                />
+                <div className="flex justify-end">
+                  <button onClick={saveVetNotes} disabled={savingNotes}
+                    className="text-xs font-bold text-primary px-4 py-1.5 rounded-lg
+                               hover:bg-primary/5 transition-colors disabled:opacity-50">
+                    {savingNotes ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Dados do cliente ──────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -437,10 +584,8 @@ export default function RequestDetailsPage() {
             </div>
           </div>
 
-          {/* ── Ações Rápidas (only when there are real actions: phone or location)
-                  Chat is NOT included here — it's already shown as "Abrir Chat" below.
-                  This avoids the single-button grid that looked broken. ───────────── */}
-          {isProf && isActiveStatus && (client?.phone || req.locationLabel || req.location) && (
+          {/* ── Ações Rápidas ─────────────────────────────────── */}
+          {!isRejected && !isPending && (
             <div className="card">
               <div className="flex items-center gap-2 mb-3">
                 <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
@@ -448,23 +593,23 @@ export default function RequestDetailsPage() {
                 </svg>
                 <p className="font-bold text-gray-800 text-sm">Ações Rápidas</p>
               </div>
-
-              {/* Grid adapts to number of available actions (1 or 2 items) */}
-              <div className={`grid gap-3 ${client?.phone && (req.locationLabel || req.location) ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                {(req.locationLabel || req.location) && (
-                  <QuickBtn
-                    href={mapUrl}
+              <div className="grid grid-cols-2 gap-3">
+                {isProf && (req.locationLabel || req.location) && (
+                  <QuickBtn href={mapUrl}
                     icon="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    label="Abrir Rota"
-                  />
+                    label="Abrir Rota" />
                 )}
-                {client?.phone && (
-                  <QuickBtn
-                    href={`tel:${client.phone}`}
+                {isProf && clientPhone && (
+                  <QuickBtn href={`tel:${clientPhone}`}
                     icon="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    label={`Ligar — ${client.phone}`}
-                  />
+                    label="Ligar" />
                 )}
+                <QuickBtn
+                  onClick={clientPhone ? shareWhatsApp : undefined}
+                  disabled={!clientPhone}
+                  icon="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"
+                  label={clientPhone ? 'WhatsApp' : 'Sem celular cadastrado'}
+                />
               </div>
             </div>
           )}
@@ -629,21 +774,26 @@ function ClientRow({ iconPath, label, value, href }) {
   return <div>{inner}</div>
 }
 
-function QuickBtn({ onClick, href, icon, label }) {
-  const cls = `flex items-center gap-3 px-4 py-3.5 bg-gray-50 rounded-xl
-               hover:bg-primary/5 transition-colors w-full`
+function QuickBtn({ onClick, href, icon, label, disabled }) {
+  const cls = `flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors w-full
+    ${disabled
+      ? 'bg-gray-50 opacity-50 cursor-not-allowed'
+      : 'bg-gray-50 hover:bg-primary/5 cursor-pointer'}`
   const content = (
     <>
-      <div className="bg-primary/10 p-2 rounded-lg flex-shrink-0">
-        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className={`p-2 rounded-lg flex-shrink-0 ${disabled ? 'bg-gray-200' : 'bg-primary/10'}`}>
+        <svg className={`w-4 h-4 ${disabled ? 'text-gray-400' : 'text-primary'}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
         </svg>
       </div>
-      <span className="text-sm font-semibold text-gray-700 truncate">{label}</span>
+      <span className={`text-sm font-semibold truncate ${disabled ? 'text-gray-400' : 'text-gray-700'}`}>
+        {label}
+      </span>
     </>
   )
-  if (href) return <a href={href} target="_blank" rel="noreferrer" className={cls}>{content}</a>
-  return <button onClick={onClick} className={cls}>{content}</button>
+  if (href && !disabled) return <a href={href} target="_blank" rel="noreferrer" className={cls}>{content}</a>
+  return <button onClick={!disabled ? onClick : undefined} disabled={disabled} className={cls}>{content}</button>
 }
 
 /* ── Reusable coloured action button ─────────────────────────── */
@@ -770,7 +920,7 @@ function FinalizadoCard({ req, isClient, isProf, onClientConfirm, onRate }) {
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 justify-center">
           <ConfirmChip filled={profConfirmed} label="Profissional" />
           <ConfirmChip filled={clientConfirmed} label="Cliente" />
         </div>
@@ -846,6 +996,48 @@ function PetBlock({ req, isProf, userUid }) {
   )
 }
 
+
+function statusLabel(s) {
+  const map = {
+    aceito: 'Aceito', a_caminho: 'A Caminho', em_andamento: 'Em Andamento',
+    pausado: 'Pausado', finalizado: 'Finalizado', rejeitado: 'Recusado',
+  }
+  return map[(s || '').toLowerCase()] || s
+}
+
+function StatusTimeline({ req }) {
+  const entries = (req.statusHistory || []).map(h => ({
+    label: statusLabel(h.status),
+    at: new Date(h.at),
+  }))
+
+  if (entries.length < 1) return null
+
+  return (
+    <div className="card">
+      <p className="font-bold text-gray-800 text-sm mb-4">Histórico</p>
+      <div className="flex flex-col">
+        {entries.map((e, i) => {
+          const isLast = i === entries.length - 1
+          return (
+            <div key={i} className="flex items-start gap-3">
+              <div className="flex flex-col items-center flex-shrink-0">
+                <div className={`w-2.5 h-2.5 rounded-full mt-0.5 ${isLast ? 'bg-primary' : 'bg-gray-300'}`} />
+                {!isLast && <div className="w-px h-7 bg-gray-200 mt-0.5" />}
+              </div>
+              <div className="pb-3">
+                <p className={`text-sm font-semibold ${isLast ? 'text-primary' : 'text-gray-700'}`}>{e.label}</p>
+                <p className="text-xs text-gray-400">
+                  {format(e.at, "dd/MM 'às' HH:mm", { locale: ptBR })}
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 function PdfButton({ req }) {
   const [busy, setBusy] = useState(false)

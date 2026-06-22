@@ -266,10 +266,16 @@ export default function ClientHomePage() {
   }
 
   const [myName, setMyName] = useState('')
+  const [myPhoto, setMyPhoto] = useState('')
   useEffect(() => {
     if (!uid) return
     getDoc(doc(db, 'users', uid))
-      .then(snap => { if (snap.exists() && snap.data().name) setMyName(snap.data().name) })
+      .then(snap => {
+        if (!snap.exists()) return
+        const d = snap.data()
+        if (d.name) setMyName(d.name)
+        if (d.photoURL) setMyPhoto(d.photoURL)
+      })
       .catch(() => {})
   }, [uid])
   const firstName = (myName || user?.displayName || '').split(' ')[0] || user?.email?.split('@')[0] || 'Usuário'
@@ -279,9 +285,13 @@ export default function ClientHomePage() {
       {/* Topbar */}
       <div className="topbar flex-shrink-0">
         <Link to="/edit-profile" className="flex items-center gap-2 text-primary">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm">
-            {firstName[0]?.toUpperCase()}
-          </div>
+          {myPhoto ? (
+            <img src={myPhoto} alt="Foto de perfil" className="w-8 h-8 rounded-full object-cover" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center font-bold text-sm">
+              {firstName[0]?.toUpperCase()}
+            </div>
+          )}
           <span className="font-semibold text-sm">Olá, {firstName}</span>
         </Link>
         <ThemeToggle />

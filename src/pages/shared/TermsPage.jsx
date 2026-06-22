@@ -48,6 +48,12 @@ export default function TermsPage() {
           O Veterinário pode aceitar ou recusar. Cancelamentos e remarcações devem ser
           combinados entre as partes pelo chat da plataforma, com antecedência razoável.
         </p>
+        <p className="mt-2">
+          Ao marcar o status do atendimento como <strong>"A Caminho"</strong>, o Veterinário
+          consente expressamente no compartilhamento de sua localização GPS em tempo real
+          com o Tutor, exclusivamente durante o deslocamento até o local do atendimento.
+          O compartilhamento é encerrado automaticamente ao iniciar ou finalizar o atendimento.
+        </p>
       </LegalSection>
 
       <LegalSection n="5" title="Planos do Veterinário e pagamentos">

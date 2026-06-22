@@ -509,14 +509,15 @@ export default function DashboardPage() {
         {/* ── Solicitações Pendentes ─────────────────────────── */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <p className="section-title">Solicitações Pendentes</p>
+            <p className="section-title !mb-0">
+              Solicitações Pendentes
               {pending.length > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                  {pending.length}
+                <span className="inline-flex items-center justify-center bg-red-500 text-white
+                                 text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 leading-none">
+                  {pending.length > 3 ? '3+' : pending.length}
                 </span>
               )}
-            </div>
+            </p>
             <Link to="/pending-requests" className="text-primary text-sm font-medium hover:underline">
               Ver todas
             </Link>

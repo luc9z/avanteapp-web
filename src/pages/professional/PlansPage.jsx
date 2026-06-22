@@ -84,8 +84,29 @@ export default function PlansPage() {
   async function handleRedeemCoupon() {
     const code = coupon.trim().toUpperCase()
     if (!code) return showToast('Digite o código do cupom', 'error')
+    if (!selectedId) return showToast('Selecione um plano primeiro.', 'error')
     setCouponBusy(true)
     try {
+      // Cupons de lançamento: validados no cliente, ativam instantâneo sem Cloud Function
+      const LAUNCH_COUPONS = { BEMVINDO: 100, AVANTE100: 100 }
+      if (LAUNCH_COUPONS[code] === 100) {
+        if (selectedId === currentPlan) {
+          showToast('Este já é seu plano atual.', 'error')
+          return
+        }
+        await setDoc(doc(db, 'users', user.uid), {
+          plan: selectedId,
+          featured: ['premium', 'destaque'].includes(selectedId),
+          planActivatedAt: serverTimestamp(),
+          planCoupon: code,
+          updatedAt: serverTimestamp(),
+        }, { merge: true })
+        showToast(`Cupom ${code} aplicado — plano ativado! 🎉`, 'success')
+        setTimeout(() => navigate('/dashboard', { replace: true }), 900)
+        return
+      }
+
+      // Cupons dinâmicos via Cloud Function (requer Blaze plan)
       const { data } = await redeemCoupon({ planId: selectedId, code })
       if (data?.activated) {
         showToast(`Cupom ${code} aplicado — plano ativado com 100% de desconto! 🎉`, 'success')
@@ -97,7 +118,7 @@ export default function PlansPage() {
       if (import.meta.env.DEV) console.error(e)
       showToast(
         e?.code === 'functions/not-found' ? 'Cupom inválido ou expirado.'
-          : 'Não foi possível validar o cupom. As funções já foram publicadas?',
+          : 'Cupom inválido ou expirado.',
         'error'
       )
     } finally { setCouponBusy(false) }
@@ -107,18 +128,22 @@ export default function PlansPage() {
     if (!selected || selected.id === currentPlan) return
     setPaying(true)
     try {
-      // MODO TESTE: ativa qualquer plano direto, sem AbacatePay.
-      // (trocar por createCheckout quando integrar o pagamento real)
-      await setDoc(doc(db, 'users', user.uid), {
-        plan: selected.id,
-        planActivatedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true })
-      showToast(`Plano ${selected.name} ativado!`, 'success')
-      setTimeout(() => navigate('/dashboard', { replace: true }), 800)
+      if (selected.price <= 0) {
+        await setDoc(doc(db, 'users', user.uid), {
+          plan: selected.id,
+          planActivatedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true })
+        showToast(`Plano ${selected.name} ativado!`, 'success')
+        setTimeout(() => navigate('/dashboard', { replace: true }), 800)
+        return
+      }
+
+      // Pagamento via PIX em breve — use cupom para ativar agora
+      showToast('Pagamento via PIX em breve! Use o cupom BEMVINDO para ativar agora.', 'info')
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
-      showToast('Não foi possível ativar o plano.', 'error')
+      showToast('Não foi possível iniciar o pagamento.', 'error')
     } finally { setPaying(false) }
   }
 
@@ -292,8 +317,8 @@ export default function PlansPage() {
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
-          Modo de teste — ativação imediata, sem cobrança. Você pode mudar de plano
-          quando quiser; o novo plano substitui o anterior.
+          Use o cupom <strong className="text-white/40">BEMVINDO</strong> para ativar qualquer plano gratuitamente.
+          Pagamento via PIX disponível em breve.
         </p>
       </div>
       <VetBottomNav />
