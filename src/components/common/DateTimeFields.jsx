@@ -6,6 +6,8 @@
  * <DateFields value="2026-06-12" onChange={iso => ...} fromYear toYear />
  * <TimeField  value="14:30"      onChange={hhmm => ...} step={15} />
  */
+import { useState, useEffect, useRef } from 'react'
+
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
@@ -31,9 +33,21 @@ export function DateFields({ value, onChange, fromYear, toYear, noPast = false }
   if (start <= end) for (let y = start; y <= end; y++) years.push(y)
   else for (let y = start; y >= end; y--) years.push(y)
 
-  const { day, month, year } = parseISO(value)
+  // Estado local para não perder seleções parciais enquanto outros campos estão vazios
+  const init = parseISO(value)
+  const [day, setDay] = useState(init.day)
+  const [month, setMonth] = useState(init.month)
+  const [year, setYear] = useState(init.year)
+  const prevValue = useRef(value)
 
-  // noPast: esconde dias/meses anteriores a hoje (sem atendimento retroativo)
+  useEffect(() => {
+    if (value !== prevValue.current) {
+      const p = parseISO(value)
+      setDay(p.day); setMonth(p.month); setYear(p.year)
+      prevValue.current = value
+    }
+  }, [value])
+
   const curY = now.getFullYear(), curM = now.getMonth() + 1, curD = now.getDate()
   const minMonth = noPast && Number(year) === curY ? curM : 1
   const minDay = noPast && Number(year) === curY && Number(month) === curM ? curD : 1
@@ -42,10 +56,13 @@ export function DateFields({ value, onChange, fromYear, toYear, noPast = false }
     if (d && m && y) {
       const safeDay = Math.min(Number(d), daysInMonth(m, y))
       onChange(`${y}-${String(m).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`)
-    } else {
-      onChange('')
     }
+    // Não chama onChange('') para seleções parciais — estado local preserva os valores
   }
+
+  function handleDay(v)   { setDay(v);   emit(v, month, year) }
+  function handleMonth(v) { setMonth(v); emit(day, v, year) }
+  function handleYear(v)  { setYear(v);  emit(day, month, v) }
 
   const maxDay = daysInMonth(month, year)
   const days = []
@@ -56,21 +73,21 @@ export function DateFields({ value, onChange, fromYear, toYear, noPast = false }
     <div className="grid grid-cols-[1fr_1.6fr_1.2fr] gap-2">
       <div>
         <label className="text-[11px] text-gray-400 mb-1 block">Dia</label>
-        <select value={day} onChange={e => emit(e.target.value, month, year)} className="select-field">
+        <select value={day} onChange={e => handleDay(e.target.value)} className="select-field">
           <option value="">—</option>
           {days.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
       </div>
       <div>
         <label className="text-[11px] text-gray-400 mb-1 block">Mês</label>
-        <select value={month} onChange={e => emit(day, e.target.value, year)} className="select-field">
+        <select value={month} onChange={e => handleMonth(e.target.value)} className="select-field">
           <option value="">—</option>
           {monthOptions.map(m => <option key={m.n} value={m.n}>{m.name}</option>)}
         </select>
       </div>
       <div>
         <label className="text-[11px] text-gray-400 mb-1 block">Ano</label>
-        <select value={year} onChange={e => emit(day, month, e.target.value)} className="select-field">
+        <select value={year} onChange={e => handleYear(e.target.value)} className="select-field">
           <option value="">—</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>

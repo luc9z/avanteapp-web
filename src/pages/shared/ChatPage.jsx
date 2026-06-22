@@ -26,8 +26,8 @@ import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
 
-import { isDirectChat } from '../../services/directChat'
-import { format, isToday, isYesterday } from 'date-fns'
+import { isDirectChat, freshExpiry, CHAT_TTL_DAYS } from '../../services/directChat'
+import { format, isToday, isYesterday, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 const CHAT_ALLOWED_STATUSES = [
@@ -97,8 +97,15 @@ export default function ChatPage() {
             : null
           setMyRole(role)
 
-          if (direct) setChatReady(true)
-          else ensureChatDoc(snap.id, data)
+          if (direct) {
+            setChatReady(true)
+            // Renova a expiração (chat temporário de 7 dias) ao abrir
+            if (role) {
+              updateDoc(doc(db, 'chats', snap.id), { expiresAt: freshExpiry() }).catch(() => {})
+            }
+          } else {
+            ensureChatDoc(snap.id, data)
+          }
         }
         setRequestLoading(false)
       },
@@ -151,13 +158,19 @@ export default function ChatPage() {
     const unsub = onSnapshot(
       q,
       snap => {
-        setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setMessages(msgs)
         setMessagesLoading(false)
+        // Marca como visualizado: se a última msg é do outro, zera meu "não lido"
+        const last = msgs[msgs.length - 1]
+        if (last && last.senderId && last.senderId !== user.uid) {
+          updateDoc(doc(db, 'chats', requestId), { [`read_${user.uid}`]: true }).catch(() => {})
+        }
       },
       () => setMessagesLoading(false)
     )
     return unsub
-  }, [requestId, chatReady])
+  }, [requestId, chatReady, user?.uid])
 
   /* ── 3. Auto-scroll to bottom ──────────────────────────────── */
   useEffect(() => {
@@ -181,9 +194,13 @@ export default function ChatPage() {
         type: 'text',
         createdAt: serverTimestamp(),
       })
+      const otherId = myRole === 'client' ? request?.professionalId : request?.clientId
       await updateDoc(doc(db, 'chats', requestId), {
         lastMessage: content,
         lastMessageSenderId: user.uid,
+        [`read_${user.uid}`]: true,
+        ...(otherId ? { [`read_${otherId}`]: false } : {}),
+        expiresAt: freshExpiry(),
         updatedAt: serverTimestamp(),
       }).catch(() => {})
     } catch (e) {
@@ -229,9 +246,13 @@ export default function ChatPage() {
             lng,
             createdAt: serverTimestamp(),
           })
+          const otherId = myRole === 'client' ? request?.professionalId : request?.clientId
           await updateDoc(doc(db, 'chats', requestId), {
             lastMessage: '📍 Localização',
             lastMessageSenderId: user.uid,
+            [`read_${user.uid}`]: true,
+            ...(otherId ? { [`read_${otherId}`]: false } : {}),
+            expiresAt: freshExpiry(),
             updatedAt: serverTimestamp(),
           }).catch(() => {})
         } catch (e) {
@@ -300,7 +321,7 @@ export default function ChatPage() {
             {requestLoading ? '…' : otherName}
           </span>
           <span className="text-xs text-gray-400">
-            {requestLoading ? '' : direct ? 'Conversa' : (request?.service || 'Atendimento')}
+            {requestLoading ? '' : (request?.service || (direct ? 'Conversa' : 'Atendimento'))}
           </span>
         </div>
 
@@ -317,6 +338,22 @@ export default function ChatPage() {
           </button>
         )}
       </div>
+
+      {/* ── Banner: chat temporário ─────────────────────────────── */}
+      {!requestLoading && request && (
+        <div className="flex-shrink-0 bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center gap-2">
+          <svg className="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-[11px] text-amber-700 leading-tight">
+            {(() => {
+              const exp = request.expiresAt?.toDate?.()
+              const daysLeft = exp ? Math.max(0, differenceInDays(exp, new Date())) : CHAT_TTL_DAYS
+              return `Conversa temporária — apagada após ${CHAT_TTL_DAYS} dias sem atividade${exp ? ` (expira em ${daysLeft} dia${daysLeft !== 1 ? 's' : ''})` : ''}.`
+            })()}
+          </p>
+        </div>
+      )}
 
       {/* ── Messages area ───────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 py-3 bg-gray-50">

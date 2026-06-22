@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
@@ -29,27 +29,29 @@ export default function AgendaPage() {
 
   useEffect(() => {
     if (!user?.uid) return
-    loadAppointments()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid])
-
-  async function loadAppointments() {
     setLoading(true)
-    try {
-      const snap = await getDocs(query(
-        collection(db, 'appointments'),
+    const unsub = onSnapshot(
+      query(
+        collection(db, 'requests'),
         where('professionalId', '==', user.uid),
-        orderBy('date')
-      ))
-      setAppointments(snap.docs.map(d => {
-        const data = d.data()
-        const ts = data.date
-        const date = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : new Date())
-        return { id: d.id, ...data, date, status: normalizeStatus(data.status) }
-      }))
-    } catch (_) {}
-    setLoading(false)
-  }
+      ),
+      snap => {
+        const EXCLUDE = ['cancelado', 'rejeitado']
+        setAppointments(snap.docs
+          .map(d => {
+            const data = d.data()
+            const ts = data.requestedTimestamp
+            const date = ts?.toDate ? ts.toDate() : (ts ? new Date(ts) : null)
+            return { id: d.id, ...data, date, status: normalizeStatus(data.status) }
+          })
+          .filter(r => r.date && !EXCLUDE.includes(r.status))
+        )
+        setLoading(false)
+      },
+      () => setLoading(false)
+    )
+    return unsub
+  }, [user?.uid])
 
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(focusedMonth),
@@ -147,7 +149,7 @@ export default function AgendaPage() {
               <div
                 key={a.id}
                 className="card mb-3 cursor-pointer hover:shadow-card-hover transition-shadow"
-                onClick={() => a.requestId && navigate(`/request/${a.requestId}`)}
+                onClick={() => navigate(`/request/${a.requestId || a.id}`)}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <p className="font-bold text-primary truncate flex-1">{a.service}</p>
