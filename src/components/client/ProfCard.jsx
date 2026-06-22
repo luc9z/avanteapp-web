@@ -21,7 +21,7 @@ export function isOnlineCheck(d) {
 }
 
 export function isFeatured(prof) {
-  return prof.featured === true || prof.plan === 'destaque' || prof.plan === 'pro'
+  return prof.featured === true || prof.plan === 'premium' || prof.plan === 'destaque' || prof.plan === 'pro'
 }
 
 export default function ProfCard({ prof, isFavorite, onToggleFavorite, onView, onRequest, onMessage }) {
@@ -110,18 +110,31 @@ export default function ProfCard({ prof, isFavorite, onToggleFavorite, onView, o
         >
           {online ? 'Solicitar' : 'Agendar'}
         </button>
+        {/* Chat antes da solicitação — exclusivo de veterinários Premium.
+            Para os demais, o ícone aparece suspenso (desabilitado) com tooltip. */}
         <button
-          onClick={onMessage}
+          onClick={featured ? onMessage : undefined}
+          disabled={!featured}
           aria-label="Enviar mensagem"
-          title="Conversar antes de solicitar"
-          className="w-10 py-2.5 rounded-xl border border-gray-200 text-gray-500 hover:text-primary
-                     hover:border-primary/40 hover:bg-primary/5 active:scale-95 transition-all
-                     flex items-center justify-center"
+          title={featured ? 'Conversar antes de solicitar' : 'Conversa antes do atendimento é exclusiva de veterinários Premium'}
+          className={`relative w-10 py-2.5 rounded-xl border flex items-center justify-center transition-all ${
+            featured
+              ? 'border-gray-200 text-gray-500 hover:text-primary hover:border-primary/40 hover:bg-primary/5 active:scale-95 cursor-pointer'
+              : 'border-gray-100 text-gray-300 opacity-50 cursor-not-allowed'
+          }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
+          {/* Cadeado para indicar bloqueio */}
+          {!featured && (
+            <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-gray-400 rounded-full flex items-center justify-center">
+              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 1a5 5 0 00-5 5v3H6a2 2 0 00-2 2v9a2 2 0 002 2h12a2 2 0 002-2v-9a2 2 0 00-2-2h-1V6a5 5 0 00-5-5zm3 8H9V6a3 3 0 016 0v3z" />
+              </svg>
+            </span>
+          )}
         </button>
       </div>
     </div>

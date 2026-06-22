@@ -51,9 +51,21 @@ export default function ChatsListPage() {
 
   const chats = useMemo(() => {
     if (asClient === null || asProf === null) return null
-    const map = new Map()
-    for (const c of [...asClient, ...asProf]) map.set(c.id, c)
-    return [...map.values()].sort((a, b) =>
+    // Dedup by chatId first, then by participant pair — keep most recently updated per pair
+    const byId = new Map()
+    for (const c of [...asClient, ...asProf]) byId.set(c.id, c)
+
+    const byPair = new Map()
+    for (const c of [...byId.values()]) {
+      const pairKey = [c.clientId, c.professionalId].filter(Boolean).sort().join('_')
+      if (!pairKey) continue
+      const prev = byPair.get(pairKey)
+      const cTime = c.updatedAt?.toDate?.()?.getTime() || 0
+      const pTime = prev?.updatedAt?.toDate?.()?.getTime() || 0
+      if (!prev || cTime > pTime) byPair.set(pairKey, c)
+    }
+
+    return [...byPair.values()].sort((a, b) =>
       (b.updatedAt?.toDate?.() || 0) - (a.updatedAt?.toDate?.() || 0)
     )
   }, [asClient, asProf])
@@ -82,11 +94,11 @@ export default function ChatsListPage() {
         </div>
       ) : (
         <div className="px-4 py-3 flex flex-col gap-2 pb-nav stagger">
-          <OffersBanner className="mb-1" />
+          <OffersBanner className="mb-1" audience={isClient ? 'client' : 'vet'} />
           {chats.map(c => {
             const iAmClient = c.clientId === uid
             const otherName = iAmClient ? (c.professionalName || 'Profissional') : (c.clientName || 'Cliente')
-            const unread = c.lastMessage && c.lastMessageSenderId && c.lastMessageSenderId !== uid
+            const unread = c.lastMessage && c.lastMessageSenderId && c.lastMessageSenderId !== uid && c[`read_${uid}`] !== true
             return (
               <button
                 key={c.id}

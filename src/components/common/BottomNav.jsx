@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import ScheduleSheet from '../client/ScheduleSheet'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -130,6 +131,7 @@ export function ClientBottomNav() {
   const navigate = useNavigate()
   const uid = user?.uid
   const [aiOpen, setAiOpen] = useState(false)
+  const [scheduleProf, setScheduleProf] = useState(null)
   const [notifCount, setNotifCount] = useState(0)
 
   useEffect(() => {
@@ -187,7 +189,18 @@ export function ClientBottomNav() {
       <AIAssistant
         open={aiOpen}
         onClose={() => setAiOpen(false)}
-        onBooking={() => navigate('/home')}
+        onBooking={(vet) => {
+          setAiOpen(false)
+          if (vet) setScheduleProf(vet)
+          else navigate('/home')
+        }}
+      />
+
+      <ScheduleSheet
+        open={!!scheduleProf}
+        professional={scheduleProf}
+        user={user}
+        onClose={() => setScheduleProf(null)}
       />
     </>
   )

@@ -13,6 +13,7 @@ import { VetBottomNav, ClientBottomNav } from '../../components/common/BottomNav
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { PetRecords } from '../client/PetsPage'
+import { directChatId } from '../../services/directChat'
 
 /* ── Horizontal 4-step tracker ──────────────────────────────────
    1 Pendente → 2 Aceito → 3 Em Andamento → 4 Finalizado
@@ -98,11 +99,15 @@ export default function RequestDetailsPage() {
         const data = { id: snap.id, ...snap.data() }
         setReq(data)
         if (data.clientId) loadClient(data.clientId)
+        // Marca como visualizado pelo veterinário (some o badge de não lido)
+        if (data.professionalId === user?.uid && data.professionalRead === false) {
+          updateDoc(doc(db, 'requests', id), { professionalRead: true }).catch(() => {})
+        }
       }
       setLoading(false)
     })
     return unsub
-  }, [id])
+  }, [id, user?.uid])
 
   async function loadClient(clientId) {
     try {
@@ -489,7 +494,7 @@ export default function RequestDetailsPage() {
             {/* ── Abrir Chat — ALWAYS first (green filled) ─── */}
             {!isPending && !isRejected && (
               <button
-                onClick={() => navigate(`/chat/${id}`)}
+                onClick={() => navigate(`/chat/${req?.chatId || directChatId(req.clientId, req.professionalId)}`)}
                 className="btn-primary w-full py-4 gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -16,7 +16,7 @@ const SPECIALTY_KEYWORDS = {
 }
 
 function isFeatured(v) {
-  return v.featured === true || v.plan === 'destaque' || v.plan === 'pro'
+  return v.featured === true || v.plan === 'premium' || v.plan === 'destaque' || v.plan === 'pro'
 }
 
 function matchSpecialties(text) {
@@ -88,8 +88,47 @@ const QUICK_OPTIONS = [
   { label: '📅 Quero agendar', text: 'Quero agendar uma consulta' },
 ]
 
+/* ── Persistência local da conversa (economiza tokens) ──────────
+   - Conversa fica salva por 30 min: reabrir o assistente não perde
+     o histórico nem refaz chamadas à IA.
+   - Cache de respostas: a MESMA pergunta feita em até 2 min reusa a
+     resposta anterior, sem nova chamada (sem gastar tokens).        */
+const CHAT_KEY = 'avante-ai-chat'
+const CACHE_KEY = 'avante-ai-cache'
+const CHAT_TTL = 30 * 60 * 1000   // 30 min
+const CACHE_TTL = 120 * 1000      // 2 min
+
+function loadMessages() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_KEY) || 'null')
+    if (raw && Date.now() - raw.ts < CHAT_TTL && Array.isArray(raw.messages) && raw.messages.length > 0) {
+      return raw.messages
+    }
+  } catch {}
+  return [INITIAL_MSG]
+}
+
+function normalizeQ(s) {
+  return s.toLowerCase().trim().replace(/\s+/g, ' ')
+}
+function getCached(q) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+    const hit = cache[normalizeQ(q)]
+    if (hit && Date.now() - hit.ts < CACHE_TTL) return hit
+  } catch {}
+  return null
+}
+function setCached(q, payload) {
+  try {
+    const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}')
+    cache[normalizeQ(q)] = { ...payload, ts: Date.now() }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+  } catch {}
+}
+
 export default function AIAssistant({ open, onClose, onBooking }) {
-  const [messages, setMessages] = useState([INITIAL_MSG])
+  const [messages, setMessages] = useState(loadMessages)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [vets, setVets] = useState([])
@@ -119,6 +158,13 @@ export default function AIAssistant({ open, onClose, onBooking }) {
     }
   }, [open, messages.length, hasUserMessage])
 
+  // Persiste a conversa (validade de 30 min)
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_KEY, JSON.stringify({ ts: Date.now(), messages }))
+    } catch {}
+  }, [messages])
+
   const updateSuggestions = useCallback((text) => {
     if (vets.length === 0) return
     setSuggestedVets(rankVets(vets, text))
@@ -132,14 +178,22 @@ export default function AIAssistant({ open, onClose, onBooking }) {
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
     setInput('')
-    setLoading(true)
 
     if (!apiKey) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'IA não configurada. Adicione VITE_GROQ_KEY no .env.local.' }])
-      setLoading(false)
       return
     }
 
+    // Cache: mesma pergunta em até 2 min reusa a resposta (sem gastar tokens)
+    const cached = getCached(content)
+    if (cached) {
+      if (cached.suggestsBooking) updateSuggestions(content)
+      else setSuggestedVets([])
+      setMessages(prev => [...prev, { role: 'assistant', content: cached.reply, suggestsBooking: cached.suggestsBooking }])
+      return
+    }
+
+    setLoading(true)
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -160,12 +214,19 @@ export default function AIAssistant({ open, onClose, onBooking }) {
       const reply = raw.replace('[SUGGEST_BOOKING]', '').trim()
       if (suggestsBooking) updateSuggestions(content)
       else setSuggestedVets([])
+      setCached(content, { reply, suggestsBooking })
       setMessages(prev => [...prev, { role: 'assistant', content: reply, suggestsBooking }])
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Erro de conexão. Tente novamente.' }])
     } finally {
       setLoading(false)
     }
+  }
+
+  function resetChat() {
+    setMessages([INITIAL_MSG])
+    setSuggestedVets([])
+    try { localStorage.removeItem(CHAT_KEY) } catch {}
   }
 
   function handleSubmit(e) {
@@ -213,35 +274,28 @@ export default function AIAssistant({ open, onClose, onBooking }) {
                 </div>
               </div>
             </div>
-            <button onClick={onClose}
-              className="w-8 h-8 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center transition-colors">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2">
+              {hasUserMessage && (
+                <button onClick={resetChat} title="Nova conversa"
+                  className="w-8 h-8 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center transition-colors">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              )}
+              <button onClick={onClose}
+                className="w-8 h-8 bg-white/15 hover:bg-white/25 rounded-full flex items-center justify-center transition-colors">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ── Messages area ────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
-
-          {/* Quick options — antes do primeiro user msg */}
-          {!hasUserMessage && (
-            <div className="flex flex-col gap-2 mt-1">
-              {QUICK_OPTIONS.map(opt => (
-                <button
-                  key={opt.text}
-                  onClick={() => send(opt.text)}
-                  className="flex items-center gap-3 w-full text-left px-4 py-3 bg-gray-50
-                             border border-gray-200 rounded-2xl hover:border-primary/40 hover:bg-primary/5
-                             transition-all active:scale-[0.98] text-sm font-medium text-gray-700"
-                >
-                  <span className="text-lg flex-shrink-0">{opt.label.split(' ')[0]}</span>
-                  <span>{opt.label.slice(opt.label.indexOf(' ') + 1)}</span>
-                </button>
-              ))}
-            </div>
-          )}
 
           {/* Chat messages */}
           {messages.map((msg, i) => (
@@ -262,19 +316,37 @@ export default function AIAssistant({ open, onClose, onBooking }) {
               )}
               {msg.suggestsBooking && onBooking && (
                 <button
-                  onClick={() => { onClose(); onBooking() }}
+                  onClick={() => { onClose(); onBooking(null) }}
                   className="flex items-center gap-2 bg-primary text-white text-sm font-bold
                              px-5 py-2.5 rounded-2xl hover:bg-primary/90 transition-all active:scale-95 shadow-md shadow-primary/30"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   Agendar veterinário agora
                 </button>
               )}
             </div>
           ))}
+
+          {/* Quick options — depois da mensagem inicial */}
+          {!hasUserMessage && (
+            <div className="flex flex-col gap-2 mt-1">
+              {QUICK_OPTIONS.map(opt => (
+                <button
+                  key={opt.text}
+                  onClick={() => send(opt.text)}
+                  className="flex items-center gap-3 w-full text-left px-4 py-3 bg-gray-50
+                             border border-gray-200 rounded-2xl hover:border-primary/40 hover:bg-primary/5
+                             transition-all active:scale-[0.98] text-sm font-medium text-gray-700"
+                >
+                  <span className="text-lg flex-shrink-0">{opt.label.split(' ')[0]}</span>
+                  <span>{opt.label.slice(opt.label.indexOf(' ') + 1)}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Typing indicator */}
           {loading && (
@@ -296,7 +368,7 @@ export default function AIAssistant({ open, onClose, onBooking }) {
               <p className="text-xs font-semibold text-gray-400 mb-2 px-1">Veterinários recomendados</p>
               <div className="flex flex-col gap-2">
                 {suggestedVets.map(v => (
-                  <VetSuggestionCard key={v.uid} vet={v} onBook={() => { onClose(); onBooking?.() }} />
+                  <VetSuggestionCard key={v.uid} vet={v} onBook={() => { onClose(); onBooking?.(v) }} />
                 ))}
               </div>
             </div>

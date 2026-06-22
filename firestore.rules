@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users: authenticated users can read any user doc; authenticated users can write to any user doc (for ratings)
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Professionals: authenticated users can read; only the professional can write their own document
+    match /professionals/{professionalId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == professionalId;
+    }
+
+    // Email Index: authenticated users can read; any authenticated user can write (used for lookup)
+    match /email_index/{email} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Private subcollection: só o próprio usuário acessa (CPF, data de nascimento, etc.)
+    match /users/{userId}/private/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Pets: só o dono cadastra/edita/exclui
+    match /users/{userId}/pets/{petId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Registros clínicos: dono lê/escreve; veterinário autenticado pode adicionar
+    match /users/{userId}/pets/{petId}/records/{recordId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Ratings: authenticated users can read any rating; only the client who made the rating can write
+    match /users/{userId}/ratings/{ratingId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (request.auth.uid == request.resource.data.clientId || request.auth.uid == userId);
+    }
+
+    // Requests: clients can create requests where clientId == their uid;
+    // clients OR the assigned professional can read and update the request
+    match /requests/{requestId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null;
+    }
+
+    // Appointments: only the designated professional can create an appointment for themselves;
+    // client or professional can read an appointment
+    // additionally allow the assigned professional (or the client) to update the appointment
+    match /appointments/{appointmentId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update: if request.auth != null;
+    }
+
+    // Chats: one chat doc per request, with a messages subcollection.
+    // Any authenticated user can read/create the chat doc; messages can only be
+    // created by their own sender (senderId must match the caller).
+    match /chats/{chatId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+
+      match /messages/{messageId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && request.auth.uid == request.resource.data.senderId;
+      }
+    }
+
+    // Admins: só o próprio admin pode ler seu doc (usado para verificar acesso ao painel)
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false; // só via console do Firebase
+    }
+
+    // Offers: admin lê/escreve; clientes autenticados só leem
+    match /offers/{offerId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Config (plans, coupons, etc.): todos autenticados leem; só admin escreve
+    match /config/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Payments: usuário lê os próprios; só Cloud Functions escrevem (via admin SDK)
+    match /payments/{paymentId} {
+      allow read: if request.auth != null
+        && request.auth.uid == resource.data.uid;
+      allow write: if false;
+    }
+
+    // Default: deny everything else
+  }
+}

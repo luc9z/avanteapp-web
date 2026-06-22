@@ -13,6 +13,7 @@ import EnablePushBanner from '../../components/common/EnablePushBanner'
 import { ThemeToggle } from '../../contexts/ThemeContext'
 import AdBanner from '../../components/common/AdBanner'
 import { VetBottomNav } from '../../components/common/BottomNav'
+import { directChatId } from '../../services/directChat'
 import { isPending, isActive, normalizeStatus } from '../../utils/status'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [liveRating, setLiveRating] = useState(null) // { avg, count } em tempo real
   const [unreadChats, setUnreadChats] = useState(0)
+  const [totalChats, setTotalChats] = useState(0)
 
   /* ── listeners ─────────────────────────────────────────────── */
   useEffect(() => {
@@ -77,10 +79,14 @@ export default function DashboardPage() {
     if (!uid) return
     return onSnapshot(
       query(collection(db, 'chats'), where('professionalId', '==', uid)),
-      snap => setUnreadChats(snap.docs.filter(d => {
-        const c = d.data()
-        return c.lastMessage && c.lastMessageSenderId && c.lastMessageSenderId !== uid
-      }).length),
+      snap => {
+        const withMsg = snap.docs.filter(d => !!d.data().lastMessage)
+        setTotalChats(withMsg.length)
+        setUnreadChats(withMsg.filter(d => {
+          const c = d.data()
+          return c.lastMessageSenderId && c.lastMessageSenderId !== uid && c[`read_${uid}`] !== true
+        }).length)
+      },
       () => {}
     )
   }, [uid])
@@ -190,6 +196,24 @@ export default function DashboardPage() {
   const unread = requests.filter(r => !r.professionalRead)
   const name = profile?.name || 'Profissional'
   const isOnline = profile?.is_online === true
+
+  // Tema do card conforme o plano: free=verde, essencial=azul, premium=dourado
+  const planKey = ['premium', 'destaque'].includes(profile?.plan) ? 'premium'
+    : profile?.plan === 'essencial' ? 'essencial' : 'free'
+  const CARD_THEME = {
+    free: {
+      card: 'border border-emerald-400/40 ring-1 ring-emerald-300/10 shadow-[0_8px_30px_rgba(16,185,129,0.25)] bg-gradient-to-br from-emerald-600 via-emerald-700 to-green-900',
+      glow: 'bg-emerald-400/10',
+    },
+    essencial: {
+      card: 'border border-sky-400/40 ring-1 ring-sky-300/10 shadow-[0_8px_30px_rgba(56,189,248,0.25)] bg-gradient-to-br from-sky-600 via-blue-700 to-indigo-900',
+      glow: 'bg-sky-400/10',
+    },
+    premium: {
+      card: 'border border-amber-300/50 ring-1 ring-amber-200/20 shadow-[0_8px_30px_rgba(245,158,11,0.3)] bg-gradient-to-br from-amber-500 via-amber-600 to-orange-800',
+      glow: 'bg-amber-300/15',
+    },
+  }[planKey]
   const rating = liveRating?.avg ?? profile?.averageRating ?? 0
   const ratingCount = liveRating?.count ?? profile?.ratingCount ?? 0
   const specialties = Array.isArray(profile?.specialties)
@@ -225,40 +249,66 @@ export default function DashboardPage() {
 
       <div className="px-4 py-4 pb-nav flex flex-col gap-4">
 
-        {/* ── Profile card — dark green ───────────────────────── */}
-        <div className="rounded-2xl bg-primary p-5 text-white shadow-lg">
+        {/* ── Profile card (cor conforme o plano) ─────────────── */}
+        <div className={`relative rounded-3xl p-5 text-white overflow-hidden ${CARD_THEME.card}`}>
+          {/* Decorative glow */}
+          <div className="absolute -right-8 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className={`absolute -left-6 -bottom-10 w-32 h-32 rounded-full blur-2xl pointer-events-none ${CARD_THEME.glow}`} />
           <div className="flex items-center gap-4 mb-4">
             <Link to="/edit-profile">
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold flex-shrink-0">
-                {name[0]}
-              </div>
+              {profile?.photoURL ? (
+                <img src={profile.photoURL} alt={name}
+                  className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-white/30" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold flex-shrink-0">
+                  {name[0]}
+                </div>
+              )}
             </Link>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-lg truncate">{name}</p>
               <p className="text-white/75 text-sm">Médico Veterinário</p>
               <p className="text-white/60 text-xs">CRMV {profile?.council || '—'}</p>
             </div>
+            {(() => {
+              const plan = profile?.plan || 'free'
+              const cfg = {
+                free:      { label: 'Free',     icon: '○', cls: 'bg-white/10 text-white/80 border border-white/20' },
+                essencial: { label: 'Essencial', icon: '◆', cls: 'bg-sky-500/90 text-white border border-sky-300/40' },
+                premium:   { label: 'Premium', icon: '★', cls: 'bg-gradient-to-br from-amber-300 to-amber-500 text-amber-950 border border-amber-200/50 shadow-lg shadow-amber-500/20' },
+                destaque:  { label: 'Premium', icon: '★', cls: 'bg-gradient-to-br from-amber-300 to-amber-500 text-amber-950 border border-amber-200/50 shadow-lg shadow-amber-500/20' },
+              }[plan] || { label: plan, icon: '○', cls: 'bg-white/10 text-white/80' }
+              return (
+                <Link to="/plans"
+                  className={`flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-lg flex-shrink-0
+                              self-start active:scale-95 transition-transform ${cfg.cls}`}>
+                  <span className="text-[10px]">{cfg.icon}</span>
+                  {cfg.label}
+                </Link>
+              )
+            })()}
           </div>
 
-          {/* Online toggle inside green card */}
-          <div className="bg-primary-600 rounded-xl px-4 py-3 flex items-center justify-between">
+          {/* Online toggle inside card */}
+          <div className="relative bg-black/20 backdrop-blur-sm rounded-2xl px-4 py-2.5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="relative flex h-3.5 w-3.5 flex-shrink-0">
+              <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
                 {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-60" />}
-                <span className={`relative inline-flex rounded-full h-3.5 w-3.5 border-2 border-white/40 ${isOnline ? 'bg-green-400' : 'bg-red-400'}`} />
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOnline ? 'bg-green-400' : 'bg-white/40'}`} />
               </span>
-              <span className="text-sm font-medium text-white">
-                {isOnline ? 'Você está Online' : 'Você está Offline'}
+              <span className="text-sm font-medium text-white/90">
+                {isOnline ? 'Você está online' : 'Você está offline'}
               </span>
             </div>
             {updatingStatus
-              ? <Spinner size={20} color="white" />
+              ? <Spinner size={16} color="white" />
               : (
                 <button
                   onClick={toggleOnline}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isOnline ? 'bg-green-400' : 'bg-white/30'}`}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOnline ? 'bg-green-400' : 'bg-white/25'}`}
+                  aria-label="Alternar online"
                 >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isOnline ? 'translate-x-6' : 'translate-x-1'}`} />
+                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-5' : 'translate-x-1'}`} />
                 </button>
               )
             }
@@ -343,7 +393,7 @@ export default function DashboardPage() {
                         Detalhes
                       </button>
                       <button
-                        onClick={() => navigate(`/chat/${r.id}`)}
+                        onClick={() => navigate(`/chat/${r.chatId || directChatId(r.clientId, r.professionalId)}`)}
                         className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium
                                    py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
                       >
@@ -386,38 +436,51 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                {unreadChats > 0 && (
+                {unreadChats > 0 ? (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                     {unreadChats}
+                  </span>
+                ) : totalChats > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gray-300 text-gray-600 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {totalChats}
                   </span>
                 )}
               </div>
               <span className="font-semibold text-primary text-sm">Conversas</span>
+              {unreadChats === 0 && totalChats > 0 && (
+                <span className="text-[10px] text-gray-400 -mt-1">tudo lido ✓</span>
+              )}
             </Link>
           </div>
         </div>
 
-        {/* ── Plano / monetização ────────────────────────────── */}
-        <Link to="/plans"
-          className="flex items-center gap-3 rounded-2xl p-4 bg-gradient-to-r from-amber-400 to-amber-500
-                     shadow-[0_4px_16px_rgba(245,158,11,0.3)] hover:opacity-95 transition-all active:scale-[0.99]">
-          <span className="text-2xl">⭐</span>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-white text-sm">Destaque seu perfil</p>
-            <p className="text-white/85 text-xs">Apareça primeiro na busca e receba mais pedidos</p>
-          </div>
-          <svg className="w-5 h-5 text-white/80 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
+        {/* ── Plano / monetização (some no Premium) ───────────── */}
+        {!['premium', 'destaque'].includes(profile?.plan) && (
+          <Link to="/plans"
+            className="flex items-center gap-3 rounded-2xl p-4 bg-gradient-to-r from-amber-400 to-amber-500
+                       shadow-[0_4px_16px_rgba(245,158,11,0.3)] hover:opacity-95 transition-all active:scale-[0.99]">
+            <span className="text-2xl">⭐</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-white text-sm">Seja Premium</p>
+              <p className="text-white/85 text-xs">Apareça primeiro na busca e receba mais pedidos</p>
+            </div>
+            <svg className="w-5 h-5 text-white/80 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        )}
 
-        <AdBanner />
+        {/* Anúncios — apenas para veterinários no plano Free */}
+        {(!profile?.plan || profile?.plan === 'free') && (
+          <AdBanner audience="vet" />
+        )}
 
         {/* ── Resumo do Mês ──────────────────────────────────── */}
         <div>
           <p className="text-base font-bold text-gray-800 mb-3">Resumo do Mês</p>
           <div className="grid grid-cols-2 gap-3">
-            <div className="card">
+            <button type="button" onClick={() => navigate('/pending-requests')}
+              className="card text-left cursor-pointer hover:shadow-card-hover active:scale-[0.98] transition-all">
               <div className="flex items-center justify-between mb-1">
                 <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -427,8 +490,9 @@ export default function DashboardPage() {
               </div>
               <p className="text-primary font-semibold text-sm">Solicitações</p>
               <p className="text-gray-400 text-xs">novas no mês</p>
-            </div>
-            <div className="card">
+            </button>
+            <button type="button" onClick={() => navigate('/reports')}
+              className="card text-left cursor-pointer hover:shadow-card-hover active:scale-[0.98] transition-all">
               <div className="flex items-center justify-between mb-1">
                 <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -438,7 +502,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-primary font-semibold text-sm">Clientes</p>
               <p className="text-gray-400 text-xs">atendidos</p>
-            </div>
+            </button>
           </div>
         </div>
 
