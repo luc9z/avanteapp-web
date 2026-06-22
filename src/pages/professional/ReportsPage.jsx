@@ -239,9 +239,9 @@ function StatCard({ value, label, sub, onClick }) {
 }
 
 function CardTitle({ children }) {
-  return <p className="font-bold text-gray-800 text-sm mb-4">{children}</p>
+  return <p className="card-title mb-4">{children}</p>
 }
 
 function EmptyHint({ children }) {
-  return <p className="text-xs text-gray-400 text-center py-6">{children}</p>
+  return <p className="text-muted text-center py-6">{children}</p>
 }

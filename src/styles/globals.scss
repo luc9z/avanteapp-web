@@ -101,6 +101,23 @@
   .card {
     @apply bg-white rounded-2xl p-4 shadow-card;
   }
+  /* Card clicável: hover/active padronizados */
+  .card-tap {
+    @apply card cursor-pointer transition-all hover:shadow-card-hover active:scale-[0.98];
+  }
+
+  /* ── Tipografia padronizada ──────────────────────────────── */
+  /* Escala única usada em todo o app — evita text-[10px]/[13px] soltos. */
+  .page-title    { @apply text-lg font-bold text-primary; }           /* título de topbar */
+  .section-title { @apply flex items-center gap-2 text-base font-bold text-gray-800 mb-3; }
+  .section-title::before {
+    content: '';
+    @apply w-1.5 h-4 bg-primary rounded-full flex-shrink-0;
+  }
+  .card-title    { @apply text-sm font-bold text-gray-800; }
+  .field-label   { @apply text-xs font-semibold text-gray-600 mb-1 block; }
+  .text-muted    { @apply text-xs text-gray-400; }
+  .text-muted-sm { @apply text-[11px] text-gray-400; }
 
   /* ── Status badges ───────────────────────────────────────── */
   .badge-base {

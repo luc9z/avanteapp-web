@@ -347,7 +347,7 @@ export default function DashboardPage() {
         {/* ── Atendimento Atual ──────────────────────────────── */}
         {activeRequests.length > 0 && (
           <div>
-            <p className="text-base font-bold text-gray-800 mb-3">Atendimento Atual</p>
+            <p className="section-title">Atendimento Atual</p>
             <div className="flex flex-col gap-3">
               {activeRequests.slice(0, 2).map(r => {
                 const s = normalizeStatus(r.status)
@@ -419,7 +419,7 @@ export default function DashboardPage() {
 
         {/* ── Ações Rápidas ──────────────────────────────────── */}
         <div>
-          <p className="text-base font-bold text-gray-800 mb-3">Ações Rápidas</p>
+          <p className="section-title">Ações Rápidas</p>
           <div className="grid grid-cols-2 gap-3">
             <Link to="/agenda" className="card flex flex-col items-center gap-2 py-5 hover:shadow-card-hover transition-shadow active:scale-95">
               <div className="bg-primary/10 p-3 rounded-xl">
@@ -477,7 +477,7 @@ export default function DashboardPage() {
 
         {/* ── Resumo do Mês ──────────────────────────────────── */}
         <div>
-          <p className="text-base font-bold text-gray-800 mb-3">Resumo do Mês</p>
+          <p className="section-title">Resumo do Mês</p>
           <div className="grid grid-cols-2 gap-3">
             <button type="button" onClick={() => navigate('/pending-requests')}
               className="card text-left cursor-pointer hover:shadow-card-hover active:scale-[0.98] transition-all">
@@ -510,7 +510,7 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <p className="text-base font-bold text-gray-800">Solicitações Pendentes</p>
+              <p className="section-title">Solicitações Pendentes</p>
               {pending.length > 0 && (
                 <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
                   {pending.length}
@@ -542,7 +542,7 @@ export default function DashboardPage() {
         {/* ── Próximos Atendimentos ──────────────────────────── */}
         {upcomingAppointments.length > 0 && (
           <div>
-            <p className="text-base font-bold text-gray-800 mb-3">Próximos Atendimentos</p>
+            <p className="section-title">Próximos Atendimentos</p>
             <div className="flex flex-col gap-3">
               {upcomingAppointments.map(a => (
                 <div
