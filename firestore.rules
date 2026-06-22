@@ -66,11 +66,16 @@ service cloud.firestore {
     match /chats/{chatId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null;
+      // Apagar chat expirado: só quem participa da conversa
+      allow delete: if request.auth != null
+        && request.auth.uid in resource.data.participants;
 
       match /messages/{messageId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && request.auth.uid == request.resource.data.senderId;
+        // Apagar mensagens (limpeza de chat expirado)
+        allow delete: if request.auth != null;
       }
     }
 

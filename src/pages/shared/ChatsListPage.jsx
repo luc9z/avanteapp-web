@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, deleteDoc, writeBatch } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
@@ -48,6 +48,30 @@ export default function ChatsListPage() {
     )
     return () => { u1(); u2() }
   }, [uid])
+
+  // Limpeza oportunista: apaga chats expirados (>7 dias) ao abrir a lista.
+  // Substitui a função agendada (que exigiria plano Blaze).
+  useEffect(() => {
+    if (asClient === null || asProf === null) return
+    const now = Date.now()
+    const all = [...asClient, ...asProf]
+    const expired = all.filter(c => {
+      const exp = c.expiresAt?.toDate?.()?.getTime()
+      return exp && exp <= now
+    })
+    expired.forEach(async c => {
+      try {
+        const msgs = await getDocs(collection(db, 'chats', c.id, 'messages'))
+        if (!msgs.empty) {
+          const batch = writeBatch(db)
+          msgs.docs.forEach(m => batch.delete(m.ref))
+          await batch.commit()
+        }
+        await deleteDoc(doc(db, 'chats', c.id))
+      } catch {}
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asClient, asProf])
 
   const chats = useMemo(() => {
     if (asClient === null || asProf === null) return null

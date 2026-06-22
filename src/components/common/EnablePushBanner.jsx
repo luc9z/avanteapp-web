@@ -1,21 +1,22 @@
 /**
- * EnablePushBanner — convite para ativar notificações push.
- * Só aparece se: a VAPID key está configurada, o navegador suporta
- * e a permissão ainda não foi decidida. Some após ativar/recusar.
+ * EnablePushBanner — convite para ativar notificações.
+ * Usa a Notification API do navegador (sem servidor/Blaze): funciona
+ * enquanto o app está aberto. Aparece se o navegador suporta e a
+ * permissão ainda não foi decidida. Some após ativar/recusar.
  */
 import { useState } from 'react'
-import { enablePush, pushAvailable, pushPermission } from '../../services/push'
+import { requestNotifPermission, notifSupported, notifPermission } from '../../services/localNotify'
 import { showToast } from './Toast'
 
 export default function EnablePushBanner({ uid, message }) {
   const [gone, setGone] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  if (gone || !pushAvailable() || pushPermission() !== 'default') return null
+  if (gone || !notifSupported() || notifPermission() !== 'default') return null
 
   async function activate() {
     setBusy(true)
-    const ok = await enablePush(uid)
+    const ok = await requestNotifPermission()
     setBusy(false)
     setGone(true)
     showToast(ok ? 'Notificações ativadas! 🔔' : 'Não foi possível ativar as notificações.', ok ? 'success' : 'error')

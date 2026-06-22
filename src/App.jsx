@@ -4,6 +4,15 @@ import { ToastContainer } from './components/common/Toast'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import RequireRole from './components/common/RequireRole'
 import Spinner from './components/common/Spinner'
+import { useAuth } from './contexts/AuthContext'
+import useLocalNotifications from './hooks/useLocalNotifications'
+
+// Liga as notificações locais (sem servidor) enquanto o app está aberto
+function NotificationsBridge() {
+  const { user } = useAuth()
+  useLocalNotifications(user?.uid)
+  return null
+}
 
 // Páginas com lazy-loading para code splitting
 const SplashPage             = lazy(() => import('./pages/auth/SplashPage'))
@@ -45,6 +54,7 @@ const Client = ({ children }) => <RequireRole role="client">{children}</RequireR
 export default function App() {
   return (
     <ErrorBoundary>
+      <NotificationsBridge />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<SplashPage />} />
