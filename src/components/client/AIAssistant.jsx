@@ -420,52 +420,64 @@ function VetSuggestionCard({ vet, onBook }) {
   const rating = vet.averageRating ? Number(vet.averageRating).toFixed(1) : null
   const initial = (vet.name || '?')[0].toUpperCase()
 
+  // Card Destaque: moldura dourada (gradiente) envolvendo o conteúdo
+  if (featured) {
+    return (
+      <div className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500
+                      shadow-[0_4px_18px_rgba(245,158,11,0.35)]">
+        {/* Faixa Destaque */}
+        <span className="absolute -top-2 left-3 z-10 flex items-center gap-1 bg-gradient-to-r from-amber-400 to-orange-500
+                         text-white text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full shadow">
+          <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+          Destaque
+        </span>
+
+        <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0
+                          bg-gradient-to-br from-amber-300 to-orange-400 text-white shadow-sm">
+            {initial}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-gray-900 truncate mt-1">{vet.name}</p>
+            <p className="text-xs text-amber-700/70 truncate mt-0.5">{specs}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`flex items-center gap-1 text-[11px] font-semibold ${vet.is_online ? 'text-green-600' : 'text-gray-400'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${vet.is_online ? 'bg-green-500' : 'bg-gray-300'}`} />
+                {vet.is_online ? 'Online' : 'Offline'}
+              </span>
+              {rating && <span className="text-[11px] text-amber-700 font-semibold">★ {rating}</span>}
+            </div>
+          </div>
+          <button onClick={onBook}
+            className="text-xs font-extrabold px-4 py-2 rounded-xl flex-shrink-0 transition-all active:scale-95
+                       bg-gradient-to-br from-amber-400 to-orange-500 text-white hover:brightness-105 shadow">
+            Agendar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-2xl border transition-all ${
-      featured
-        ? 'border-amber-200 bg-amber-50/60'
-        : 'border-gray-200 bg-white'
-    }`}>
-      {/* Avatar */}
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0 ${
-        featured ? 'bg-amber-100 text-amber-700' : 'bg-primary/10 text-primary'
-      }`}>
+    <div className="flex items-center gap-3 p-3 rounded-2xl border border-gray-200 bg-white transition-all">
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base flex-shrink-0 bg-primary/10 text-primary">
         {initial}
       </div>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <p className="font-bold text-sm text-gray-900 truncate">{vet.name}</p>
-          {featured && (
-            <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full flex-shrink-0">
-              ⭐ Destaque
-            </span>
-          )}
-        </div>
+        <p className="font-bold text-sm text-gray-900 truncate">{vet.name}</p>
         <p className="text-xs text-gray-400 truncate mt-0.5">{specs}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className={`flex items-center gap-1 text-[11px] font-semibold ${vet.is_online ? 'text-green-600' : 'text-gray-400'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${vet.is_online ? 'bg-green-500' : 'bg-gray-300'}`} />
             {vet.is_online ? 'Online' : 'Offline'}
           </span>
-          {rating && (
-            <span className="text-[11px] text-gray-500 flex items-center gap-0.5">
-              ★ {rating}
-            </span>
-          )}
+          {rating && <span className="text-[11px] text-gray-500">★ {rating}</span>}
         </div>
       </div>
-
-      {/* CTA */}
-      <button
-        onClick={onBook}
-        className={`text-xs font-bold px-3 py-2 rounded-xl flex-shrink-0 transition-all active:scale-95 ${
-          featured
-            ? 'bg-amber-500 text-white hover:bg-amber-600'
-            : 'bg-primary text-white hover:bg-primary/90'
-        }`}
-      >
+      <button onClick={onBook}
+        className="text-xs font-bold px-3 py-2 rounded-xl flex-shrink-0 transition-all active:scale-95 bg-primary text-white hover:bg-primary/90">
         Agendar
       </button>
     </div>
