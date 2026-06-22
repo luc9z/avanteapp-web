@@ -166,6 +166,34 @@ exports.onRequestCreated = onDocumentCreated(
   }
 )
 
+/** Nova mensagem no chat → notifica o outro participante. */
+exports.onChatMessageCreated = onDocumentCreated(
+  { region: 'southamerica-east1', document: 'chats/{chatId}/messages/{msgId}' },
+  async (event) => {
+    const msg = event.data?.data()
+    if (!msg?.senderId) return
+
+    const db = getFirestore()
+    const chatSnap = await db.doc(`chats/${event.params.chatId}`).get()
+    if (!chatSnap.exists) return
+    const c = chatSnap.data()
+
+    // Destinatário = o participante que NÃO enviou a mensagem
+    const recipient = msg.senderId === c.clientId ? c.professionalId
+      : msg.senderId === c.professionalId ? c.clientId
+      : (c.participants || []).find((p) => p !== msg.senderId)
+    if (!recipient) return
+
+    const preview = msg.type === 'location' ? '📍 Localização' : (msg.content || 'Nova mensagem')
+    await sendPushTo(
+      recipient,
+      msg.senderName || 'Nova mensagem',
+      preview.slice(0, 120),
+      `/chat/${event.params.chatId}`
+    ).catch((e) => console.error('push onChatMessageCreated:', e))
+  }
+)
+
 /** Status mudou → notifica o cliente (aceito / a caminho / finalizado). */
 exports.onRequestStatusChanged = onDocumentUpdated(
   { region: 'southamerica-east1', document: 'requests/{requestId}' },
@@ -296,7 +324,7 @@ exports.abacatepayWebhook = onRequest(
       const db = getFirestore()
       await db.doc(`users/${uid}`).set({
         plan: planId,
-        featured: planId === 'destaque',
+        featured: ['premium','destaque'].includes(planId),
         planActivatedAt: FieldValue.serverTimestamp(),
       }, { merge: true })
 
@@ -347,7 +375,7 @@ exports.redeemCoupon = onCall(
     if (discount >= 100) {
       await db.doc(`users/${uid}`).set({
         plan: planId,
-        featured: planId === 'destaque',
+        featured: ['premium','destaque'].includes(planId),
         planActivatedAt: FieldValue.serverTimestamp(),
         planCoupon: code,
       }, { merge: true })
@@ -394,5 +422,30 @@ exports.autoConfirmRequests = onSchedule(
     })
     await batch.commit()
     console.log(`Auto-confirmed ${snap.size} request(s).`)
+  }
+)
+
+/* ════════════════════════════════════════════════════════════════
+   EXCLUSÃO DE CHATS EXPIRADOS (7 dias sem atividade)
+   Roda 1x por dia. Apaga o chat e todas as mensagens (recursivo)
+   onde expiresAt já passou.
+   ════════════════════════════════════════════════════════════════ */
+exports.deleteExpiredChats = onSchedule(
+  { schedule: 'every 24 hours', region: 'southamerica-east1', timeZone: 'America/Sao_Paulo' },
+  async () => {
+    const db = getFirestore()
+    const snap = await db.collection('chats')
+      .where('expiresAt', '<=', new Date())
+      .limit(300)
+      .get()
+
+    if (snap.empty) return
+
+    let n = 0
+    for (const d of snap.docs) {
+      await db.recursiveDelete(d.ref).catch((e) => console.error('delete chat', d.id, e))
+      n++
+    }
+    console.log(`Deleted ${n} expired chat(s).`)
   }
 )

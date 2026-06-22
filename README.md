@@ -103,8 +103,6 @@ src/
 ## 🗺️ Próximos passos
 
 - Pagamento real dos planos (AbacatePay / PIX) — hoje em modo de teste
-- Notificações push (FCM) com Cloud Function de envio
-- Exclusão automática de chats expirados (7 dias) via função agendada
 - Prontuário digital do pet e teleconsulta
 
 ---
