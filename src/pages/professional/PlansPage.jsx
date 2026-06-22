@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { doc, getDoc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -18,7 +18,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 const createCheckout = httpsCallable(functions, 'createPlanCheckout')
 const redeemCoupon = httpsCallable(functions, 'redeemCoupon')
 
-const brl = v => `R$ ${Number(v).toFixed(2).replace('.', ',')}`
+const brl = v => Number(v) <= 0 ? 'Grátis' : `R$ ${Number(v).toFixed(2).replace('.', ',')}`
 
 function Check({ locked }) {
   return locked ? (
@@ -45,16 +45,17 @@ export default function PlansPage() {
 
   const [plans, setPlans] = useState(null)
   const [currentPlan, setCurrentPlan] = useState(null)
-  const [selectedId, setSelectedId] = useState('destaque')
+  const [selectedId, setSelectedId] = useState('premium')
   const [period, setPeriod] = useState('mensal') // mensal | anual
   const [coupon, setCoupon] = useState('')
   const [couponBusy, setCouponBusy] = useState(false)
   const [paying, setPaying] = useState(false)
 
   useEffect(() => {
-    getDoc(doc(db, 'config', 'plans')).then(snap => {
-      setPlans(snap.exists() && Array.isArray(snap.data().plans) ? snap.data().plans : DEFAULT_PLANS)
-    }).catch(() => setPlans(DEFAULT_PLANS))
+    return onSnapshot(doc(db, 'config', 'plans'),
+      snap => setPlans(snap.exists() && Array.isArray(snap.data().plans) ? snap.data().plans : DEFAULT_PLANS),
+      () => setPlans(DEFAULT_PLANS)
+    )
   }, [])
 
   useEffect(() => {
@@ -106,16 +107,18 @@ export default function PlansPage() {
     if (!selected || selected.id === currentPlan) return
     setPaying(true)
     try {
-      const { data } = await createCheckout({
-        planId: selected.id,
-        period,
-        origin: window.location.origin,
-      })
-      if (data?.url) window.location.href = data.url
-      else showToast('Não foi possível iniciar o pagamento.', 'error')
+      // MODO TESTE: ativa qualquer plano direto, sem AbacatePay.
+      // (trocar por createCheckout quando integrar o pagamento real)
+      await setDoc(doc(db, 'users', user.uid), {
+        plan: selected.id,
+        planActivatedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+      showToast(`Plano ${selected.name} ativado!`, 'success')
+      setTimeout(() => navigate('/dashboard', { replace: true }), 800)
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
-      showToast('Pagamentos indisponíveis no momento. As funções já foram publicadas?', 'error')
+      showToast('Não foi possível ativar o plano.', 'error')
     } finally { setPaying(false) }
   }
 
@@ -171,57 +174,66 @@ export default function PlansPage() {
         {plans === null ? (
           <div className="flex justify-center py-20"><Spinner size={30} color="#8fbc8f" /></div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch stagger">
-            {plans.map(p => {
+          <div className="grid grid-cols-3 gap-3 items-center stagger">
+            {[...plans].sort((a, b) => {
+              // Premium no centro
+              const order = { free: 0, essencial: 2, premium: 1, destaque: 1 }
+              return (order[a.id] ?? 1) - (order[b.id] ?? 1)
+            }).map(p => {
               const isSel = p.id === selectedId
-              const isDestaque = p.id === 'destaque'
+              const isDestaque = p.id === 'premium' || p.id === 'destaque'
               const isCurrent = p.id === currentPlan
               return (
                 <button key={p.id} type="button" onClick={() => setSelectedId(p.id)}
-                  className={`relative rounded-2xl p-5 text-left transition-all flex flex-col gap-4 ${
-                    isSel
-                      ? 'bg-white/[0.06] border-2 border-amber-400 shadow-[0_0_28px_rgba(245,180,40,0.18)]'
+                  className={`relative rounded-2xl p-4 text-left transition-all flex flex-col gap-3 ${
+                    isDestaque ? 'sm:scale-110 z-10 py-6 shadow-2xl' : ''
+                  } ${
+                    isCurrent
+                      ? 'bg-emerald-400/[0.08] border-2 border-emerald-400 shadow-[0_0_24px_rgba(52,211,153,0.18)]'
+                      : isSel
+                      ? 'bg-white/[0.06] border-2 border-amber-400 shadow-[0_0_28px_rgba(245,180,40,0.22)]'
+                      : isDestaque
+                      ? 'bg-white/[0.07] border-2 border-amber-400/60'
                       : 'bg-white/[0.04] border border-white/10 hover:border-white/25'
                   }`}>
-                  {isDestaque && (
-                    <span className="absolute -top-3 right-5 bg-amber-400 text-gray-900 text-[11px] font-bold
-                                     px-3 py-1 rounded-full shadow-lg">
+                  {/* Badge topo */}
+                  {isCurrent ? (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-400 text-emerald-950 text-[10px] font-bold
+                                     px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap">
+                      ✓ Plano atual
+                    </span>
+                  ) : isDestaque && (
+                    <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-400 text-gray-900 text-[10px] font-bold
+                                     px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap">
                       Melhor valor
                     </span>
                   )}
 
-                  <div>
-                    <p className="text-white font-bold text-lg">{p.name}</p>
+                  <div className="mt-1">
+                    <p className="text-white font-bold text-base">{p.name}</p>
                     <p className="mt-1">
-                      <span className="text-white font-bold text-3xl tracking-tight">{brl(priceFor(p))}</span>
-                      <span className="text-white/40 text-sm ml-1.5">{periodLabel}</span>
+                      <span className="text-white font-bold text-2xl tracking-tight">{brl(priceFor(p))}</span>
+                      {p.price > 0 && <span className="text-white/40 text-xs ml-1">{periodLabel}</span>}
                     </p>
-                    {period === 'anual' && (
-                      <p className="text-emerald-400 text-[11px] font-semibold mt-1">
-                        Equivale a {brl((p.price * 10) / 12)}/mês
+                    {period === 'anual' && p.price > 0 && (
+                      <p className="text-emerald-400 text-[10px] font-semibold mt-0.5">
+                        ≈ {brl((p.price * 10) / 12)}/mês
                       </p>
                     )}
                   </div>
 
-                  <ul className="flex flex-col gap-2.5 flex-1">
+                  <ul className="flex flex-col gap-2 flex-1">
                     {(p.benefits || []).map((b, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-[13px] text-white/85 leading-snug">
+                      <li key={i} className="flex items-start gap-2 text-[12px] text-white/85 leading-snug">
                         <Check /> {b}
                       </li>
                     ))}
                     {(p.locked || []).map((b, i) => (
-                      <li key={`l${i}`} className="flex items-start gap-2.5 text-[13px] text-white/30 leading-snug">
+                      <li key={`l${i}`} className="flex items-start gap-2 text-[12px] text-white/30 leading-snug">
                         <Check locked /> {b}
                       </li>
                     ))}
                   </ul>
-
-                  {isCurrent && (
-                    <span className="text-[11px] font-bold text-emerald-400 bg-emerald-400/10 px-3 py-1.5
-                                     rounded-full text-center">
-                      ✓ Seu plano atual
-                    </span>
-                  )}
                 </button>
               )
             })}
@@ -261,23 +273,27 @@ export default function PlansPage() {
             <p className="text-white font-bold text-sm">{selected?.name || '—'}</p>
             <p className="text-white/85">
               <span className="font-bold text-xl">{selected ? brl(priceFor(selected)) : '—'}</span>
-              <span className="text-white/40 text-xs ml-1">{periodLabel}</span>
-              <span className="text-white/30 text-xs ml-2">
-                · cobrado {period === 'anual' ? 'anualmente' : 'mensalmente'} via PIX
-              </span>
+              {selected?.price > 0 && (
+                <>
+                  <span className="text-white/40 text-xs ml-1">{periodLabel}</span>
+                  <span className="text-white/30 text-xs ml-2">
+                    · cobrado {period === 'anual' ? 'anualmente' : 'mensalmente'}
+                  </span>
+                </>
+              )}
             </p>
           </div>
           <button onClick={handlePay} disabled={paying || !selected || selected.id === currentPlan}
             className="bg-white text-gray-900 font-bold rounded-full px-10 py-3.5 text-sm
                        hover:bg-gray-100 active:scale-[0.98] disabled:opacity-50 transition-all">
             {paying ? <Spinner size={16} />
-              : selected?.id === currentPlan ? '✓ Plano já ativo' : 'Assinar e pagar'}
+              : selected?.id === currentPlan ? '✓ Plano já ativo'
+              : selected?.price > 0 ? 'Assinar e pagar' : 'Ativar grátis'}
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
-          Pagamento processado com segurança pelo AbacatePay. A ativação é automática após a
-          confirmação do PIX. Você pode mudar de plano quando quiser — o novo plano substitui o
-          anterior no próximo ciclo.
+          Modo de teste — ativação imediata, sem cobrança. Você pode mudar de plano
+          quando quiser; o novo plano substitui o anterior.
         </p>
       </div>
       <VetBottomNav />

@@ -4,7 +4,7 @@
  * gráficos na hora, sem precisar exportar nada.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
@@ -31,9 +31,13 @@ export default function ReportsPage() {
 
   const [requests, setRequests] = useState(null)
   const [ratings, setRatings] = useState(null)
+  const [plan, setPlan] = useState(null)
+  const isFree = !plan || plan === 'free'
 
   useEffect(() => {
     if (!uid) return
+    const unsubPlan = onSnapshot(doc(db, 'users', uid),
+      snap => setPlan(snap.data()?.plan || 'free'), () => setPlan('free'))
     const unsubReq = onSnapshot(
       query(collection(db, 'requests'), where('professionalId', '==', uid)),
       snap => setRequests(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
@@ -44,7 +48,7 @@ export default function ReportsPage() {
       snap => setRatings(snap.docs.map(d => d.data())),
       () => setRatings([])
     )
-    return () => { unsubReq(); unsubRat() }
+    return () => { unsubPlan(); unsubReq(); unsubRat() }
   }, [uid])
 
   const stats = useMemo(() => {
@@ -123,6 +127,24 @@ export default function ReportsPage() {
             />
           </div>
 
+          {/* ── Bloqueio Free: relatórios completos são Essencial+ ── */}
+          {isFree && (
+            <div className="card flex flex-col items-center text-center gap-3 py-7 border-2 border-dashed border-amber-200 bg-amber-50/40">
+              <span className="text-4xl">🔒</span>
+              <div>
+                <p className="font-bold text-gray-800 text-sm">Relatórios completos</p>
+                <p className="text-xs text-gray-500 max-w-xs mt-1">
+                  Gráficos por status, evolução mensal e detalhes de avaliações
+                  fazem parte do plano <strong>Essencial</strong>.
+                </p>
+              </div>
+              <button onClick={() => navigate('/plans')} className="btn-primary px-6 py-2.5 text-sm">
+                Fazer upgrade
+              </button>
+            </div>
+          )}
+
+          {!isFree && <>
           {/* ── Pizza por status ─────────────────────────────── */}
           <div className="card">
             <CardTitle>Solicitações por status</CardTitle>
@@ -196,6 +218,7 @@ export default function ReportsPage() {
               <HBarList data={stats.topServices} />
             </div>
           )}
+          </>}
         </div>
       )}
 
