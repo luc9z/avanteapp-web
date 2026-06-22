@@ -116,14 +116,14 @@ export default function ProfessionalDetailPage() {
           {/* ── Sobre ────────────────────────────────────── */}
           {profile.bio && (
             <div className="card">
-              <p className="font-bold text-gray-800 text-sm mb-2">Sobre</p>
+              <p className="card-title mb-2">Sobre</p>
               <p className="text-sm text-gray-600 leading-relaxed">{profile.bio}</p>
             </div>
           )}
 
           {/* ── Dados do profissional ────────────────────── */}
           <div className="card">
-            <p className="font-bold text-gray-800 text-sm mb-4">Dados do profissional</p>
+            <p className="card-title mb-4">Dados do profissional</p>
             <div className="flex flex-col divide-y divide-gray-50">
               {profile.council && (
                 <ProfRow iconPath="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"

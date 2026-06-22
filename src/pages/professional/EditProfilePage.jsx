@@ -293,7 +293,7 @@ export default function EditProfilePage() {
             </div>
 
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Raio de atendimento</label>
+              <label className="field-label">Raio de atendimento</label>
               <select value={serviceRadius} onChange={e => setServiceRadius(e.target.value)} className="select-field">
                 {[10, 20, 30, 50, 80, 120, 200].map(km => (
                   <option key={km} value={km}>{km} km</option>

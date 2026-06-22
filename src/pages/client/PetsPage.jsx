@@ -152,32 +152,32 @@ export default function PetsPage() {
         {editing && (
           <div className="flex flex-col gap-3">
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Nome</label>
+              <label className="field-label">Nome</label>
               <input value={editing.name} onChange={e => setEditing(p => ({ ...p, name: e.target.value }))}
                 className="input-field" placeholder="Rex, Mimosa..." />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Espécie</label>
+                <label className="field-label">Espécie</label>
                 <select value={editing.species} onChange={e => setEditing(p => ({ ...p, species: e.target.value }))}
                   className="select-field">
                   {SPECIES.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Peso (kg)</label>
+                <label className="field-label">Peso (kg)</label>
                 <input type="number" step="0.1" min="0" value={editing.weight}
                   onChange={e => setEditing(p => ({ ...p, weight: e.target.value }))}
                   className="input-field" placeholder="12.5" />
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Raça (opcional)</label>
+              <label className="field-label">Raça (opcional)</label>
               <input value={editing.breed} onChange={e => setEditing(p => ({ ...p, breed: e.target.value }))}
                 className="input-field" placeholder="SRD, Angus, Crioulo..." />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">
+              <label className="field-label">
                 Observações (vacinas, alergias, castração...)
               </label>
               <textarea rows={3} value={editing.notes}

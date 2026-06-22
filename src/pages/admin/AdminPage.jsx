@@ -319,41 +319,41 @@ function OffersTab() {
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-[70px_1fr] gap-2">
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Emoji</label>
+                <label className="field-label">Emoji</label>
                 <input value={editing.emoji} onChange={e => setEditing(o => ({ ...o, emoji: e.target.value }))}
                   className="input-field text-center" maxLength={4} />
               </div>
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Título</label>
+                <label className="field-label">Título</label>
                 <input value={editing.title} onChange={e => setEditing(o => ({ ...o, title: e.target.value }))}
                   className="input-field" placeholder="Ração premium com 15% OFF" />
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Subtítulo</label>
+              <label className="field-label">Subtítulo</label>
               <input value={editing.subtitle} onChange={e => setEditing(o => ({ ...o, subtitle: e.target.value }))}
                 className="input-field" placeholder="Para cães e gatos · entrega na região" />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Texto do botão</label>
+                <label className="field-label">Texto do botão</label>
                 <input value={editing.cta} onChange={e => setEditing(o => ({ ...o, cta: e.target.value }))}
                   className="input-field" />
               </div>
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Ordem</label>
+                <label className="field-label">Ordem</label>
                 <input type="number" value={editing.order} onChange={e => setEditing(o => ({ ...o, order: e.target.value }))}
                   className="input-field" />
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Link (https://...)</label>
+              <label className="field-label">Link (https://...)</label>
               <input value={editing.url} onChange={e => setEditing(o => ({ ...o, url: e.target.value }))}
                 className="input-field" placeholder="https://loja.exemplo.com.br" />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Tamanho</label>
+                <label className="field-label">Tamanho</label>
                 <select value={editing.size || 'small'} onChange={e => setEditing(o => ({ ...o, size: e.target.value }))}
                   className="select-field">
                   <option value="small">Pequeno (faixa)</option>
@@ -361,7 +361,7 @@ function OffersTab() {
                 </select>
               </div>
               <div>
-                <label className="text-[11px] font-medium text-gray-400 mb-1 block">Público</label>
+                <label className="field-label">Público</label>
                 <select value={editing.audience || 'all'} onChange={e => setEditing(o => ({ ...o, audience: e.target.value }))}
                   className="select-field">
                   <option value="all">Todos</option>
@@ -371,7 +371,7 @@ function OffersTab() {
               </div>
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Cor (banner grande)</label>
+              <label className="field-label">Cor (banner grande)</label>
               <select value={editing.gradient || 'amber'} onChange={e => setEditing(o => ({ ...o, gradient: e.target.value }))}
                 className="select-field">
                 <option value="amber">Âmbar</option>
@@ -444,12 +444,12 @@ function PlansTab() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Preço (R$)</label>
+              <label className="field-label">Preço (R$)</label>
               <input type="number" step="0.10" min="0" value={p.price}
                 onChange={e => update(i, { price: e.target.value })} className="input-field" />
             </div>
             <div>
-              <label className="text-[11px] font-medium text-gray-400 mb-1 block">Cobrança</label>
+              <label className="field-label">Cobrança</label>
               <select value={p.billing} onChange={e => update(i, { billing: e.target.value })} className="select-field">
                 <option value="sempre">Sempre gratuito</option>
                 <option value="unico">Pagamento único</option>
@@ -458,7 +458,7 @@ function PlansTab() {
             </div>
           </div>
           <div>
-            <label className="text-[11px] font-medium text-gray-400 mb-1 block">Benefícios (um por linha)</label>
+            <label className="field-label">Benefícios (um por linha)</label>
             <textarea
               rows={4}
               value={(p.benefits || []).join('\n')}

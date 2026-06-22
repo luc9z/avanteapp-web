@@ -72,21 +72,21 @@ export function DateFields({ value, onChange, fromYear, toYear, noPast = false }
   return (
     <div className="grid grid-cols-[1fr_1.6fr_1.2fr] gap-2">
       <div>
-        <label className="text-[11px] text-gray-400 mb-1 block">Dia</label>
+        <label className="field-label">Dia</label>
         <select value={day} onChange={e => handleDay(e.target.value)} className="select-field">
           <option value="">—</option>
           {days.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
       </div>
       <div>
-        <label className="text-[11px] text-gray-400 mb-1 block">Mês</label>
+        <label className="field-label">Mês</label>
         <select value={month} onChange={e => handleMonth(e.target.value)} className="select-field">
           <option value="">—</option>
           {monthOptions.map(m => <option key={m.n} value={m.n}>{m.name}</option>)}
         </select>
       </div>
       <div>
-        <label className="text-[11px] text-gray-400 mb-1 block">Ano</label>
+        <label className="field-label">Ano</label>
         <select value={year} onChange={e => handleYear(e.target.value)} className="select-field">
           <option value="">—</option>
           {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -120,14 +120,14 @@ export function TimeField({ value, onChange, step = 15, fromHour = 6, toHour = 2
   return (
     <div className="grid grid-cols-2 gap-2">
       <div>
-        <label className="text-[11px] text-gray-400 mb-1 block">Hora</label>
+        <label className="field-label">Hora</label>
         <select value={hour} onChange={e => emit(e.target.value, minute || '00')} className="select-field">
           <option value="">—</option>
           {hours.map(h => <option key={h} value={h}>{String(h).padStart(2, '0')}h</option>)}
         </select>
       </div>
       <div>
-        <label className="text-[11px] text-gray-400 mb-1 block">Minutos</label>
+        <label className="field-label">Minutos</label>
         <select value={minute} onChange={e => emit(hour, e.target.value)} className="select-field" disabled={hour === ''}>
           <option value="">—</option>
           {minutes.map(mm => <option key={mm} value={mm}>:{mm}</option>)}
