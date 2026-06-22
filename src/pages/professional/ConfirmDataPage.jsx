@@ -10,12 +10,7 @@ import Spinner from '../../components/common/Spinner'
 import { DateFields } from '../../components/common/DateTimeFields'
 import { showToast } from '../../components/common/Toast'
 import { VetBottomNav } from '../../components/common/BottomNav'
-
-const SPECIALTIES = [
-  'Pequenos animais', 'Bovinos', 'Equinos', 'Aves', 'Exóticos',
-  'Cirurgia', 'Dermatologia', 'Oftalmologia', 'Cardiologia',
-  'Oncologia', 'Ortopedia', 'Reprodução', 'Animais Silvestres',
-]
+import { SPECIALTY_GROUPS } from '../../utils/specialties'
 
 /* ── Section header com ícone ──────────────────────────────────── */
 function SectionTitle({ icon, children }) {
@@ -218,24 +213,31 @@ export default function ConfirmDataPage() {
             Especialidades <span className="text-red-500">*</span>
           </SectionTitle>
           <p className="text-xs text-gray-400 mb-3 -mt-1">Selecione todas que você atende</p>
-          <div className="flex flex-wrap gap-2">
-            {SPECIALTIES.map(s => {
-              const active = selectedSpecialties.includes(s)
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => toggleSpecialty(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                    active
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary'
-                  }`}
-                >
-                  {active && '✓ '}{s}
-                </button>
-              )
-            })}
+          <div className="flex flex-col gap-4">
+            {SPECIALTY_GROUPS.map(({ group, items }) => (
+              <div key={group}>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">{group}</p>
+                <div className="flex flex-wrap gap-2">
+                  {items.map(s => {
+                    const active = selectedSpecialties.includes(s)
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => toggleSpecialty(s)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                          active
+                            ? 'bg-primary text-white border-primary'
+                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary'
+                        }`}
+                      >
+                        {active && '✓ '}{s}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

@@ -12,21 +12,18 @@ import { VetBottomNav, ClientBottomNav } from '../../components/common/BottomNav
 import MapPicker from '../../components/client/MapPicker'
 import { Link } from 'react-router-dom'
 
-const ALL_SPECIALTIES = [
-  'Pequenos animais', 'Bovinos', 'Equinos', 'Aves', 'Exóticos',
-  'Cirurgia', 'Dermatologia', 'Oftalmologia', 'Odontologia',
-  'Cardiologia', 'Oncologia', 'Reprodução Animal', 'Clínico Geral',
-]
+import { SPECIALTY_GROUPS } from '../../utils/specialties'
 
 export default function EditProfilePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', cpf: '', email: '' })
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', cpf: '', email: '', name: '', photoURL: '' })
   const [properties, setProperties] = useState([])
   const [isClient, setIsClient] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const [addrOpen, setAddrOpen] = useState(false)
   const [editingProp, setEditingProp] = useState(null)
@@ -56,6 +53,8 @@ export default function EditProfilePage() {
         // Compatibilidade: lê CPF do local antigo se ainda existir
         cpf: priv.cpf || d.cpf || '',
         email: d.email || user.email || '',
+        name: fullName,
+        photoURL: d.photoURL || '',
       })
       setProperties(Array.isArray(priv.properties) ? priv.properties
         : Array.isArray(d.properties) ? d.properties : [])
@@ -87,6 +86,25 @@ export default function EditProfilePage() {
 
   function handleDeleteProperty(id) {
     persistProperties(properties.filter(p => p.id !== id))
+  }
+
+  async function handlePhoto(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // permite re-selecionar o mesmo arquivo
+    if (!file) return
+    if (!file.type.startsWith('image/')) return showToast('Selecione uma imagem', 'error')
+    setUploadingPhoto(true)
+    try {
+      const dataUrl = await resizeImage(file, 256, 0.8)
+      // Salva direto no Firestore (data URL pequena, ~30KB) — sem Storage
+      await setDoc(doc(db, 'users', user.uid), { photoURL: dataUrl, updatedAt: serverTimestamp() }, { merge: true })
+      setForm(f => ({ ...f, photoURL: dataUrl }))
+      showToast('Foto atualizada!', 'success')
+    } catch (err) {
+      showToast('Não foi possível processar a imagem.', 'error')
+    } finally {
+      setUploadingPhoto(false)
+    }
   }
 
   async function handleSave(e) {
@@ -144,11 +162,32 @@ export default function EditProfilePage() {
       </div>
 
       <form onSubmit={handleSave} className="px-5 py-6 flex flex-col gap-5">
-        {/* Avatar */}
+        {/* Avatar com upload */}
         <div className="flex justify-center">
-          <div className="avatar-circle w-20 h-20 text-3xl border-4 border-primary/20">
-            {form.name?.[0] || user?.email?.[0] || '?'}
-          </div>
+          <label className="relative cursor-pointer group">
+            {form.photoURL ? (
+              <img src={form.photoURL} alt="Foto de perfil"
+                className="w-24 h-24 rounded-full object-cover border-4 border-primary/20" />
+            ) : (
+              <div className="avatar-circle w-24 h-24 text-3xl border-4 border-primary/20">
+                {form.firstName?.[0] || form.name?.[0] || user?.email?.[0] || '?'}
+              </div>
+            )}
+            {/* Botão câmera */}
+            <div className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center
+                            border-2 border-white shadow-md group-hover:bg-primary-600 transition-colors">
+              {uploadingPhoto ? (
+                <Spinner size={14} color="white" />
+              ) : (
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </div>
+            <input type="file" accept="image/*" onChange={handlePhoto} disabled={uploadingPhoto} className="hidden" />
+          </label>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -274,26 +313,33 @@ export default function EditProfilePage() {
                 )}
               </div>
               <p className="text-gray-400 text-xs mb-3">Selecione todas as áreas em que você atende.</p>
-              <div className="flex flex-wrap gap-2">
-                {ALL_SPECIALTIES.map(s => {
-                  const active = specialties.includes(s)
-                  return (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setSpecialties(prev =>
-                        active ? prev.filter(x => x !== s) : [...prev, s]
-                      )}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                        active
-                          ? 'bg-primary text-white border-primary shadow-sm'
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-primary/40'
-                      }`}
-                    >
-                      {active && '✓ '}{s}
-                    </button>
-                  )
-                })}
+              <div className="flex flex-col gap-4">
+                {SPECIALTY_GROUPS.map(({ group, items }) => (
+                  <div key={group}>
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">{group}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {items.map(s => {
+                        const active = specialties.includes(s)
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setSpecialties(prev =>
+                              active ? prev.filter(x => x !== s) : [...prev, s]
+                            )}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                              active
+                                ? 'bg-primary text-white border-primary shadow-sm'
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-primary/40'
+                            }`}
+                          >
+                            {active && '✓ '}{s}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -396,4 +442,29 @@ export default function EditProfilePage() {
       {isClient ? <ClientBottomNav /> : <VetBottomNav />}
     </div>
   )
+}
+
+/* ── Redimensiona imagem no cliente (canvas) → data URL JPEG ──── */
+function resizeImage(file, maxSize = 256, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = reject
+    reader.onload = () => {
+      const img = new Image()
+      img.onerror = reject
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+        const w = Math.round(img.width * scale)
+        const h = Math.round(img.height * scale)
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.src = reader.result
+    }
+    reader.readAsDataURL(file)
+  })
 }
