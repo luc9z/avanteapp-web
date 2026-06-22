@@ -379,19 +379,19 @@ export default function ClientHomePage() {
 
       {/* Scroll area: ofertas + atualizações + lista de profissionais */}
       <div className="flex-1 overflow-y-auto px-4 pb-nav" onScroll={handleScroll}>
-        <div className="pt-2">
+        <div className="pt-4 flex flex-col gap-3.5">
           <EnablePushBanner
             uid={uid}
             message="Ative as notificações para saber na hora quando o veterinário aceitar seu pedido."
           />
-          <AdBanner className="mb-2" audience="client" />
+          <AdBanner audience="client" />
           <OffersBanner audience="client" />
         </div>
         {/* Atualizações */}
         {(activeRequests.some(r => dismissedNotifs[`req-${r.id}`] !== r._kind + r.status) ||
           activeChats.some(c => dismissedNotifs[`chat-${c.id}`] !== c.lastMessage)) && (
-          <div className="pt-3 flex flex-col gap-2.5">
-            <div className="flex items-center gap-2">
+          <div className="pt-5 flex flex-col gap-2.5">
+            <div className="flex items-center gap-2 mb-0.5">
               <span className="w-1.5 h-4 bg-primary rounded-full" />
               <p className="text-sm font-bold text-gray-700">Atualizações</p>
             </div>
@@ -432,7 +432,7 @@ export default function ClientHomePage() {
         )}
 
         {/* Professionals heading */}
-        <div className="flex items-center gap-2 pt-4 pb-2">
+        <div className="flex items-center gap-2 pt-5 pb-3">
           <span className="w-1.5 h-4 bg-primary rounded-full" />
           <p className="text-sm font-bold text-gray-700">Veterinários disponíveis</p>
         </div>
