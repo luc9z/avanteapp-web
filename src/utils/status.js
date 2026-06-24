@@ -13,6 +13,8 @@ const STATUS_ALIASES = {
   a_caminho: ['a_caminho', 'on_the_way'],
   pausado: ['pausado', 'paused'],
   aguardando: ['aguardando_cliente', 'awaiting_client', 'aguardando_confirmacao'],
+  orcamento: ['aguardando_orcamento', 'orcamento', 'quote_pending'],
+  urgente: ['urgente', 'urgent'],
 }
 
 const ALIAS_LOOKUP = Object.entries(STATUS_ALIASES).reduce((acc, [canonical, aliases]) => {
@@ -27,7 +29,7 @@ export function normalizeStatus(s) {
 }
 
 /** Status em que existe um atendimento ativo entre cliente e profissional. */
-export const ACTIVE_STATUSES = ['aceito', 'a_caminho', 'em_andamento', 'pausado']
+export const ACTIVE_STATUSES = ['aceito', 'a_caminho', 'em_andamento', 'pausado', 'orcamento']
 
 /** Status finais que aguardam ação do cliente (confirmar/avaliar). */
 export const FINAL_STATUSES = ['finalizado']
@@ -45,6 +47,8 @@ export const STATUS_INFO = {
   em_andamento: { label: 'Em andamento',           cls: 'badge-in-progress' },
   pausado:      { label: 'Em pausa',               cls: 'badge-paused' },
   aguardando:   { label: 'Aguardando confirmação', cls: 'badge-paused' },
+  orcamento:    { label: 'Orçamento enviado',      cls: 'badge-pending' },
+  urgente:      { label: 'Urgente',                cls: 'badge-rejected' },
   rejeitado:    { label: 'Recusado',               cls: 'badge-rejected' },
   finalizado:   { label: 'Finalizado',             cls: 'badge-done' },
 }

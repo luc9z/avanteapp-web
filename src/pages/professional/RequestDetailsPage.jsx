@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   doc, onSnapshot, getDoc, updateDoc, addDoc,
-  collection, serverTimestamp, deleteField,
+  collection, serverTimestamp, deleteField, arrayUnion,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -685,11 +685,41 @@ export default function RequestDetailsPage() {
                   </div>
                 )}
 
-                {/* ACEITO → A Caminho */}
-                {status === 'aceito' && (
-                  <GreenBtn onClick={() => triggerStatus('a_caminho')} disabled={updating} loading={updating}
-                    iconPath="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM3 8h14l-1 7H4L3 8z"
-                    label="A Caminho" />
+                {/* ACEITO → Enviar Orçamento OU A Caminho */}
+                {status === 'aceito' && isProf && (
+                  <div className="flex flex-col gap-2">
+                    <QuoteComposer requestId={id} onSent={() => {}} />
+                    <GreenBtn onClick={() => triggerStatus('a_caminho')} disabled={updating} loading={updating}
+                      iconPath="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM3 8h14l-1 7H4L3 8z"
+                      label="A Caminho (sem orçamento)" />
+                  </div>
+                )}
+                {status === 'aceito' && !isProf && (
+                  <p className="text-center text-sm text-gray-500 py-3">Aguardando orçamento ou deslocamento do veterinário</p>
+                )}
+
+                {/* ORÇAMENTO → cliente aprova */}
+                {status === 'orcamento' && !isProf && req.quote && (
+                  <QuoteViewer
+                    quote={req.quote}
+                    onApprove={async () => {
+                      await updateDoc(doc(db, 'requests', id), {
+                        status: 'a_caminho',
+                        'quote.approvedAt': new Date().toISOString(),
+                        statusHistory: [...(req.statusHistory || []), { status: 'a_caminho', at: new Date().toISOString() }],
+                      })
+                    }}
+                    onReject={async () => {
+                      await updateDoc(doc(db, 'requests', id), {
+                        status: 'aceito',
+                        quote: null,
+                        statusHistory: [...(req.statusHistory || []), { status: 'aceito', at: new Date().toISOString() }],
+                      })
+                    }}
+                  />
+                )}
+                {status === 'orcamento' && isProf && (
+                  <p className="text-center text-sm text-gray-500 py-3">Aguardando aprovação do orçamento pelo cliente</p>
                 )}
 
                 {/* A_CAMINHO → Iniciar */}
@@ -1109,4 +1139,117 @@ export async function downloadReceiptPDF(req) {
   pdf.text('Este comprovante não substitui receituário ou atestado veterinário.', 14, y + 5)
 
   pdf.save(`avante-atendimento-${(req.id || 'comprovante').slice(0, 8)}.pdf`)
+}
+
+
+/* ── QuoteComposer — vet envia orçamento ─────────────────────── */
+function QuoteComposer({ requestId, onSent }) {
+  const [open, setOpen] = useState(false)
+  const [items, setItems] = useState([{ desc: '', qty: 1, price: '' }])
+  const [saving, setSaving] = useState(false)
+
+  function addItem() { setItems(prev => [...prev, { desc: '', qty: 1, price: '' }]) }
+  function removeItem(i) { setItems(prev => prev.filter((_, idx) => idx !== i)) }
+  function updateItem(i, field, val) {
+    setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: val } : it))
+  }
+
+  const total = items.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 1), 0)
+
+  async function handleSend() {
+    if (items.some(i => !i.desc.trim() || !i.price)) return showToast('Preencha todos os itens', 'error')
+    setSaving(true)
+    try {
+      await updateDoc(doc(db, 'requests', requestId), {
+        status: 'orcamento',
+        quote: { items, total, sentAt: new Date().toISOString(), approvedAt: null },
+        statusHistory: arrayUnion({ status: 'orcamento', at: new Date().toISOString() }),
+      })
+      showToast('Orçamento enviado ao cliente!', 'success')
+      setOpen(false)
+      onSent()
+    } catch { showToast('Erro ao enviar orçamento', 'error') } finally { setSaving(false) }
+  }
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)}
+      className="w-full py-2.5 rounded-xl border-2 border-primary/40 text-primary font-semibold text-sm
+                 flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      Enviar Orçamento
+    </button>
+  )
+
+  return (
+    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+      <p className="font-bold text-primary text-sm">Orçamento</p>
+      {items.map((item, i) => (
+        <div key={i} className="flex gap-2 items-center">
+          <input value={item.desc} onChange={e => updateItem(i, 'desc', e.target.value)}
+            placeholder="Serviço / produto" className="input-field text-sm flex-1" />
+          <input value={item.qty} onChange={e => updateItem(i, 'qty', e.target.value)}
+            type="number" min={1} className="input-field text-sm w-14" />
+          <input value={item.price} onChange={e => updateItem(i, 'price', e.target.value)}
+            placeholder="R$" type="number" className="input-field text-sm w-20" />
+          {items.length > 1 && (
+            <button onClick={() => removeItem(i)} className="text-gray-400 hover:text-red-500 p-1">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+      ))}
+      <button onClick={addItem} className="text-xs text-primary font-semibold hover:underline text-left">
+        + Adicionar item
+      </button>
+      <div className="flex items-center justify-between border-t border-primary/20 pt-2">
+        <p className="text-sm font-bold text-gray-800">Total: R$ {total.toFixed(2)}</p>
+        <div className="flex gap-2">
+          <button onClick={() => setOpen(false)} className="text-xs text-gray-400 px-3 py-1.5 hover:text-gray-600">Cancelar</button>
+          <button onClick={handleSend} disabled={saving}
+            className="btn-primary text-xs px-4 py-1.5 rounded-lg disabled:opacity-50">
+            {saving ? '...' : 'Enviar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── QuoteViewer — cliente vê e aprova orçamento ─────────────── */
+function QuoteViewer({ quote, onApprove, onReject }) {
+  const [approving, setApproving] = useState(false)
+  return (
+    <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 flex flex-col gap-3">
+      <p className="font-bold text-amber-800 text-sm">Orçamento recebido</p>
+      <div className="flex flex-col gap-1.5">
+        {quote.items.map((item, i) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-gray-700">{item.desc} {item.qty > 1 ? `× ${item.qty}` : ''}</span>
+            <span className="font-semibold text-gray-800">R$ {(Number(item.price) * Number(item.qty)).toFixed(2)}</span>
+          </div>
+        ))}
+        <div className="flex justify-between border-t border-amber-200 pt-2 font-bold">
+          <span className="text-gray-800">Total</span>
+          <span className="text-primary">R$ {Number(quote.total).toFixed(2)}</span>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onReject} className="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50">
+          Recusar
+        </button>
+        <button
+          onClick={async () => { setApproving(true); await onApprove(); setApproving(false) }}
+          disabled={approving}
+          className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-bold hover:bg-primary-600 disabled:opacity-60"
+        >
+          {approving ? '...' : 'Aprovar e confirmar'}
+        </button>
+      </div>
+    </div>
+  )
 }
