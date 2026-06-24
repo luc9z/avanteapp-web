@@ -4,7 +4,7 @@
  * gráficos na hora, sem precisar exportar nada.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { collection, query, where, onSnapshot, doc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
@@ -32,12 +32,18 @@ export default function ReportsPage() {
   const [requests, setRequests] = useState(null)
   const [ratings, setRatings] = useState(null)
   const [plan, setPlan] = useState(null)
+  const [monthlyGoal, setMonthlyGoal] = useState(0)
+  const [editingGoal, setEditingGoal] = useState(false)
+  const [goalInput, setGoalInput] = useState('')
   const isFree = !plan || plan === 'free'
 
   useEffect(() => {
     if (!uid) return
-    const unsubPlan = onSnapshot(doc(db, 'users', uid),
-      snap => setPlan(snap.data()?.plan || 'free'), () => setPlan('free'))
+    const unsubPlan = onSnapshot(doc(db, 'users', uid), snap => {
+      const d = snap.data() || {}
+      setPlan(d.plan || 'free')
+      setMonthlyGoal(d.monthlyGoal || 0)
+    }, () => setPlan('free'))
     const unsubReq = onSnapshot(
       query(collection(db, 'requests'), where('professionalId', '==', uid)),
       snap => setRequests(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
@@ -82,11 +88,31 @@ export default function ReportsPage() {
       .slice(0, 5)
       .map(([label, value]) => ({ label, value }))
 
+    // Contagem por espécie (petSpecies)
+    const speciesCount = {}
+    for (const r of requests) {
+      if (r.petSpecies) speciesCount[r.petSpecies] = (speciesCount[r.petSpecies] || 0) + 1
+    }
+    const topSpecies = Object.entries(speciesCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([label, value]) => ({ label, value }))
+
+    // Receita do mês corrente (requests finalizados com quote)
+    const monthlyRevenue = requests
+      .filter(r => {
+        const s = normalizeStatus(r.status)
+        if (s !== 'finalizado') return false
+        const d = r.createdAt?.toDate?.()
+        return d && isSameMonth(d, now)
+      })
+      .reduce((sum, r) => sum + (r.quote?.total || 0), 0)
+
     const completionBase = byStatus.finalizado + byStatus.rejeitado
     const completionRate = completionBase > 0
       ? Math.round((byStatus.finalizado / completionBase) * 100) : null
 
-    return { byStatus, monthly, topServices, total: requests.length, completionRate }
+    return { byStatus, monthly, topServices, topSpecies, total: requests.length, completionRate, monthlyRevenue }
   }, [requests])
 
   const ratingStats = useMemo(() => {
@@ -99,6 +125,16 @@ export default function ReportsPage() {
     }))
     return { count, avg, dist }
   }, [ratings])
+
+  async function saveGoal() {
+    const val = parseFloat(goalInput.replace(',', '.'))
+    if (isNaN(val) || val < 0) return
+    try {
+      await setDoc(doc(db, 'users', uid), { monthlyGoal: val, updatedAt: serverTimestamp() }, { merge: true })
+      setMonthlyGoal(val)
+      setEditingGoal(false)
+    } catch { /* ignore */ }
+  }
 
   const loading = !stats || !ratingStats
 
@@ -218,6 +254,61 @@ export default function ReportsPage() {
               <HBarList data={stats.topServices} />
             </div>
           )}
+
+          {/* ── Espécies atendidas ───────────────────────────── */}
+          {stats.topSpecies.length > 0 && (
+            <div className="card">
+              <CardTitle>Espécies atendidas</CardTitle>
+              <HBarList data={stats.topSpecies} color="#6366f1" />
+            </div>
+          )}
+
+          {/* ── Meta mensal de receita ───────────────────────── */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-3">
+              <CardTitle>Meta mensal de receita</CardTitle>
+              <button onClick={() => { setGoalInput(String(monthlyGoal || '')); setEditingGoal(true) }}
+                className="text-xs text-primary font-bold hover:underline">Definir meta</button>
+            </div>
+            {editingGoal ? (
+              <div className="flex gap-2">
+                <input
+                  type="number" step="0.01" min="0"
+                  value={goalInput}
+                  onChange={e => setGoalInput(e.target.value)}
+                  placeholder="Ex: 5000"
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary"
+                  autoFocus
+                />
+                <button onClick={saveGoal} className="btn-primary px-4 py-2 text-sm">Salvar</button>
+                <button onClick={() => setEditingGoal(false)} className="px-3 py-2 text-sm text-gray-400 hover:text-gray-600">✕</button>
+              </div>
+            ) : monthlyGoal > 0 ? (
+              <>
+                <div className="flex items-end justify-between mb-2">
+                  <p className="text-xs text-gray-500">Este mês</p>
+                  <p className="text-xs text-gray-400">
+                    R$ {(stats.monthlyRevenue || 0).toFixed(2).replace('.', ',')} / R$ {monthlyGoal.toFixed(2).replace('.', ',')}
+                  </p>
+                </div>
+                <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-3 rounded-full transition-all"
+                    style={{
+                      width: `${Math.min(100, ((stats.monthlyRevenue || 0) / monthlyGoal) * 100)}%`,
+                      background: (stats.monthlyRevenue || 0) >= monthlyGoal ? '#22c55e' : '#375337',
+                    }}
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-2 text-right">
+                  {Math.round(((stats.monthlyRevenue || 0) / monthlyGoal) * 100)}% da meta
+                  {(stats.monthlyRevenue || 0) >= monthlyGoal ? ' 🎉 Atingida!' : ''}
+                </p>
+              </>
+            ) : (
+              <EmptyHint>Defina uma meta mensal para acompanhar sua evolução.</EmptyHint>
+            )}
+          </div>
           </>}
         </div>
       )}

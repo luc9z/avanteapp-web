@@ -1008,10 +1008,16 @@ function PetBlock({ req, isProf, userUid }) {
           <p className="font-bold text-gray-800 text-sm">{req.petName}</p>
           <p className="text-xs text-gray-400">{req.petSpecies || 'Animal'}</p>
         </div>
-        <button onClick={() => setOpen(o => !o)}
-          className="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-primary/5 transition-colors">
-          {open ? 'Fechar' : 'Prontuário'}
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setOpen(o => !o)}
+            className="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-primary/5 transition-colors">
+            {open ? 'Fechar' : 'Notas'}
+          </button>
+          <a href={`/medical-record/${req.petId}`}
+            className="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-primary/5 transition-colors no-underline">
+            Prontuário ↗
+          </a>
+        </div>
       </div>
       {open && (
         <PetRecords

@@ -1,20 +1,46 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { isValidEmail, passwordIssue } from '../../utils/validators'
 import Spinner from '../../components/common/Spinner'
 import PasswordInput from '../../components/common/PasswordInput'
 import { showToast } from '../../components/common/Toast'
+import { collection, query, where, getDocs, setDoc, doc, increment, serverTimestamp } from 'firebase/firestore'
+import { db } from '../../firebase'
 
 export default function RegisterPage() {
   const { registerWithEmail, isProcessing, error, clearError } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const refCode = searchParams.get('ref') || ''
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [formError, setFormError] = useState('')
+
+  async function applyReferral(newUid) {
+    if (!refCode) return
+    try {
+      // Salva no doc do novo usuário
+      await setDoc(doc(db, 'users', newUid), { referredBy: refCode }, { merge: true })
+
+      // Encontra o referrer pelo código
+      const q = query(collection(db, 'users'), where('referralCode', '==', refCode))
+      const snap = await getDocs(q)
+      if (snap.empty) return
+
+      const referrerId = snap.docs[0].id
+      // Registra na subcollection referrals/{newUid}
+      await setDoc(doc(db, 'users', referrerId, 'referrals', newUid), {
+        referredAt: serverTimestamp(),
+        activatedPlan: null,
+      })
+    } catch {
+      // Silencioso — falha de referral não bloqueia cadastro
+    }
+  }
 
   async function handleRegister(e) {
     e.preventDefault()
@@ -27,6 +53,7 @@ export default function RegisterPage() {
 
     const user = await registerWithEmail(email.trim(), password, name.trim())
     if (user) {
+      await applyReferral(user.uid)
       showToast('Conta criada! Enviamos um email de verificação.', 'success')
       navigate('/user-type', { replace: true })
     }
@@ -50,6 +77,13 @@ export default function RegisterPage() {
           <img src="/images/avante_logo.png" alt="Avante" className="w-20 h-20 object-contain" />
           <p className="text-gray-500 text-sm text-center">Leva menos de um minuto</p>
         </div>
+
+        {refCode && (
+          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-800 flex items-center gap-2">
+            <span className="text-lg">🎁</span>
+            <span>Código de indicação <strong>{refCode}</strong> aplicado!</span>
+          </div>
+        )}
 
         <form onSubmit={handleRegister} className="flex flex-col gap-4">
           {displayError && (

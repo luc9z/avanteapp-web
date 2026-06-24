@@ -36,6 +36,8 @@ const RateRequestPage        = lazy(() => import('./pages/client/RateRequestPage
 const FavoritesPage          = lazy(() => import('./pages/client/FavoritesPage'))
 const PetsPage               = lazy(() => import('./pages/client/PetsPage'))
 const PlansPage              = lazy(() => import('./pages/professional/PlansPage'))
+const ReferralPage           = lazy(() => import('./pages/professional/ReferralPage'))
+const MedicalRecordPage      = lazy(() => import('./pages/shared/MedicalRecordPage'))
 const AdminPage              = lazy(() => import('./pages/admin/AdminPage'))
 const TermsPage              = lazy(() => import('./pages/shared/TermsPage'))
 const PrivacyPage            = lazy(() => import('./pages/shared/PrivacyPage'))
@@ -80,7 +82,11 @@ export default function App() {
           <Route path="/agenda" element={<Vet><AgendaPage /></Vet>} />
           <Route path="/ratings" element={<Vet><ViewRatingsPage /></Vet>} />
           <Route path="/reports" element={<Vet><ReportsPage /></Vet>} />
-          <Route path="/plans" element={<Vet><PlansPage /></Vet>} />
+          <Route path="/plans"    element={<Vet><PlansPage /></Vet>} />
+          <Route path="/referral"          element={<Vet><ReferralPage /></Vet>} />
+
+          {/* Prontuário acessível por vet e cliente */}
+          <Route path="/medical-record/:petId" element={<Auth><MedicalRecordPage /></Auth>} />
 
           {/* Área do cliente */}
           <Route path="/home" element={<Client><ClientHomePage /></Client>} />
