@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   collection, query, where, orderBy, getDocs, limit, startAfter,
-  onSnapshot, doc, getDoc,
+  onSnapshot, doc, getDoc, addDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -57,6 +57,9 @@ export default function ClientHomePage() {
   const [activeChats, setActiveChats] = useState([])         // chats with unread messages
   const [dismissedNotifs, setDismissedNotifs] = useState({})
   const [scheduleProf, setScheduleProf] = useState(null)     // vet selecionado p/ agendar
+  const [urgencyOpen, setUrgencyOpen] = useState(false)
+  const [urgencyForm, setUrgencyForm] = useState({ animal: '', notes: '' })
+  const [sendingUrgency, setSendingUrgency] = useState(false)
 
   const LIMIT = 20
   const useDocId = useRef(false)
@@ -248,6 +251,39 @@ export default function ClientHomePage() {
     }
   }
 
+  async function handleUrgency() {
+    if (!urgencyForm.animal.trim()) return showToast('Informe o animal', 'error')
+    if (!urgencyForm.notes.trim()) return showToast('Descreva o problema', 'error')
+    setSendingUrgency(true)
+    try {
+      const snap = await getDoc(doc(db, 'users', uid))
+      const userData = snap.data() || {}
+      const privSnap = await getDoc(doc(db, 'users', uid, 'private', 'profile')).catch(() => null)
+      const privData = privSnap?.exists?.() ? privSnap.data() : {}
+      await addDoc(collection(db, 'requests'), {
+        isUrgent: true,
+        status: 'urgente',
+        urgentExpiry: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        clientId: uid,
+        clientName: userData.name || user.displayName || '',
+        clientEmail: user.email || '',
+        clientContact: privData.phone || userData.phone || '',
+        animal: urgencyForm.animal.trim(),
+        notes: urgencyForm.notes.trim(),
+        service: 'Atendimento de urgência',
+        statusHistory: [],
+        createdAt: serverTimestamp(),
+      })
+      showToast('🚨 Urgência enviada! Vets serão notificados.', 'success')
+      setUrgencyOpen(false)
+      setUrgencyForm({ animal: '', notes: '' })
+    } catch (e) {
+      showToast(friendlyError(e, 'Não foi possível enviar a urgência.'), 'error')
+    } finally {
+      setSendingUrgency(false)
+    }
+  }
+
   async function handleLogout() {
     await logout()
     navigate('/login', { replace: true })
@@ -310,7 +346,7 @@ export default function ClientHomePage() {
           <p className="text-white/70 text-xs mb-4">Veterinários a domicílio, prontos para atender</p>
 
           {/* Stats chips */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2 mb-3">
             <Link to="/my-requests?tab=pendentes" className="bg-white/10 rounded-xl p-2.5 hover:bg-white/20 transition-colors">
               <p className="text-2xl font-bold text-white leading-none">{pendingCount}</p>
               <p className="text-[11px] text-white/70 mt-1">Pendentes</p>
@@ -324,6 +360,15 @@ export default function ClientHomePage() {
               <p className="text-[11px] text-white/70 mt-1">Histórico</p>
             </Link>
           </div>
+          {/* Urgência */}
+          <button onClick={() => setUrgencyOpen(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/90 hover:bg-red-500 active:scale-[0.98] transition-all text-white font-bold text-sm">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Preciso de atendimento urgente
+          </button>
         </div>
 
         {/* Search + filters */}
@@ -532,6 +577,52 @@ export default function ClientHomePage() {
         user={user}
         onClose={() => setScheduleProf(null)}
       />
+
+      {/* ── Modal Urgência ─────────────────────────────── */}
+      <Modal open={urgencyOpen} onClose={() => setUrgencyOpen(false)} title="">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 pb-2 border-b border-red-100">
+            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">Atendimento Urgente</p>
+              <p className="text-xs text-gray-400">Vets online serão notificados — 15 min para aceitar</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Animal <span className="text-red-500">*</span></label>
+            <input
+              value={urgencyForm.animal}
+              onChange={e => setUrgencyForm(f => ({ ...f, animal: e.target.value }))}
+              placeholder="Ex: Cachorro - Rex, 3 anos"
+              className="input-field"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700">Descreva o problema <span className="text-red-500">*</span></label>
+            <textarea
+              value={urgencyForm.notes}
+              onChange={e => setUrgencyForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Ex: Não consegue respirar, deitado há 2h, não come..."
+              className="input-field resize-none h-24"
+            />
+          </div>
+          <p className="text-[11px] text-gray-400 text-center">
+            Seu contato será compartilhado com o vet que aceitar.
+          </p>
+          <button
+            onClick={handleUrgency}
+            disabled={sendingUrgency}
+            className="w-full py-3.5 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm transition-colors disabled:opacity-60"
+          >
+            {sendingUrgency ? 'Enviando...' : '🚨 Solicitar agora'}
+          </button>
+        </div>
+      </Modal>
 
     </div>
   )

@@ -73,6 +73,18 @@ export default function DashboardPage() {
     }, () => {})
   }, [uid])
 
+  const [urgentRequests, setUrgentRequests] = useState([])
+  useEffect(() => {
+    const q = query(collection(db, 'requests'), where('status', '==', 'urgente'))
+    return onSnapshot(q, snap => {
+      const now = new Date()
+      setUrgentRequests(
+        snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .filter(r => !r.professionalId && r.urgentExpiry && new Date(r.urgentExpiry) > now)
+      )
+    }, () => {})
+  }, [])
+
   // Conversas com mensagem do cliente aguardando resposta —
   // este é o sinal real de "mensagens", não solicitações pendentes.
   useEffect(() => {
@@ -505,6 +517,60 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* ── Urgências ─────────────────────────────────────── */}
+        {urgentRequests.length > 0 && (
+          <div>
+            <p className="section-title !mb-2 flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+              </span>
+              Atendimentos Urgentes
+              <span className="bg-red-500 text-white text-[11px] font-bold rounded-full px-1.5 py-0.5">
+                {urgentRequests.length}
+              </span>
+            </p>
+            <div className="flex flex-col gap-2.5">
+              {urgentRequests.map(r => {
+                const expiry = r.urgentExpiry ? new Date(r.urgentExpiry) : null
+                const minsLeft = expiry ? Math.max(0, Math.round((expiry - new Date()) / 60000)) : null
+                return (
+                  <div key={r.id} className="rounded-2xl border-2 border-red-200 bg-red-50 p-4 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-red-800 text-sm">{r.animal || 'Animal não informado'}</p>
+                        <p className="text-xs text-red-600 mt-0.5 line-clamp-2">{r.notes}</p>
+                        <p className="text-xs text-gray-500 mt-1">Cliente: {r.clientName}</p>
+                      </div>
+                      {minsLeft !== null && (
+                        <span className="flex-shrink-0 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                          {minsLeft}min
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const { updateDoc, doc: fsDoc } = await import('firebase/firestore')
+                        await updateDoc(fsDoc(db, 'requests', r.id), {
+                          professionalId: uid,
+                          professionalName: profile?.name || '',
+                          status: 'aceito',
+                          statusHistory: [{ status: 'aceito', at: new Date().toISOString() }],
+                        }).catch(() => showToast('Erro ao aceitar urgência', 'error'))
+                        showToast('Urgência aceita! Entre em contato com o cliente.', 'success')
+                        navigate(`/request/${r.id}`)
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-colors"
+                    >
+                      Aceitar urgência
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Solicitações Pendentes ─────────────────────────── */}
         <div>

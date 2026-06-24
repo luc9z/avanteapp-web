@@ -44,7 +44,7 @@ const SERVICE_ICON = {
 const iconFor = s => SERVICE_ICON[s] || '🩺'
 
 
-export default function ScheduleSheet({ open, onClose, professional, user, onSuccess }) {
+export default function ScheduleSheet({ open, onClose, professional, user, onSuccess, triage }) {
   const [step, setStep] = useState(0)
   const [service, setService] = useState('')
   const [when, setWhen] = useState(null)
@@ -172,6 +172,14 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
         petSpecies: selectedPet?.species || null,
         petBreed: selectedPet?.breed || null,
         petWeight: selectedPet?.weight || null,
+        ...(triage ? {
+          aiTriage: {
+            urgency: triage.urgency,
+            specialty: triage.specialty,
+            summary: triage.summary,
+          }
+        } : {}),
+        statusHistory: [],
       })
 
       // Vincula a solicitação ao thread ÚNICO de chat (cliente↔vet)

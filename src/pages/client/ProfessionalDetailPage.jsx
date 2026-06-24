@@ -9,6 +9,7 @@ import Spinner from '../../components/common/Spinner'
 import Stars from '../../components/common/Stars'
 import { ClientBottomNav } from '../../components/common/BottomNav'
 import ScheduleSheet from '../../components/client/ScheduleSheet'
+import SymptomChecker from '../../components/client/SymptomChecker'
 import { isOnlineCheck, isFeatured } from '../../components/client/ProfCard'
 import { openDirectChat } from '../../services/directChat'
 import { showToast } from '../../components/common/Toast'
@@ -25,6 +26,8 @@ export default function ProfessionalDetailPage() {
   const [ratings, setRatings] = useState([])
   const [loading, setLoading] = useState(true)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [checkerOpen, setCheckerOpen] = useState(false)
+  const [triageData, setTriageData] = useState(null)
 
   async function handleMessage() {
     try {
@@ -200,6 +203,37 @@ export default function ProfessionalDetailPage() {
             )}
           </div>
 
+          {/* ── Portfólio e Certificações ───────────────────── */}
+          {Array.isArray(profile.portfolio) && profile.portfolio.length > 0 && (
+            <div>
+              <p className="font-bold text-gray-800 mb-3">Portfólio e Certificações</p>
+              <div className="flex flex-col gap-3">
+                {profile.portfolio.filter(i => i.title).map(item => {
+                  const icons = { certificate: '🎓', case: '🔬', education: '📚' }
+                  return (
+                    <div key={item.id} className="card flex gap-3 items-start">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl flex-shrink-0">
+                        {icons[item.type] || '📋'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-800 text-sm leading-tight">{item.title}</p>
+                        {(item.description || item.year) && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {[item.description, item.year].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
+                        {item.imageUrl && (
+                          <img src={item.imageUrl} alt={item.title}
+                            className="mt-2 w-full h-36 object-cover rounded-xl" />
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <OffersBanner className="mt-2" audience="client" />
         </div>
       </div>
@@ -209,7 +243,7 @@ export default function ProfessionalDetailPage() {
            style={{ bottom: 'calc(3.9rem + env(safe-area-inset-bottom, 0px))' }}>
         <div className="bg-white border border-gray-100 shadow-card-hover rounded-2xl p-2.5 flex gap-2 animate-fade-up">
           <button
-            onClick={() => setScheduleOpen(true)}
+            onClick={() => setCheckerOpen(true)}
             className="flex-1 btn-primary py-3"
           >
             {isOnlineCheck(profile) ? 'Solicitar atendimento' : 'Agendar atendimento'}
@@ -247,11 +281,28 @@ export default function ProfessionalDetailPage() {
 
       <ClientBottomNav />
 
+      <SymptomChecker
+        open={checkerOpen}
+        vetName={profile?.name || 'veterinário'}
+        onClose={() => setCheckerOpen(false)}
+        onProceed={(triage) => {
+          setTriageData(triage)
+          setCheckerOpen(false)
+          setScheduleOpen(true)
+        }}
+        onSkip={() => {
+          setTriageData(null)
+          setCheckerOpen(false)
+          setScheduleOpen(true)
+        }}
+      />
+
       <ScheduleSheet
         open={scheduleOpen}
         professional={profile}
         user={user}
-        onClose={() => setScheduleOpen(false)}
+        triage={triageData}
+        onClose={() => { setScheduleOpen(false); setTriageData(null) }}
       />
     </>
   )

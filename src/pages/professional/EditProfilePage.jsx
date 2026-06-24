@@ -34,6 +34,8 @@ export default function EditProfilePage() {
   const [showBaseMap, setShowBaseMap] = useState(false)
   const [gettingGPS, setGettingGPS] = useState(false)
   const [specialties, setSpecialties] = useState([])
+  const [portfolio, setPortfolio] = useState([])
+  const [savingPortfolio, setSavingPortfolio] = useState(false)
 
   useEffect(() => {
     if (!user?.uid) return
@@ -62,6 +64,7 @@ export default function EditProfilePage() {
       if (d.baseLocation?.lat != null) setBaseLocation(d.baseLocation)
       if (d.serviceRadius) setServiceRadius(d.serviceRadius)
       if (Array.isArray(d.specialties)) setSpecialties(d.specialties)
+      if (Array.isArray(d.portfolio)) setPortfolio(d.portfolio)
     }).catch(() => {
       setForm(f => ({ ...f, email: user.email || '' }))
     }).finally(() => setLoading(false))
@@ -86,6 +89,42 @@ export default function EditProfilePage() {
 
   function handleDeleteProperty(id) {
     persistProperties(properties.filter(p => p.id !== id))
+  }
+
+  async function persistPortfolio(next) {
+    setSavingPortfolio(true)
+    try {
+      await setDoc(doc(db, 'users', user.uid), { portfolio: next, updatedAt: serverTimestamp() }, { merge: true })
+      setPortfolio(next)
+    } catch (e) {
+      showToast(friendlyError(e, 'Não foi possível salvar o portfólio.'), 'error')
+    } finally {
+      setSavingPortfolio(false)
+    }
+  }
+
+  function addPortfolioItem() {
+    const item = { id: Date.now().toString(), type: 'certificate', title: '', description: '', year: '', imageUrl: '' }
+    setPortfolio(prev => [...prev, item])
+  }
+
+  function updatePortfolioItem(id, field, value) {
+    setPortfolio(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i))
+  }
+
+  function removePortfolioItem(id) {
+    persistPortfolio(portfolio.filter(i => i.id !== id))
+  }
+
+  async function handlePortfolioImage(e, itemId) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) return showToast('Selecione uma imagem', 'error')
+    try {
+      const dataUrl = await resizeImage(file, 512, 0.75)
+      updatePortfolioItem(itemId, 'imageUrl', dataUrl)
+    } catch { showToast('Não foi possível processar a imagem.', 'error') }
   }
 
   async function handlePhoto(e) {
@@ -342,6 +381,78 @@ export default function EditProfilePage() {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── Portfólio e Certificações (apenas veterinário) ─── */}
+        {!isClient && (
+          <div className="flex flex-col gap-3 border-t border-gray-100 pt-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-primary rounded-full" />
+                <h2 className="text-sm font-bold text-gray-700">Portfólio e Certificações</h2>
+              </div>
+              {portfolio.some(i => i.title.trim()) && (
+                <button type="button" onClick={() => persistPortfolio(portfolio)} disabled={savingPortfolio}
+                  className="text-xs font-semibold text-primary px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors">
+                  {savingPortfolio ? 'Salvando...' : 'Salvar portfólio'}
+                </button>
+              )}
+            </div>
+            <p className="text-gray-400 text-xs">Diplomas, certificados e casos clínicos aparecem no seu perfil público.</p>
+
+            {portfolio.map((item) => (
+              <div key={item.id} className="card flex flex-col gap-3 p-4 border border-gray-100">
+                <div className="flex items-center gap-2">
+                  <select value={item.type} onChange={e => updatePortfolioItem(item.id, 'type', e.target.value)}
+                    className="select-field flex-1 text-xs">
+                    <option value="certificate">🎓 Certificado / Diploma</option>
+                    <option value="case">🔬 Caso Clínico</option>
+                    <option value="education">📚 Formação Acadêmica</option>
+                  </select>
+                  <button type="button" onClick={() => removePortfolioItem(item.id)}
+                    className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <input value={item.title} onChange={e => updatePortfolioItem(item.id, 'title', e.target.value)}
+                  placeholder="Título (ex.: Especialização em Dermatologia)" className="input-field text-sm" />
+                <div className="grid grid-cols-3 gap-2">
+                  <input value={item.year} onChange={e => updatePortfolioItem(item.id, 'year', e.target.value)}
+                    placeholder="Ano" className="input-field text-sm" maxLength={4} />
+                  <input value={item.description} onChange={e => updatePortfolioItem(item.id, 'description', e.target.value)}
+                    placeholder="Instituição / detalhes" className="input-field text-sm col-span-2" />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-primary font-semibold">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {item.imageUrl ? 'Trocar imagem' : 'Adicionar imagem (opcional)'}
+                  <input type="file" accept="image/*" className="hidden" onChange={e => handlePortfolioImage(e, item.id)} />
+                </label>
+                {item.imageUrl && (
+                  <div className="relative w-full h-32 rounded-xl overflow-hidden">
+                    <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => updatePortfolioItem(item.id, 'imageUrl', '')}
+                      className="absolute top-1.5 right-1.5 bg-black/50 text-white p-1 rounded-full hover:bg-black/70">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <button type="button" onClick={addPortfolioItem}
+              className="flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-primary/30 text-primary font-semibold text-sm hover:bg-primary/5 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar item ao portfólio
+            </button>
           </div>
         )}
 
