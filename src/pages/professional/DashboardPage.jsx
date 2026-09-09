@@ -261,10 +261,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="px-4 py-4 pb-nav flex flex-col gap-4">
+      {/* No desktop as secoes viram uma grade de duas colunas. Empilhadas,
+          cada uma virava uma faixa de 1144px com um nome e um selo dentro -
+          e o painel inteiro exigia rolagem que a tela nao precisava ter. */}
+      <div className="px-4 py-4 pb-nav flex flex-col gap-4 painel-grade">
 
         {/* ── Profile card (cor conforme o plano) ─────────────── */}
-        <div className={`${CARD_THEME.card} !p-5`}>
+        <div className={`${CARD_THEME.card} !p-5 painel-largo`}>
           {/* Decorative glow */}
           <div className="absolute -right-8 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           <div className={`absolute -left-6 -bottom-10 w-32 h-32 rounded-full blur-2xl pointer-events-none ${CARD_THEME.glow}`} />

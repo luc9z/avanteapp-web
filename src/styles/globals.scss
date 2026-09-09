@@ -959,3 +959,18 @@
   border-color: #8fbc8f !important;
   box-shadow: 0 0 0 2px #8fbc8f;
 }
+
+/* ── Painéis em duas colunas no desktop ───────────────────────────
+   Empilhadas, as seções viravam faixas de 1100px com um nome e um selo
+   dentro: espaço vazio na horizontal e rolagem desnecessária na
+   vertical. Em duas colunas o painel cabe quase inteiro na tela. */
+@media (min-width: 1024px) {
+  .painel-grade {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+  /* Cabeçalhos e faixas que só fazem sentido na largura toda. */
+  .painel-largo { grid-column: 1 / -1; }
+}

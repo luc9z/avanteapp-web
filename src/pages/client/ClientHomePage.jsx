@@ -408,7 +408,9 @@ export default function ClientHomePage() {
           </div>
           {/* Emergência - usa a variante destrutiva do design system,
               então segue a mesma altura, raio e animação dos demais botões. */}
-          <button onClick={handleUrgencyClick} className="btn-danger-solid btn-block">
+          {/* No desktop nao vai a largura toda: um botao de 1100px por 48
+              de altura vira uma faixa, e faixa nao parece botao. */}
+          <button onClick={handleUrgencyClick} className="btn-danger-solid btn-block lg:max-w-sm">
             Emergência veterinária
           </button>
         </div>
@@ -477,11 +479,15 @@ export default function ClientHomePage() {
       {/* Scroll area: ofertas + atualizações + lista de profissionais */}
       <div className="flex-1 overflow-y-auto px-4 pb-nav" onScroll={handleScroll}>
         {/* Atualizações - o que está acontecendo com OS MEUS pedidos
-            vem antes de qualquer banner promocional. */}
+            vem antes de qualquer banner promocional.
+
+            No desktop viram duas colunas: empilhados, cada aviso esticava
+            por 1100px com o botão isolado na ponta, e o olho percorria a
+            tela inteira entre ler e agir. */}
         {(activeRequests.some(r => dismissedNotifs[`req-${r.id}`] !== r._kind + r.status) ||
           activeChats.some(c => dismissedNotifs[`chat-${c.id}`] !== c.lastMessage)) && (
-          <div className="pt-4 flex flex-col gap-2.5">
-            <div className="flex items-center gap-2 mb-0.5">
+          <div className="pt-4 flex flex-col gap-2.5 painel-grade">
+            <div className="flex items-center gap-2 mb-0.5 painel-largo">
               <span className="w-1.5 h-4 bg-primary rounded-full" />
               <p className="text-sm font-bold text-gray-700">Atualizações</p>
             </div>

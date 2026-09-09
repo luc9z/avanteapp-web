@@ -380,7 +380,7 @@ function OverviewTab({ onGo }) {
   if (!m) return <div className="flex justify-center py-20"><Spinner size={28} color="#375337" /></div>
 
   return (
-    <div className="px-4 pb-4 flex flex-col gap-5">
+    <div className="px-4 pb-4 flex flex-col gap-5 painel-grade">
       {/* Resumo do momento */}
       <div className="rounded-3xl bg-primary text-white px-5 py-4">
         <p className="text-[11px] font-bold uppercase tracking-wide text-white/60">Agora na plataforma</p>

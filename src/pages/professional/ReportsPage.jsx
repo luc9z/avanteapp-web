@@ -281,7 +281,7 @@ export default function ReportsPage() {
       {loading ? (
         <div className="flex justify-center py-24"><Spinner size={32} color="#375337" /></div>
       ) : (
-        <div className="px-4 py-4 pb-nav flex flex-col gap-4">
+        <div className="px-4 py-4 pb-nav flex flex-col gap-4 painel-grade">
 
           {/* ── Filtro de período ───────────────────────────── */}
           <div data-coach="perf-period" className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
