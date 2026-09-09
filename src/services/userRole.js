@@ -1,5 +1,5 @@
 /**
- * userRole.js — Resolução do papel do usuário (cliente | profissional).
+ * userRole.js - Resolução do papel do usuário (cliente | profissional).
  * Antes esta lógica existia duplicada (3 buscas em cascata) em
  * SplashPage e LoginPage. Agora há uma única implementação, com
  * cache em memória por sessão para evitar leituras repetidas.

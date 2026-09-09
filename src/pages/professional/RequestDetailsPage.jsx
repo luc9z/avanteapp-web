@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   doc, onSnapshot, getDoc, updateDoc, addDoc,
-  collection, serverTimestamp, deleteField, arrayUnion,
+  collection, serverTimestamp, deleteField, arrayUnion, query, orderBy, limit,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
+import AIButton, { AISuggestion } from '../../components/common/AIButton'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
 import { VetBottomNav, ClientBottomNav } from '../../components/common/BottomNav'
 import { format, formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { distanceKm, formatKm } from '../../utils/geo'
+import { normalizeStatus, statusInfo } from '../../utils/status'
 import { PetRecords } from '../client/PetsPage'
 import { directChatId } from '../../services/directChat'
 import useVetTracking from '../../hooks/useVetTracking'
@@ -23,17 +25,36 @@ import VetTrackingMap from '../../components/shared/VetTrackingMap'
 ──────────────────────────────────────────────────────────────── */
 const H_STEPS = ['Pendente', 'Aceito', 'Em Andamento', 'Finalizado']
 
+/**
+ * Em que etapa o atendimento está.
+ *
+ * O passo 1 significa "ainda esperando o veterinário aceitar", e é ele
+ * que faz aparecerem os botões Recusar/Aceitar. Por isso NENHUM status
+ * desconhecido pode cair no 1: quando 'orcamento' caía no fallback, o
+ * botão Aceitar voltava depois do orçamento enviado e um clique
+ * devolvia a solicitação para 'aceito', jogando fora o orçamento.
+ *
+ * A normalização é a de utils/status.js - antes esta página mantinha um
+ * vocabulário próprio, que foi justamente o que divergiu.
+ */
 function hStepIndex(status) {
-  const s = (status || '').toLowerCase()
-  if (['finalizado', 'done', 'completed'].includes(s)) return 4
-  if (['em_andamento', 'in_progress', 'pausado', 'paused'].includes(s)) return 3
-  if (['aceito', 'accepted', 'a_caminho', 'confirmado'].includes(s)) return 2
-  return 1 // pendente / pending
+  const s = normalizeStatus(status)
+  if (s === 'finalizado') return 4
+  if (['em_andamento', 'pausado'].includes(s)) return 3
+  if (['aceito', 'a_caminho', 'orcamento', 'aguardando'].includes(s)) return 2
+  if (['pendente', 'urgente'].includes(s)) return 1
+  // Recusado não tem etapa: a tela trata por isRejected. Listado aqui só
+  // para não disparar o aviso de status desconhecido.
+  if (s === 'rejeitado') return 1
+  // Status novo que ninguém mapeou: trata como em andamento. Errar para
+  // "já aceito" é inofensivo; errar para "pendente" apaga trabalho.
+  console.warn('[atendimento] status não mapeado:', status)
+  return 2
 }
 
 /* ── Status badge config ─────────────────────────────────────── */
 function statusBadge(status) {
-  const s = (status || '').toLowerCase()
+  const s = normalizeStatus(status)
   if (['finalizado', 'done'].includes(s))
     return { label: 'Finalizado', cls: 'bg-gray-200 text-gray-700' }
   if (['em_andamento', 'in_progress'].includes(s))
@@ -46,11 +67,17 @@ function statusBadge(status) {
     return { label: 'A Caminho', cls: 'bg-blue-400 text-white' }
   if (s === 'rejeitado')
     return { label: 'Recusado', cls: 'bg-red-500 text-white' }
+  if (s === 'orcamento')
+    return { label: 'Orçamento enviado', cls: 'bg-amber-500 text-white' }
+  if (s === 'aguardando')
+    return { label: 'Aguardando confirmação', cls: 'bg-amber-400 text-white' }
+  if (s === 'urgente')
+    return { label: 'Urgente', cls: 'bg-red-500 text-white' }
   return { label: 'Pendente', cls: 'bg-amber-400 text-white' }
 }
 
 function formatDateTime(ts) {
-  if (!ts) return '—'
+  if (!ts) return '-'
   const d = ts?.toDate ? ts.toDate() : new Date(ts)
   return format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
 }
@@ -97,6 +124,9 @@ export default function RequestDetailsPage() {
   const [vetNotes, setVetNotes] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
   const [vetDistKm, setVetDistKm] = useState(null)
+  const [prescriptionForm, setPrescriptionForm] = useState({ medicamento: '', dose: '', posologia: '', validade: '' })
+  const [savingPrescription, setSavingPrescription] = useState(false)
+  const [prescriptionOpen, setPrescriptionOpen] = useState(false)
   const notesInitRef = useRef(false)
 
   // Vet GPS: ativo só quando status = a_caminho e o usuário é o profissional
@@ -234,14 +264,25 @@ export default function RequestDetailsPage() {
     finally { setSavingNotes(false) }
   }
 
-  const clientPhone = client?.phone || req?.clientContact || ''
-
-  function shareWhatsApp() {
-    const digits = clientPhone.replace(/\D/g, '')
-    const number = digits ? `55${digits}` : ''
-    const text = `Olá, ${req.clientName || 'cliente'}! Referente ao atendimento *${req.service}* pelo Avante:\n${window.location.href}`
-    window.open(`https://wa.me/${number}?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
+  async function savePrescription() {
+    if (!prescriptionForm.medicamento.trim()) return showToast('Informe o medicamento', 'error')
+    if (!prescriptionForm.dose.trim()) return showToast('Informe a dose', 'error')
+    setSavingPrescription(true)
+    try {
+      await updateDoc(doc(db, 'requests', id), {
+        prescription: {
+          ...prescriptionForm,
+          issuedAt: new Date().toISOString(),
+          vetName: req.professionalName || '',
+        }
+      })
+      showToast('Receita emitida ✓', 'success')
+      setPrescriptionOpen(false)
+    } catch (e) { showToast(friendlyError(e), 'error') }
+    finally { setSavingPrescription(false) }
   }
+
+
 
   const STATUS_CONFIRM = {
     a_caminho:    { title: 'A Caminho', message: 'Confirmar que você está a caminho do cliente?' },
@@ -277,11 +318,16 @@ export default function RequestDetailsPage() {
   const status = (req.status || '').toLowerCase()
   const urgency = (req.urgency || '').toLowerCase()
   const currentHStep = hStepIndex(status)
-  const isPending = currentHStep === 1
-  const isFinished = currentHStep === 4
   const isRejected = status === 'rejeitado'
+  // 'Pendente' aqui significa 'esperando a resposta do veterinario'. Uma
+  // solicitacao ja recusada nao espera resposta nenhuma - sem esta
+  // exclusao a tela mostrava o painel 'Solicitacao recusada' e os botoes
+  // Recusar/Aceitar ao mesmo tempo.
+  const isPending = currentHStep === 1 && !isRejected
+  const isFinished = currentHStep === 4
   const isProf = user?.uid === req.professionalId
   const isActiveStatus = currentHStep >= 2 && currentHStep < 4
+  const isEmergency = req.isUrgent === true || urgency === 'urgent' || status === 'urgente'
 
   const badge = statusBadge(status)
 
@@ -373,7 +419,7 @@ export default function RequestDetailsPage() {
                         )}
                       </div>
 
-                      {/* Label — centred under the circle */}
+                      {/* Label - centred under the circle */}
                       <p className={`mt-2 text-[9px] font-semibold text-center leading-tight w-full px-0.5 ${
                         done ? 'text-primary' : 'text-gray-400'
                       }`}>
@@ -552,6 +598,84 @@ export default function RequestDetailsPage() {
             </div>
           )}
 
+          {/* ── Receita digital ──────────────────────────── */}
+          {isProf && (isActiveStatus || isFinished) && !req.prescription && (
+            <div>
+              <button
+                onClick={() => setPrescriptionOpen(o => !o)}
+                className="flex items-center gap-2 text-sm font-bold text-primary hover:text-primary/80 transition-colors mb-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {prescriptionOpen ? 'Fechar receita' : 'Emitir receita'}
+              </button>
+              {prescriptionOpen && (
+                <div className="card flex flex-col gap-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <label className="field-label">Medicamento</label>
+                      <input value={prescriptionForm.medicamento}
+                        onChange={e => setPrescriptionForm(f => ({ ...f, medicamento: e.target.value }))}
+                        className="input-field" placeholder="Amoxicilina 500mg..." />
+                    </div>
+                    <div>
+                      <label className="field-label">Dose / quantidade</label>
+                      <input value={prescriptionForm.dose}
+                        onChange={e => setPrescriptionForm(f => ({ ...f, dose: e.target.value }))}
+                        className="input-field" placeholder="1 comprimido" />
+                    </div>
+                    <div>
+                      <label className="field-label">Validade (dias)</label>
+                      <input type="number" min="1" value={prescriptionForm.validade}
+                        onChange={e => setPrescriptionForm(f => ({ ...f, validade: e.target.value }))}
+                        className="input-field" placeholder="30" />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="field-label">Posologia</label>
+                      <textarea rows={2} value={prescriptionForm.posologia}
+                        onChange={e => setPrescriptionForm(f => ({ ...f, posologia: e.target.value }))}
+                        className="input-field resize-none text-sm"
+                        placeholder="1x ao dia por 7 dias, junto com alimentação..." />
+                    </div>
+                  </div>
+                  <button onClick={savePrescription} disabled={savingPrescription} className="btn-primary">
+                    {savingPrescription ? <Spinner /> : 'Emitir receita'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Receita emitida - leitura para vet e cliente */}
+          {req.prescription && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="font-bold text-gray-800 text-sm">Receita médica veterinária</p>
+              </div>
+              <div className="card flex flex-col gap-2 border-l-4 border-primary">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-bold text-gray-900 text-sm">{req.prescription.medicamento}</p>
+                  {req.prescription.validade && (
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex-shrink-0">
+                      {req.prescription.validade}d
+                    </span>
+                  )}
+                </div>
+                {req.prescription.dose && <p className="text-sm text-gray-600">Dose: {req.prescription.dose}</p>}
+                {req.prescription.posologia && <p className="text-sm text-gray-600">{req.prescription.posologia}</p>}
+                <p className="text-xs text-gray-400 mt-1">
+                  Dr(a). {req.prescription.vetName}
+                  {req.prescription.issuedAt ? ` · ${format(new Date(req.prescription.issuedAt), 'dd/MM/yyyy')}` : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── Dados do cliente ──────────────────────────── */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -571,7 +695,7 @@ export default function RequestDetailsPage() {
               {client?.phone && (
                 <ClientRow
                   iconPath="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  label="Telefone" value={client.phone} href={`tel:${client.phone}`}
+                  label="Telefone" value={client.phone}
                 />
               )}
               {(client?.email || req.clientContact) && (
@@ -584,41 +708,11 @@ export default function RequestDetailsPage() {
             </div>
           </div>
 
-          {/* ── Ações Rápidas ─────────────────────────────────── */}
-          {!isRejected && !isPending && (
-            <div className="card">
-              <div className="flex items-center gap-2 mb-3">
-                <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <p className="font-bold text-gray-800 text-sm">Ações Rápidas</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {isProf && (req.locationLabel || req.location) && (
-                  <QuickBtn href={mapUrl}
-                    icon="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    label="Abrir Rota" />
-                )}
-                {isProf && clientPhone && (
-                  <QuickBtn href={`tel:${clientPhone}`}
-                    icon="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    label="Ligar" />
-                )}
-                <QuickBtn
-                  onClick={clientPhone ? shareWhatsApp : undefined}
-                  disabled={!clientPhone}
-                  icon="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"
-                  label={clientPhone ? 'WhatsApp' : 'Sem celular cadastrado'}
-                />
-              </div>
-            </div>
-          )}
-
           {/* ═══════════════════════════════════════════════════════
                ACTION AREA
                Layout (matches mobile):
-               1. Abrir Chat  — green filled, always first (except pending/rejected)
-               2. Status-specific action buttons — all dark green
+               1. Abrir Chat  - green filled, always first (except pending/rejected)
+               2. Status-specific action buttons - all dark green
                3. Finalizado card + confirmation chips
                4. Rate button (client only)
           ═══════════════════════════════════════════════════════ */}
@@ -636,7 +730,7 @@ export default function RequestDetailsPage() {
               </div>
             )}
 
-            {/* ── Abrir Chat — ALWAYS first (green filled) ─── */}
+            {/* ── Abrir Chat - ALWAYS first (green filled) ─── */}
             {!isPending && !isRejected && (
               <button
                 onClick={() => navigate(`/chat/${req?.chatId || directChatId(req.clientId, req.professionalId)}`)}
@@ -653,6 +747,16 @@ export default function RequestDetailsPage() {
             {/* ── Professional-only action buttons ─────────── */}
             {isProf && (
               <>
+                {/* EMERGÊNCIA em atendimento: encerrar direto, sem o
+                    fluxo de visita domiciliar (a_caminho → iniciar → ...). */}
+                {isEmergency && isActiveStatus && (
+                  <GreenBtn
+                    onClick={() => triggerStatus('finalizado')}
+                    disabled={updating} loading={updating}
+                    iconPath="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    label="Finalizar atendimento" />
+                )}
+
                 {/* PENDING: accept / reject */}
                 {isPending && (
                   <div className="flex gap-3">
@@ -688,35 +792,11 @@ export default function RequestDetailsPage() {
                 {/* ACEITO → Enviar Orçamento OU A Caminho */}
                 {status === 'aceito' && isProf && (
                   <div className="flex flex-col gap-2">
-                    <QuoteComposer requestId={id} onSent={() => {}} />
+                    <QuoteComposer requestId={id} req={req} onSent={() => {}} />
                     <GreenBtn onClick={() => triggerStatus('a_caminho')} disabled={updating} loading={updating}
                       iconPath="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM3 8h14l-1 7H4L3 8z"
                       label="A Caminho (sem orçamento)" />
                   </div>
-                )}
-                {status === 'aceito' && !isProf && (
-                  <p className="text-center text-sm text-gray-500 py-3">Aguardando orçamento ou deslocamento do veterinário</p>
-                )}
-
-                {/* ORÇAMENTO → cliente aprova */}
-                {status === 'orcamento' && !isProf && req.quote && (
-                  <QuoteViewer
-                    quote={req.quote}
-                    onApprove={async () => {
-                      await updateDoc(doc(db, 'requests', id), {
-                        status: 'a_caminho',
-                        'quote.approvedAt': new Date().toISOString(),
-                        statusHistory: [...(req.statusHistory || []), { status: 'a_caminho', at: new Date().toISOString() }],
-                      })
-                    }}
-                    onReject={async () => {
-                      await updateDoc(doc(db, 'requests', id), {
-                        status: 'aceito',
-                        quote: null,
-                        statusHistory: [...(req.statusHistory || []), { status: 'aceito', at: new Date().toISOString() }],
-                      })
-                    }}
-                  />
                 )}
                 {status === 'orcamento' && isProf && (
                   <p className="text-center text-sm text-gray-500 py-3">Aguardando aprovação do orçamento pelo cliente</p>
@@ -755,6 +835,32 @@ export default function RequestDetailsPage() {
               </>
             )}
 
+            {/* ── Cliente: aguardando orçamento / deslocamento ─── */}
+            {status === 'aceito' && !isProf && (
+              <p className="text-center text-sm text-gray-500 py-3">Aguardando orçamento ou deslocamento do veterinário</p>
+            )}
+
+            {/* ── Cliente: vê e aprova/recusa o orçamento ──────── */}
+            {status === 'orcamento' && !isProf && req.quote && (
+              <QuoteViewer
+                quote={req.quote}
+                onApprove={async () => {
+                  await updateDoc(doc(db, 'requests', id), {
+                    status: 'a_caminho',
+                    'quote.approvedAt': new Date().toISOString(),
+                    statusHistory: [...(req.statusHistory || []), { status: 'a_caminho', at: new Date().toISOString() }],
+                  }).catch(() => showToast('Erro ao aprovar orçamento', 'error'))
+                }}
+                onReject={async () => {
+                  await updateDoc(doc(db, 'requests', id), {
+                    status: 'aceito',
+                    quote: null,
+                    statusHistory: [...(req.statusHistory || []), { status: 'aceito', at: new Date().toISOString() }],
+                  }).catch(() => showToast('Erro ao recusar orçamento', 'error'))
+                }}
+              />
+            )}
+
             {/* ── Finalizado: confirmation + rating flow ────── */}
             {isFinished && (
               <FinalizadoCard
@@ -762,9 +868,16 @@ export default function RequestDetailsPage() {
                 isClient={user?.uid === req.clientId}
                 isProf={isProf}
                 onClientConfirm={async () => {
-                  await updateDoc(doc(db, 'requests', id), { confirmFinish_client: true }).catch(() => {})
-                  if (req.appointmentId) {
-                    await updateDoc(doc(db, 'appointments', req.appointmentId), { confirmFinish_client: true }).catch(() => {})
+                  try {
+                    // A confirmação do cliente encerra o atendimento -
+                    // falhar em silêncio deixaria o pedido preso.
+                    await updateDoc(doc(db, 'requests', id), { confirmFinish_client: true })
+                    if (req.appointmentId) {
+                      await updateDoc(doc(db, 'appointments', req.appointmentId), { confirmFinish_client: true })
+                        .catch(() => {})   // espelho do agendamento: não bloqueia
+                    }
+                  } catch (e) {
+                    showToast(friendlyError(e, 'Não foi possível confirmar. Tente novamente.'), 'error')
                   }
                 }}
                 onRate={() => navigate(`/rate/${id}`)}
@@ -804,30 +917,9 @@ function ClientRow({ iconPath, label, value, href }) {
   return <div>{inner}</div>
 }
 
-function QuickBtn({ onClick, href, icon, label, disabled }) {
-  const cls = `flex items-center gap-3 px-4 py-3.5 rounded-xl transition-colors w-full
-    ${disabled
-      ? 'bg-gray-50 opacity-50 cursor-not-allowed'
-      : 'bg-gray-50 hover:bg-primary/5 cursor-pointer'}`
-  const content = (
-    <>
-      <div className={`p-2 rounded-lg flex-shrink-0 ${disabled ? 'bg-gray-200' : 'bg-primary/10'}`}>
-        <svg className={`w-4 h-4 ${disabled ? 'text-gray-400' : 'text-primary'}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-        </svg>
-      </div>
-      <span className={`text-sm font-semibold truncate ${disabled ? 'text-gray-400' : 'text-gray-700'}`}>
-        {label}
-      </span>
-    </>
-  )
-  if (href && !disabled) return <a href={href} target="_blank" rel="noreferrer" className={cls}>{content}</a>
-  return <button onClick={!disabled ? onClick : undefined} disabled={disabled} className={cls}>{content}</button>
-}
 
 /* ── Reusable coloured action button ─────────────────────────── */
-/* ── GreenBtn — unified dark-green action button ─────────────── */
+/* ── GreenBtn - unified dark-green action button ─────────────── */
 function GreenBtn({ onClick, disabled, loading, iconPath, iconFill, label, flex1 }) {
   return (
     <button
@@ -855,7 +947,7 @@ function GreenBtn({ onClick, disabled, loading, iconPath, iconFill, label, flex1
   )
 }
 
-/* ── FinalizadoCard — handles the full post-finish flow ──────────
+/* ── FinalizadoCard - handles the full post-finish flow ──────────
    States:
    A) client NOT confirmed → orange "aguardando" + (client) confirm CTA / (prof) waiting note
    B) client confirmed, NOT rated → green "concluído" + (client) rate CTA
@@ -956,7 +1048,7 @@ function FinalizadoCard({ req, isClient, isProf, onClientConfirm, onRate }) {
         </div>
       </div>
 
-      {/* Client confirm CTA — green & enabled */}
+      {/* Client confirm CTA - green & enabled */}
       {isClient && (
         <button
           onClick={handleClientConfirm}
@@ -997,29 +1089,41 @@ function ConfirmChip({ filled, label }) {
    O veterinário pode ADICIONAR registros (vacina, medicação, achados)
    durante ou após o atendimento; ficam no prontuário do pet. ──── */
 function PetBlock({ req, isProf, userUid }) {
-  const [open, setOpen] = useState(false)
+  // 'notas' = anotações livres do atendimento; 'prontuario' = histórico
+  // clínico do animal. Antes o prontuário abria outra página e o
+  // veterinário perdia o atendimento de vista no meio da consulta.
+  const [aba, setAba] = useState(null)
+  const ownerId = req.petOwnerId || req.clientId
+
   return (
     <div className="card">
       <div className="flex items-center gap-3">
-        <div className="bg-primary/8 p-2 rounded-lg">
-          <span className="text-lg">🐾</span>
+        <div className="bg-primary/10 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M12 21s-6.716-4.35-8.657-8.232C1.79 9.61 3.13 6 6.5 6c1.79 0 3.02 1.02 3.75 2.02L12 9.75l1.75-1.73C14.48 7.02 15.71 6 17.5 6c3.37 0 4.71 3.61 3.157 6.768C18.716 16.65 12 21 12 21z" />
+          </svg>
         </div>
+
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-800 text-sm">{req.petName}</p>
-          <p className="text-xs text-gray-400">{req.petSpecies || 'Animal'}</p>
+          <p className="font-bold text-gray-800 text-sm truncate">{req.petName}</p>
+          <p className="text-xs text-gray-500 truncate">{req.petSpecies || 'Animal'}</p>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => setOpen(o => !o)}
-            className="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-primary/5 transition-colors">
-            {open ? 'Fechar' : 'Notas'}
-          </button>
-          <a href={`/medical-record/${req.petId}`}
-            className="text-xs font-bold text-primary px-3 py-1.5 rounded-full hover:bg-primary/5 transition-colors no-underline">
-            Prontuário ↗
-          </a>
+
+        {/* Os dois botões usam a MESMA caixa. Antes um era <button> e o
+            outro <a>, e a altura mínima global não vale para link inline
+            - por isso desalinhavam. */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <PetTab ativo={aba === 'notas'} onClick={() => setAba(a => a === 'notas' ? null : 'notas')}>
+            Notas
+          </PetTab>
+          <PetTab ativo={aba === 'prontuario'} onClick={() => setAba(a => a === 'prontuario' ? null : 'prontuario')}>
+            Prontuário
+          </PetTab>
         </div>
       </div>
-      {open && (
+
+      {aba === 'notas' && (
         <PetRecords
           ownerId={req.petOwnerId}
           petId={req.petId}
@@ -1028,17 +1132,116 @@ function PetBlock({ req, isProf, userUid }) {
           authorName={isProf ? (req.professionalName || 'Veterinário') : ''}
         />
       )}
+
+      {aba === 'prontuario' && (
+        <ProntuarioPreview petId={req.petId} ownerId={ownerId} />
+      )}
     </div>
   )
 }
 
+/** Botão de aba do bloco do animal - caixa única, para os dois alinharem. */
+function PetTab({ ativo, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`h-9 px-3 rounded-full text-xs font-bold leading-none
+                  inline-flex items-center justify-center whitespace-nowrap
+                  transition-all duration-200 hover:-translate-y-px active:translate-y-0
+                  ${ativo
+                    ? 'bg-primary text-white'
+                    : 'text-primary hover:bg-primary/5'}`}
+    >
+      {children}
+    </button>
+  )
+}
 
+/**
+ * Prévia do prontuário dentro do atendimento.
+ *
+ * Mostra as últimas entradas do histórico clínico sem tirar o
+ * veterinário da tela do atendimento. O prontuário completo continua
+ * existindo - o link no rodapé leva até ele quando for preciso editar.
+ */
+function ProntuarioPreview({ petId, ownerId }) {
+  const [entradas, setEntradas] = useState(null)
+
+  useEffect(() => {
+    if (!petId) return
+    return onSnapshot(
+      query(collection(db, 'medicalRecords', petId, 'entries'), orderBy('date', 'desc'), limit(5)),
+      snap => setEntradas(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      e => { console.error('[prontuário] prévia:', e); setEntradas([]) },
+    )
+  }, [petId])
+
+  const linkCompleto = `/medical-record/${petId}?owner=${ownerId}`
+
+  return (
+    <div className="mt-3 pt-3 border-t border-gray-100 flex flex-col gap-2 animate-fade-up">
+      {entradas === null ? (
+        <div className="flex justify-center py-4"><Spinner size={18} color="#375337" /></div>
+      ) : entradas.length === 0 ? (
+        <p className="text-xs text-gray-500 text-center py-3">
+          Este animal ainda não tem histórico clínico.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {entradas.map(e => {
+            const t = ENTRY_TYPES[e.type] || ENTRY_TYPES.consulta
+            return (
+              <div key={e.id} className="flex items-start gap-2.5 bg-gray-50 rounded-xl px-3 py-2.5">
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ${t.cor}`}>
+                  {t.rotulo}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-gray-800 truncate">{e.title || t.rotulo}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {formatEntryDate(e.date)}
+                    {e.vetName ? ` · ${e.vetName}` : ''}
+                  </p>
+                  {e.notes && (
+                    <p className="text-[11px] text-gray-600 mt-1 line-clamp-2 leading-relaxed">{e.notes}</p>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <Link to={linkCompleto}
+        className="btn-outline btn-sm btn-block no-underline mt-1">
+        Abrir prontuário completo
+      </Link>
+    </div>
+  )
+}
+
+/** Rótulo e cor por tipo de entrada, espelhando o prontuário completo. */
+const ENTRY_TYPES = {
+  consulta:    { rotulo: 'Consulta',    cor: 'text-blue-600 bg-blue-50' },
+  vacina:      { rotulo: 'Vacina',      cor: 'text-green-600 bg-green-50' },
+  exame:       { rotulo: 'Exame',       cor: 'text-purple-600 bg-purple-50' },
+  medicamento: { rotulo: 'Medicamento', cor: 'text-orange-600 bg-orange-50' },
+  cirurgia:    { rotulo: 'Cirurgia',    cor: 'text-red-600 bg-red-50' },
+}
+
+/** A data da entrada pode vir como Timestamp ou string ISO. */
+function formatEntryDate(d) {
+  try {
+    const data = d?.toDate ? d.toDate() : d ? new Date(d) : null
+    return data && !isNaN(data) ? format(data, 'dd/MM/yyyy') : '-'
+  } catch { return '-' }
+}
+
+
+/** Rótulo do histórico. Sem 'orcamento' no mapa, a linha do tempo
+ *  mostrava o valor cru do banco, em minúsculas. */
 function statusLabel(s) {
-  const map = {
-    aceito: 'Aceito', a_caminho: 'A Caminho', em_andamento: 'Em Andamento',
-    pausado: 'Pausado', finalizado: 'Finalizado', rejeitado: 'Recusado',
-  }
-  return map[(s || '').toLowerCase()] || s
+  return statusInfo(s).label
 }
 
 function StatusTimeline({ req }) {
@@ -1104,7 +1307,7 @@ export async function downloadReceiptPDF(req) {
   pdf.rect(0, 0, W, 30, 'F')
   pdf.setTextColor(255, 255, 255)
   pdf.setFontSize(16); pdf.setFont(undefined, 'bold')
-  pdf.text('Avante — Comprovante de Atendimento', 14, 19)
+  pdf.text('Avante - Comprovante de Atendimento', 14, 19)
 
   y = 44
   pdf.setTextColor(40, 40, 40)
@@ -1113,13 +1316,13 @@ export async function downloadReceiptPDF(req) {
   const when = req.requestedTimestamp?.toDate?.()
   const rows = [
     ['Serviço', req.service || 'Atendimento veterinário'],
-    ['Profissional', req.professionalName || '—'],
-    ['Cliente', req.clientName || '—'],
-    ['Animal', req.petName ? `${req.petName} (${req.petSpecies || ''})` : '—'],
-    ['Data do atendimento', when ? format(when, "dd/MM/yyyy 'às' HH:mm") : '—'],
-    ['Local', req.location || '—'],
+    ['Profissional', req.professionalName || '-'],
+    ['Cliente', req.clientName || '-'],
+    ['Animal', req.petName ? `${req.petName} (${req.petSpecies || ''})` : '-'],
+    ['Data do atendimento', when ? format(when, "dd/MM/yyyy 'às' HH:mm") : '-'],
+    ['Local', req.location || '-'],
     ['Status', 'Finalizado'],
-    ['Código', req.id || '—'],
+    ['Código', req.id || '-'],
   ]
 
   rows.forEach(([label, value]) => {
@@ -1141,18 +1344,21 @@ export async function downloadReceiptPDF(req) {
   y = Math.max(y + 10, 200)
   pdf.setDrawColor(220); pdf.line(14, y, W - 14, y); y += 8
   pdf.setFontSize(9); pdf.setTextColor(130)
-  pdf.text(`Documento gerado pelo app Avante em ${format(new Date(), 'dd/MM/yyyy HH:mm')}.`, 14, y)
+  pdf.text(`Documento gerado pelo app AVANTE em ${format(new Date(), 'dd/MM/yyyy HH:mm')}.`, 14, y)
   pdf.text('Este comprovante não substitui receituário ou atestado veterinário.', 14, y + 5)
 
   pdf.save(`avante-atendimento-${(req.id || 'comprovante').slice(0, 8)}.pdf`)
 }
 
 
-/* ── QuoteComposer — vet envia orçamento ─────────────────────── */
-function QuoteComposer({ requestId, onSent }) {
+/* ── QuoteComposer - vet envia orçamento ─────────────────────── */
+function QuoteComposer({ requestId, req, onSent }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([{ desc: '', qty: 1, price: '' }])
   const [saving, setSaving] = useState(false)
+  // Sugestão da IA aguardando decisão. Nunca entra direto nos itens:
+  // um orçamento errado vai para o cliente e vira preço combinado.
+  const [sugestao, setSugestao] = useState(null)
 
   function addItem() { setItems(prev => [...prev, { desc: '', qty: 1, price: '' }]) }
   function removeItem(i) { setItems(prev => prev.filter((_, idx) => idx !== i)) }
@@ -1191,7 +1397,61 @@ function QuoteComposer({ requestId, onSent }) {
 
   return (
     <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
-      <p className="font-bold text-primary text-sm">Orçamento</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-bold text-primary text-sm">Orçamento</p>
+        <AIButton
+          mode="orcamento"
+          json
+          label="Sugerir com IA"
+          title="A IA monta uma proposta a partir do pedido; você confere e ajusta."
+          build={() => ({
+            prompt: [
+              req?.serviceType && `Serviço: ${req.serviceType}`,
+              req?.petName && `Animal: ${req.petName}`,
+              req?.description && `Relato: ${req.description}`,
+            ].filter(Boolean).join('. ') || 'Atendimento veterinário domiciliar',
+            context: {
+              servico: req?.serviceType,
+              animal: req?.petName,
+              descricao: req?.description || req?.notes,
+              cidade: req?.locationAddress,
+            },
+          })}
+          onResult={r => {
+            const lista = Array.isArray(r?.items) ? r.items : []
+            if (!lista.length) return showToast('A IA não conseguiu montar um orçamento.', 'error')
+            setSugestao({
+              items: lista.slice(0, 6).map(i => ({
+                desc: String(i.desc || '').slice(0, 80),
+                qty: Number(i.qty) > 0 ? Number(i.qty) : 1,
+                price: Number(i.price) > 0 ? String(Number(i.price).toFixed(2)) : '',
+              })),
+              observacao: String(r?.observacao || ''),
+            })
+          }}
+        />
+      </div>
+
+      {sugestao && (
+        <AISuggestion
+          onAccept={() => { setItems(sugestao.items); setSugestao(null) }}
+          onDiscard={() => setSugestao(null)}
+          acceptLabel="Preencher orçamento"
+        >
+          <ul className="flex flex-col gap-1">
+            {sugestao.items.map((i, idx) => (
+              <li key={idx} className="flex justify-between gap-3">
+                <span className="truncate">{i.desc}{i.qty > 1 ? ` × ${i.qty}` : ''}</span>
+                <span className="font-semibold flex-shrink-0">R$ {i.price || '-'}</span>
+              </li>
+            ))}
+          </ul>
+          {sugestao.observacao && (
+            <p className="text-xs text-gray-500 mt-2">{sugestao.observacao}</p>
+          )}
+        </AISuggestion>
+      )}
+
       {items.map((item, i) => (
         <div key={i} className="flex gap-2 items-center">
           <input value={item.desc} onChange={e => updateItem(i, 'desc', e.target.value)}
@@ -1226,7 +1486,7 @@ function QuoteComposer({ requestId, onSent }) {
   )
 }
 
-/* ── QuoteViewer — cliente vê e aprova orçamento ─────────────── */
+/* ── QuoteViewer - cliente vê e aprova orçamento ─────────────── */
 function QuoteViewer({ quote, onApprove, onReject }) {
   const [approving, setApproving] = useState(false)
   return (

@@ -82,7 +82,7 @@ export default function ConfirmDataPage() {
     setSaving(true)
     try {
       // Perfil público: visível para clientes na listagem.
-      // CPF e data de nascimento NÃO entram aqui — vão para a
+      // CPF e data de nascimento NÃO entram aqui - vão para a
       // subcoleção privada, legível apenas pelo próprio usuário
       // (reforçado pelo firestore.rules).
       const publicProfile = {
@@ -225,13 +225,13 @@ export default function ConfirmDataPage() {
                         key={s}
                         type="button"
                         onClick={() => toggleSpecialty(s)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                           active
                             ? 'bg-primary text-white border-primary'
                             : 'bg-white text-gray-600 border-gray-300 hover:border-primary'
                         }`}
                       >
-                        {active && '✓ '}{s}
+                        {active && <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}{s}
                       </button>
                     )
                   })}

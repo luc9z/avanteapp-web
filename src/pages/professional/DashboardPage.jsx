@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   collection, doc, onSnapshot, query, where, orderBy, getDocs,
@@ -15,12 +15,13 @@ import AdBanner from '../../components/common/AdBanner'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { directChatId } from '../../services/directChat'
 import { isPending, isActive, normalizeStatus } from '../../utils/status'
+import { vetCoversSpecies } from '../../utils/specialties'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 /* ── helpers ─────────────────────────────────────────────────── */
 function formatDate(ts) {
-  if (!ts) return '—'
+  if (!ts) return '-'
   const d = ts?.toDate ? ts.toDate() : new Date(ts)
   return format(d, 'dd/MM/yyyy - HH:mm', { locale: ptBR })
 }
@@ -82,15 +83,23 @@ export default function DashboardPage() {
         snap.docs.map(d => ({ id: d.id, ...d.data() }))
           .filter(r => !r.professionalId && r.urgentExpiry && new Date(r.urgentExpiry) > now)
       )
-    }, () => {})
+    }, err => console.error('[urgências] listener falhou:', err))
   }, [])
 
-  // Conversas com mensagem do cliente aguardando resposta —
+  // Emergências só aparecem para vets cuja área de atuação (specialties)
+  // cobre a espécie da solicitação. Compat: requests antigos sem `species`
+  // (undefined) passam para todos, para não sumirem retroativamente.
+  const visibleUrgents = useMemo(
+    () => urgentRequests.filter(r => vetCoversSpecies(profile?.specialties, r.species)),
+    [urgentRequests, profile?.specialties]
+  )
+
+  // Conversas com mensagem do cliente aguardando resposta -
   // este é o sinal real de "mensagens", não solicitações pendentes.
   useEffect(() => {
     if (!uid) return
     return onSnapshot(
-      query(collection(db, 'chats'), where('professionalId', '==', uid)),
+      query(collection(db, 'chats'), where('participants', 'array-contains', uid)),
       snap => {
         const withMsg = snap.docs.filter(d => !!d.data().lastMessage)
         setTotalChats(withMsg.length)
@@ -192,10 +201,11 @@ export default function DashboardPage() {
   }
 
   async function markAllRead() {
-    for (const r of requests.filter(x => !x.professionalRead)) {
-      await updateDoc(doc(db, 'requests', r.id), { professionalRead: true }).catch(() => {})
-    }
+    const toMark = requests.filter(x => !x.professionalRead)
     setNotifOpen(false)
+    await Promise.all(
+      toMark.map(r => updateDoc(doc(db, 'requests', r.id), { professionalRead: true }).catch(() => {}))
+    )
   }
 
   if (loadingProfile) return (
@@ -209,22 +219,14 @@ export default function DashboardPage() {
   const name = profile?.name || 'Profissional'
   const isOnline = profile?.is_online === true
 
-  // Tema do card conforme o plano: free=verde, essencial=azul, premium=dourado
+  // Tema do card conforme o plano. Todos partem do verde do sistema -
+  // o plano é sinalizado por um acento sutil, não trocando a cor inteira.
   const planKey = ['premium', 'destaque'].includes(profile?.plan) ? 'premium'
     : profile?.plan === 'essencial' ? 'essencial' : 'free'
   const CARD_THEME = {
-    free: {
-      card: 'border border-emerald-400/40 ring-1 ring-emerald-300/10 shadow-[0_8px_30px_rgba(16,185,129,0.25)] bg-gradient-to-br from-emerald-600 via-emerald-700 to-green-900',
-      glow: 'bg-emerald-400/10',
-    },
-    essencial: {
-      card: 'border border-sky-400/40 ring-1 ring-sky-300/10 shadow-[0_8px_30px_rgba(56,189,248,0.25)] bg-gradient-to-br from-sky-600 via-blue-700 to-indigo-900',
-      glow: 'bg-sky-400/10',
-    },
-    premium: {
-      card: 'border border-amber-300/50 ring-1 ring-amber-200/20 shadow-[0_8px_30px_rgba(245,158,11,0.3)] bg-gradient-to-br from-amber-500 via-amber-600 to-orange-800',
-      glow: 'bg-amber-300/15',
-    },
+    free:      { card: 'plan-card plan-free',      glow: 'bg-white/5',            badge: 'plan-badge-free' },
+    essencial: { card: 'plan-card plan-essencial', glow: 'bg-emerald-300/10',     badge: 'plan-badge-essencial' },
+    premium:   { card: 'plan-card plan-premium',   glow: 'bg-amber-200/10',       badge: 'plan-badge-premium' },
   }[planKey]
   const rating = liveRating?.avg ?? profile?.averageRating ?? 0
   const ratingCount = liveRating?.count ?? profile?.ratingCount ?? 0
@@ -262,7 +264,7 @@ export default function DashboardPage() {
       <div className="px-4 py-4 pb-nav flex flex-col gap-4">
 
         {/* ── Profile card (cor conforme o plano) ─────────────── */}
-        <div className={`relative rounded-3xl p-5 text-white overflow-hidden ${CARD_THEME.card}`}>
+        <div className={`${CARD_THEME.card} !p-5`}>
           {/* Decorative glow */}
           <div className="absolute -right-8 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
           <div className={`absolute -left-6 -bottom-10 w-32 h-32 rounded-full blur-2xl pointer-events-none ${CARD_THEME.glow}`} />
@@ -280,148 +282,58 @@ export default function DashboardPage() {
             <div className="flex-1 min-w-0">
               <p className="font-bold text-lg truncate">{name}</p>
               <p className="text-white/75 text-sm">Médico Veterinário</p>
-              <p className="text-white/60 text-xs">CRMV {profile?.council || '—'}</p>
+              <p className="text-white/60 text-xs">CRMV {profile?.council || '-'}</p>
             </div>
             {(() => {
+              const LABEL = { free: 'Free', essencial: 'Essencial', premium: 'Premium', destaque: 'Premium' }
+              const ICON  = { free: '○', essencial: '◆', premium: '★', destaque: '★' }
               const plan = profile?.plan || 'free'
-              const cfg = {
-                free:      { label: 'Free',     icon: '○', cls: 'bg-white/10 text-white/80 border border-white/20' },
-                essencial: { label: 'Essencial', icon: '◆', cls: 'bg-sky-500/90 text-white border border-sky-300/40' },
-                premium:   { label: 'Premium', icon: '★', cls: 'bg-gradient-to-br from-amber-300 to-amber-500 text-amber-950 border border-amber-200/50 shadow-lg shadow-amber-500/20' },
-                destaque:  { label: 'Premium', icon: '★', cls: 'bg-gradient-to-br from-amber-300 to-amber-500 text-amber-950 border border-amber-200/50 shadow-lg shadow-amber-500/20' },
-              }[plan] || { label: plan, icon: '○', cls: 'bg-white/10 text-white/80' }
               return (
                 <Link to="/plans"
-                  className={`flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-lg flex-shrink-0
-                              self-start active:scale-95 transition-transform ${cfg.cls}`}>
-                  <span className="text-[10px]">{cfg.icon}</span>
-                  {cfg.label}
+                  className={`plan-badge ${CARD_THEME.badge} self-start active:scale-95 transition-transform`}>
+                  <span className="text-[10px]">{ICON[plan] || '○'}</span>
+                  {LABEL[plan] || plan}
                 </Link>
               )
             })()}
           </div>
 
           {/* Online toggle inside card */}
-          <div className="relative bg-black/20 backdrop-blur-sm rounded-2xl px-4 py-2.5 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5 flex-shrink-0">
-                {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-60" />}
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOnline ? 'bg-green-400' : 'bg-white/40'}`} />
+          <button
+            onClick={toggleOnline}
+            disabled={updatingStatus}
+            data-coach="vet-online"
+            className={`btn-row ${
+              isOnline
+                ? 'bg-green-500/20 border border-green-400/40'
+                : 'bg-white/10 border border-white/20'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3 flex-shrink-0">
+                {isOnline && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-300 opacity-70" />}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${isOnline ? 'bg-green-400' : 'bg-white/30'}`} />
               </span>
-              <span className="text-sm font-medium text-white/90">
-                {isOnline ? 'Você está online' : 'Você está offline'}
-              </span>
+              <div className="text-left">
+                <p className={`text-sm font-bold leading-none ${isOnline ? 'text-green-300' : 'text-white/60'}`}>
+                  {isOnline ? 'Você está online' : 'Você está offline'}
+                </p>
+                <p className="text-[11px] text-white/40 mt-0.5">
+                  {isOnline ? 'Clientes podem te encontrar' : 'Toque para ficar disponível'}
+                </p>
+              </div>
             </div>
             {updatingStatus
               ? <Spinner size={16} color="white" />
               : (
-                <button
-                  onClick={toggleOnline}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOnline ? 'bg-green-400' : 'bg-white/25'}`}
-                  aria-label="Alternar online"
-                >
-                  <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${isOnline ? 'translate-x-5' : 'translate-x-1'}`} />
-                </button>
+                <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${isOnline ? 'bg-green-400' : 'bg-white/20'}`}>
+                  <span className={`inline-block h-4.5 w-4.5 transform rounded-full bg-white shadow-md transition-transform ${isOnline ? 'translate-x-6' : 'translate-x-1'}`}
+                        style={{ width: '18px', height: '18px' }} />
+                </div>
               )
             }
-          </div>
+          </button>
         </div>
-
-        {/* ── Área de atuação ────────────────────────────────── */}
-        <div className="card">
-          <p className="text-xs text-gray-400 font-medium mb-1">Área de atuação</p>
-          <p className="text-primary font-semibold text-sm leading-snug">{specialties}</p>
-        </div>
-
-        {/* ── Rating ─────────────────────────────────────────── */}
-        <div className="card flex items-center gap-4">
-          <div className="bg-yellow-50 p-3 rounded-xl flex-shrink-0">
-            <svg className="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="font-bold text-primary">Sua avaliação</p>
-            <p className="text-gray-400 text-xs">
-              {ratingCount > 0
-                ? `Média de ${ratingCount} avaliaç${ratingCount > 1 ? 'ões' : 'ão'} · ao vivo`
-                : 'Você ainda não recebeu avaliações'}
-            </p>
-          </div>
-          <span className="text-3xl font-bold text-primary">{ratingCount > 0 ? Number(rating).toFixed(1) : '—'}</span>
-          <Link to="/ratings" className="text-primary">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
-
-        {/* ── Atendimento Atual ──────────────────────────────── */}
-        {activeRequests.length > 0 && (
-          <div>
-            <p className="section-title">Atendimento Atual</p>
-            <div className="flex flex-col gap-3">
-              {activeRequests.slice(0, 2).map(r => {
-                const s = normalizeStatus(r.status)
-                const { label: sLabel, color: sColor } = ACTIVE_STATUS_LABEL[s] || { label: r.status, color: 'bg-gray-400 text-white' }
-                return (
-                  <div key={r.id} className="rounded-2xl bg-primary p-4 shadow-lg text-white">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-base flex-shrink-0">
-                        {(r.clientName || '?')[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold truncate">{r.clientName}</p>
-                        <p className="text-white/70 text-xs truncate">{r.service}</p>
-                      </div>
-                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${sColor}`}>
-                        {sLabel}
-                      </span>
-                    </div>
-
-                    {/* Primary action */}
-                    <button
-                      onClick={() => navigate(`/request/${r.id}`)}
-                      className="w-full bg-white/15 hover:bg-white/25 text-white font-semibold
-                                 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mb-2"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                      </svg>
-                      Ir ao Atendimento
-                    </button>
-
-                    {/* Secondary actions */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => navigate(`/request/${r.id}`)}
-                        className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium
-                                   py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
-                        </svg>
-                        Detalhes
-                      </button>
-                      <button
-                        onClick={() => navigate(`/chat/${r.chatId || directChatId(r.clientId, r.professionalId)}`)}
-                        className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium
-                                   py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        Chat
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ── Notificações push ──────────────────────────────── */}
         <EnablePushBanner
@@ -429,97 +341,8 @@ export default function DashboardPage() {
           message="Ative as notificações para receber cada nova solicitação na hora, mesmo com o app fechado."
         />
 
-        {/* ── Ações Rápidas ──────────────────────────────────── */}
-        <div>
-          <p className="section-title">Ações Rápidas</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Link to="/agenda" className="card flex flex-col items-center gap-2 py-5 hover:shadow-card-hover transition-shadow active:scale-95">
-              <div className="bg-primary/10 p-3 rounded-xl">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className="font-semibold text-primary text-sm">Agenda</span>
-            </Link>
-            <Link to="/chats" className="card flex flex-col items-center gap-2 py-5 hover:shadow-card-hover transition-shadow active:scale-95">
-              <div className="relative bg-primary/10 p-3 rounded-xl">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                {unreadChats > 0 ? (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {unreadChats}
-                  </span>
-                ) : totalChats > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-gray-300 text-gray-600 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                    {totalChats}
-                  </span>
-                )}
-              </div>
-              <span className="font-semibold text-primary text-sm">Conversas</span>
-              {unreadChats === 0 && totalChats > 0 && (
-                <span className="text-[10px] text-gray-400 -mt-1">tudo lido ✓</span>
-              )}
-            </Link>
-          </div>
-        </div>
-
-        {/* ── Plano / monetização (some no Premium) ───────────── */}
-        {!['premium', 'destaque'].includes(profile?.plan) && (
-          <Link to="/plans"
-            className="flex items-center gap-3 rounded-2xl p-4 bg-gradient-to-r from-amber-400 to-amber-500
-                       shadow-[0_4px_16px_rgba(245,158,11,0.3)] hover:opacity-95 transition-all active:scale-[0.99]">
-            <span className="text-2xl">⭐</span>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-white text-sm">Seja Premium</p>
-              <p className="text-white/85 text-xs">Apareça primeiro na busca e receba mais pedidos</p>
-            </div>
-            <svg className="w-5 h-5 text-white/80 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        )}
-
-        {/* Anúncios — apenas para veterinários no plano Free */}
-        {(!profile?.plan || profile?.plan === 'free') && (
-          <AdBanner audience="vet" />
-        )}
-
-        {/* ── Resumo do Mês ──────────────────────────────────── */}
-        <div>
-          <p className="section-title">Resumo do Mês</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => navigate('/pending-requests')}
-              className="card text-left cursor-pointer hover:shadow-card-hover active:scale-[0.98] transition-all">
-              <div className="flex items-center justify-between mb-1">
-                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
-                </svg>
-                <span className="text-2xl font-bold text-blue-500">{metrics.monthly}</span>
-              </div>
-              <p className="text-primary font-semibold text-sm">Solicitações</p>
-              <p className="text-gray-400 text-xs">novas no mês</p>
-            </button>
-            <button type="button" onClick={() => navigate('/reports')}
-              className="card text-left cursor-pointer hover:shadow-card-hover active:scale-[0.98] transition-all">
-              <div className="flex items-center justify-between mb-1">
-                <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="text-2xl font-bold text-purple-500">{metrics.clients}</span>
-              </div>
-              <p className="text-primary font-semibold text-sm">Clientes</p>
-              <p className="text-gray-400 text-xs">atendidos</p>
-            </button>
-          </div>
-        </div>
-
         {/* ── Urgências ─────────────────────────────────────── */}
-        {urgentRequests.length > 0 && (
+        {visibleUrgents.length > 0 && (
           <div>
             <p className="section-title !mb-2 flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 relative">
@@ -528,11 +351,11 @@ export default function DashboardPage() {
               </span>
               Atendimentos Urgentes
               <span className="bg-red-500 text-white text-[11px] font-bold rounded-full px-1.5 py-0.5">
-                {urgentRequests.length}
+                {visibleUrgents.length}
               </span>
             </p>
             <div className="flex flex-col gap-2.5">
-              {urgentRequests.map(r => {
+              {visibleUrgents.map(r => {
                 const expiry = r.urgentExpiry ? new Date(r.urgentExpiry) : null
                 const minsLeft = expiry ? Math.max(0, Math.round((expiry - new Date()) / 60000)) : null
                 return (
@@ -561,7 +384,7 @@ export default function DashboardPage() {
                         showToast('Urgência aceita! Entre em contato com o cliente.', 'success')
                         navigate(`/request/${r.id}`)
                       }}
-                      className="w-full py-2.5 rounded-xl bg-red-500 text-white font-bold text-sm hover:bg-red-600 transition-colors"
+                      className="btn-danger-solid btn-block"
                     >
                       Aceitar urgência
                     </button>
@@ -572,8 +395,77 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* ── Atendimento Atual ──────────────────────────────── */}
+        {activeRequests.length > 0 && (
+          <div>
+            <p className="section-title">Atendimento Atual</p>
+            <div className="flex flex-col gap-3">
+              {activeRequests.slice(0, 2).map(r => {
+                const s = normalizeStatus(r.status)
+                const { label: sLabel, color: sColor } = ACTIVE_STATUS_LABEL[s] || { label: r.status, color: 'bg-gray-400 text-white' }
+                return (
+                  <div
+                    key={r.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/request/${r.id}`)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/request/${r.id}`) }
+                    }}
+                    className="rounded-2xl bg-primary p-4 shadow-lg text-white cursor-pointer
+                               transition-transform duration-200 hover:-translate-y-px active:scale-[0.99]"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-base flex-shrink-0">
+                        {(r.clientName || '?')[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold truncate">{r.clientName}</p>
+                        <p className="text-white/70 text-xs truncate">{r.service}</p>
+                      </div>
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${sColor}`}>
+                        {sLabel}
+                      </span>
+                    </div>
+
+                    {/* Primary action */}
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate(`/request/${r.id}`) }}
+                      className="w-full bg-white/15 hover:bg-white/25 text-white font-semibold
+                                 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors mb-2"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
+                      Ir ao Atendimento
+                    </button>
+
+                    {/* Ação secundária - o resto do cartão já abre a solicitação */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        onClick={e => {
+                          e.stopPropagation()
+                          navigate(`/chat/${r.chatId || directChatId(r.clientId, r.professionalId)}`)
+                        }}
+                        className="bg-white/10 hover:bg-white/20 text-white text-sm font-medium
+                                   py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        Chat
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Solicitações Pendentes ─────────────────────────── */}
-        <div>
+        <div data-coach="vet-pending">
           <div className="flex items-center justify-between mb-3">
             <p className="section-title !mb-0">
               Solicitações Pendentes
@@ -628,9 +520,158 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+        {/* ── Ações Rápidas ──────────────────────────────────── */}
+        <div>
+          <p className="section-title">Ações Rápidas</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Link to="/agenda" className="card flex flex-col items-center gap-2 py-5 hover:shadow-card-hover transition-shadow active:scale-95">
+              <div className="bg-primary/10 p-3 rounded-xl">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className="font-semibold text-primary text-sm">Agenda</span>
+            </Link>
+            <Link to="/chats" className="card flex flex-col items-center gap-2 py-5 hover:shadow-card-hover transition-shadow active:scale-95">
+              <div className="relative bg-primary/10 p-3 rounded-xl">
+                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                {unreadChats > 0 ? (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {unreadChats}
+                  </span>
+                ) : totalChats > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-gray-300 text-gray-600 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {totalChats}
+                  </span>
+                )}
+              </div>
+              <span className="font-semibold text-primary text-sm">Conversas</span>
+              {unreadChats === 0 && totalChats > 0 && (
+                <span className="text-[10px] text-gray-400 -mt-1">tudo lido</span>
+              )}
+            </Link>
+          </div>
+        </div>
+
+        {/* ── Resumo do Mês ──────────────────────────────────── */}
+        <div>
+          <p className="section-title">Resumo do Mês</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" onClick={() => navigate('/pending-requests')}
+              className="card text-left cursor-pointer hover:shadow-card-hover active:scale-[0.98] transition-all">
+              <div className="flex items-center justify-between mb-1">
+                <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2" />
+                </svg>
+                <span className="text-2xl font-bold text-blue-500">{metrics.monthly}</span>
+              </div>
+              <p className="text-primary font-semibold text-sm">Solicitações</p>
+              <p className="text-gray-400 text-xs">novas no mês</p>
+            </button>
+            <button type="button" onClick={() => navigate('/reports')}
+              className="card text-left cursor-pointer hover:shadow-card-hover active:scale-[0.98] transition-all">
+              <div className="flex items-center justify-between mb-1">
+                <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-2xl font-bold text-purple-500">{metrics.clients}</span>
+              </div>
+              <p className="text-primary font-semibold text-sm">Clientes</p>
+              <p className="text-gray-400 text-xs">atendidos</p>
+            </button>
+          </div>
+        </div>
+
+        {/* ── Sua avaliação ──────────────────────────────────── */}
+        <div className="card flex items-center gap-4">
+          <div className="bg-yellow-50 p-3 rounded-xl flex-shrink-0">
+            <svg className="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-primary">Sua avaliação</p>
+            <p className="text-gray-400 text-xs">
+              {ratingCount > 0
+                ? `Média de ${ratingCount} avaliaç${ratingCount > 1 ? 'ões' : 'ão'} · ao vivo`
+                : 'Você ainda não recebeu avaliações'}
+            </p>
+          </div>
+          <span className="text-3xl font-bold text-primary">{ratingCount > 0 ? Number(rating).toFixed(1) : '-'}</span>
+          <Link to="/ratings" className="text-primary">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
+
+        {/* ── Área de atuação ────────────────────────────────── */}
+        <div className="card">
+          <p className="text-xs text-gray-400 font-medium mb-1">Área de atuação</p>
+          <p className="text-primary font-semibold text-sm leading-snug">{specialties}</p>
+        </div>
+
+        {/* ── Plano ───────────────────────────────────────────
+             Antes o cartão sumia no Premium, e quem já assinava ficava
+             sem caminho visível para trocar ou cancelar - só o selo
+             pequeno do topo. Agora ele fica sempre, mudando de tom: a
+             oferta é dourada, a gestão é discreta. */}
+        {(() => {
+          const ehPremium = ['premium', 'destaque'].includes(profile?.plan)
+          const plano = profile?.plan === 'essencial' ? 'Essencial'
+            : ehPremium ? 'Premium' : 'Free'
+          return (
+            <Link to="/plans" data-coach="vet-plano"
+              className={`flex items-center gap-3 rounded-2xl p-4 transition-all
+                          duration-200 hover:-translate-y-px active:translate-y-0 active:scale-[0.99] ${
+                ehPremium
+                  ? 'card hover:shadow-card-hover'
+                  : 'bg-gradient-to-r from-amber-400 to-amber-500 shadow-[0_4px_16px_rgba(245,158,11,0.3)] hover:opacity-95'
+              }`}>
+              <div className="flex-1 min-w-0">
+                <p className={`text-[10px] font-bold uppercase tracking-wide ${
+                  ehPremium ? 'text-gray-400' : 'text-white/70'}`}>
+                  Seu plano: {plano}
+                </p>
+                <p className={`font-bold text-sm mt-0.5 ${ehPremium ? 'text-gray-800' : 'text-white'}`}>
+                  {ehPremium ? 'Gerenciar assinatura' : 'Apareça primeiro na busca'}
+                </p>
+                <p className={`text-xs mt-0.5 ${ehPremium ? 'text-gray-500' : 'text-white/85'}`}>
+                  {ehPremium
+                    ? 'Trocar de plano ou cancelar quando quiser'
+                    : 'Receba mais pedidos com o selo de destaque'}
+                </p>
+              </div>
+              <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-xl px-3.5 min-h-[44px]
+                                text-xs font-bold whitespace-nowrap ${
+                ehPremium
+                  ? 'border border-primary/40 text-primary'
+                  : 'bg-white text-amber-700 shadow-sm'
+              }`}>
+                {ehPremium ? 'Trocar' : 'Ver planos'}
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </Link>
+          )
+        })()}
+
+        {/* Anúncios - apenas para veterinários no plano Free */}
+        {(!profile?.plan || profile?.plan === 'free') && (
+          <AdBanner audience="vet" />
+        )}
+
       </div>
 
       <VetBottomNav />
+
 
       {/* ── Notificações modal ─────────────────────────────── */}
       {notifOpen && (
@@ -695,11 +736,11 @@ function RequestCard({ req, onAccept, onReject, onClick }) {
         <span className="text-gray-300 text-xs truncate">{formatDate(req.createdAt)}</span>
         <div className="flex gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
           <button onClick={onReject}
-            className="border border-red-300 text-red-500 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-red-50">
+            className="btn-danger btn-sm">
             Recusar
           </button>
           <button onClick={onAccept}
-            className="bg-primary text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary-600">
+            className="btn-primary btn-sm">
             Aceitar
           </button>
         </div>

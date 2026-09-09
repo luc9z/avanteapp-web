@@ -80,7 +80,7 @@ export default function ViewRatingsPage() {
       </div>
 
       <div className="px-4 py-5 pb-nav">
-        {/* Summary — centered */}
+        {/* Summary - centered */}
         <div className="card flex flex-col items-center gap-3 py-6 mb-5 text-center">
           <p className="text-5xl font-bold text-primary">{avg}</p>
           <Stars rating={Number(avg)} size={22} />

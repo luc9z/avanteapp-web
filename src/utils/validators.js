@@ -1,5 +1,5 @@
 /**
- * validators.js — Validações de entrada no cliente.
+ * validators.js - Validações de entrada no cliente.
  * Importante: validação no cliente é UX, não segurança.
  * A barreira real é o firestore.rules + Cloud Functions.
  */

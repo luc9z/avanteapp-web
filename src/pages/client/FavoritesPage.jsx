@@ -1,5 +1,5 @@
 /**
- * FavoritesPage — veterinários favoritados pelo cliente.
+ * FavoritesPage - veterinários favoritados pelo cliente.
  * O favorito agora é o PROFISSIONAL (não a solicitação): fica salvo
  * em users/{uid}.favorites e sincroniza em tempo real com o coração
  * dos cartões na busca.

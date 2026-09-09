@@ -1,15 +1,11 @@
 /**
- * SplashPage — abertura do Avante com a identidade nova.
+ * SplashPage - abertura do Avante.
  *
- * INSTALAÇÃO (2 passos):
- * 1. Salve a imagem `avante-logo-final-branco.png` em
- *    public/images/avante_mark_white.png
- *    (e troque public/images/avante_logo.png pela `avante-logo-final-simbolo.png`
- *    para atualizar logo, login e navbar de uma vez)
- * 2. Substitua src/pages/auth/SplashPage.jsx por este arquivo.
+ * Usa o verde do design system (--color-primary e derivados), para que
+ * a primeira tela já seja a mesma linguagem visual do resto do app.
  *
- * Autocontida: os keyframes vivem num <style> local, então não depende
- * de nada no globals.scss e não conflita com animações existentes.
+ * Os keyframes vivem num <style> local: a tela existe por ~1,6s e não
+ * vale poluir o globals.scss com animações que só ela usa.
  */
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -56,7 +52,10 @@ export default function SplashPage() {
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden"
-      style={{ background: 'radial-gradient(circle at 50% 42%, #33502f 0%, #1d2e1d 55%, #141f14 100%)' }}
+      style={{
+        // Mesmos verdes dos tokens: primary → primary-600 → fundo escuro.
+        background: 'radial-gradient(circle at 50% 42%, #375337 0%, #2e4530 52%, #0f1511 100%)',
+      }}
     >
       <style>{KEYFRAMES}</style>
 
@@ -94,16 +93,17 @@ export default function SplashPage() {
             animation: 'splashFloat 3.2s ease-in-out infinite',
           }}
         >
-          <img src="/images/avante_mark_white.png" alt="Avante" style={{ width: 96 }} draggable={false} />
+          <img src="/images/avante_mark_white.png" alt="AVANTE" style={{ width: 96 }} draggable={false} />
         </div>
       </div>
 
       {/* Wordmark + tagline */}
-      <div className="sp-anim text-center mt-7" style={{ animation: 'splashFadeUp 0.7s ease 0.25s both' }}>
-        <p className="text-white font-bold tracking-tight" style={{ fontSize: 44, lineHeight: 1 }}>
-          avante
+      <div className="sp-anim text-center mt-7 px-6" style={{ animation: 'splashFadeUp 0.7s ease 0.25s both' }}>
+        {/* Caixa alta pede tracking positivo - colado fica ilegível. */}
+        <p className="text-white font-bold tracking-[0.06em] text-[38px] sm:text-[44px] leading-none">
+          AVANTE
         </p>
-        <p className="text-[11px] font-medium tracking-[0.25em] mt-2.5" style={{ color: '#aebcae' }}>
+        <p className="text-[11px] font-semibold tracking-[0.22em] mt-3 text-white/55">
           VETERINÁRIO ONDE VOCÊ ESTIVER
         </p>
       </div>

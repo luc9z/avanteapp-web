@@ -1,5 +1,5 @@
 /**
- * geo.js — utilitários de distância (Haversine, sem dependências).
+ * geo.js - utilitários de distância (Haversine, sem dependências).
  */
 export function distanceKm(lat1, lng1, lat2, lng2) {
   if ([lat1, lng1, lat2, lng2].some(v => v == null || isNaN(v))) return null

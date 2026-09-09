@@ -5,26 +5,26 @@ import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
 import { ClientBottomNav } from '../../components/common/BottomNav'
-import { normalizeStatus } from '../../utils/status'
+import { normalizeStatus, precisaDoCliente } from '../../utils/status'
+import RequestCard from '../../components/common/RequestCard'
+import { carregarPerfis } from '../../services/perfis'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import OffersBanner from '../../components/client/OffersBanner'
 
+// Base comum de todos os badges - só a cor muda por status.
+const BADGE_BASE = 'text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap'
 const STATUS_INFO = {
-  pendente:     { label: 'Pendente',              cls: 'badge-pending' },
-  aceito:       { label: 'Aceito',                cls: 'badge-accepted' },
-  a_caminho:    { label: 'A Caminho',             cls: 'bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full' },
-  em_andamento: { label: 'Em Andamento',          cls: 'bg-blue-100 text-blue-700 text-xs font-semibold px-2.5 py-1 rounded-full' },
-  pausado:      { label: 'Em Pausa',              cls: 'bg-orange-100 text-orange-600 text-xs font-semibold px-2.5 py-1 rounded-full' },
-  aguardando:   { label: 'Aguardando Confirmação', cls: 'bg-orange-100 text-orange-600 text-xs font-semibold px-2.5 py-1 rounded-full' },
-  rejeitado:    { label: 'Rejeitado',             cls: 'badge-rejected' },
-  finalizado:   { label: 'Finalizado',            cls: 'bg-gray-100 text-gray-600 text-xs font-semibold px-2.5 py-1 rounded-full' },
-}
-
-function formatDate(ts) {
-  if (!ts) return '—'
-  const d = ts?.toDate ? ts.toDate() : new Date(ts)
-  return format(d, 'dd/MM/yyyy', { locale: ptBR })
+  urgente:      { label: 'Urgente',                color: 'bg-red-100 text-red-600' },
+  pendente:     { label: 'Pendente',               color: 'bg-orange-100 text-orange-600' },
+  aceito:       { label: 'Aceito',                 color: 'bg-green-100 text-green-700' },
+  orcamento:    { label: 'Orçamento Enviado',      color: 'bg-amber-100 text-amber-700' },
+  a_caminho:    { label: 'A Caminho',              color: 'bg-blue-100 text-blue-700' },
+  em_andamento: { label: 'Em Andamento',           color: 'bg-blue-100 text-blue-700' },
+  pausado:      { label: 'Em Pausa',               color: 'bg-orange-100 text-orange-600' },
+  aguardando:   { label: 'Aguardando Confirmação', color: 'bg-orange-100 text-orange-600' },
+  rejeitado:    { label: 'Recusado',               color: 'bg-red-100 text-red-600' },
+  finalizado:   { label: 'Finalizado',             color: 'bg-gray-100 text-gray-600' },
 }
 
 export default function ClientRequestsPage() {
@@ -37,6 +37,9 @@ export default function ClientRequestsPage() {
   const [tab, setTab] = useState(initialTab)
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
+  // Foto de cada veterinário, por uid. A solicitação guarda só o nome,
+  // e o rosto é o que faz o tutor reconhecer o atendimento na lista.
+  const [fotos, setFotos] = useState({})
 
   const uid = user?.uid
 
@@ -58,9 +61,28 @@ export default function ClientRequestsPage() {
     return tb - ta
   })
 
+  // As fotos chegam depois da lista, para não atrasar a primeira pintura.
+  useEffect(() => {
+    const uids = requests.map(r => r.professionalId).filter(Boolean)
+    if (!uids.length) return
+    let vivo = true
+    carregarPerfis(uids).then(perfis => {
+      if (!vivo) return
+      setFotos(f => ({
+        ...f,
+        ...Object.fromEntries(Object.entries(perfis).map(([uid, p]) => [uid, p.photoURL])),
+      }))
+    })
+    return () => { vivo = false }
+  }, [requests])
+
   // Filtros por status: cobre todo tipo de pedido, com contagem em cada chip.
-  // (Favoritos saiu daqui — agora é a aba própria na navegação, focada em
+  // (Favoritos saiu daqui - agora é a aba própria na navegação, focada em
   // veterinários e não em solicitações.)
+  // Quantos esperam uma ação sua. É o mesmo número do contador na aba
+  // "Pedidos" - os dois saem de precisaDoCliente(), então não divergem.
+  const precisamDeVoce = all.filter(precisaDoCliente).length
+
   const counts = all.reduce((acc, r) => {
     const st = normalizeStatus(r.status)
     const group = st === 'pendente' ? 'pendente'
@@ -72,6 +94,9 @@ export default function ClientRequestsPage() {
   }, {})
 
   const FILTERS = [
+    ...(precisamDeVoce > 0
+      ? [{ key: 'acao', label: 'Precisa de você', count: precisamDeVoce }]
+      : []),
     { key: 'todos',      label: 'Todos',         count: all.length },
     { key: 'pendente',   label: 'Pendentes',     count: counts.pendente || 0 },
     { key: 'ativo',      label: 'Em andamento',  count: counts.ativo || 0 },
@@ -80,6 +105,7 @@ export default function ClientRequestsPage() {
   ]
 
   const visible = tab === 'todos' ? all : all.filter(r => {
+    if (tab === 'acao') return precisaDoCliente(r)
     const st = normalizeStatus(r.status)
     if (tab === 'ativo') return !['pendente', 'finalizado', 'rejeitado'].includes(st)
     return st === tab
@@ -98,7 +124,7 @@ export default function ClientRequestsPage() {
       </div>
 
       {/* Filtros por status */}
-      <div className="flex gap-2 px-4 py-3 overflow-x-auto bg-white sticky top-[57px] z-20 border-b border-gray-100">
+      <div data-coach="req-filters" className="flex gap-2 px-4 py-3 overflow-x-auto bg-white sticky top-[57px] z-20 border-b border-gray-100">
         {FILTERS.map(f => (
           <button
             key={f.key}
@@ -126,31 +152,19 @@ export default function ClientRequestsPage() {
           visible.length === 0
             ? <EmptyState text={tab === 'todos' ? 'Nenhum pedido ainda' : 'Nenhum pedido com este status'} />
             : <div className="responsive-grid-cards stagger">
-                {visible.map(r => <RequestItem key={r.id} req={r} />)}
+                {visible.map(r => (
+                  <RequestCard
+                    key={r.id}
+                    req={r}
+                    perspectiva="client"
+                    foto={fotos[r.professionalId]}
+                    onClick={() => navigate(`/request/${r.id}`)}
+                  />
+                ))}
               </div>
         )}
       </div>
       <ClientBottomNav />
-    </div>
-  )
-}
-
-function RequestItem({ req }) {
-  const navigate = useNavigate()
-  const status = normalizeStatus(req.status)
-  const { label, cls } = STATUS_INFO[status] || { label: status, cls: 'badge-pending' }
-
-  return (
-    <div
-      className="card cursor-pointer hover:shadow-card-hover transition-shadow"
-      onClick={() => navigate(`/request/${req.id}`)}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <p className="font-bold text-primary">{req.service}</p>
-        <span className={cls}>{label}</span>
-      </div>
-      <p className="text-gray-500 text-sm">Para: {req.professionalName || '—'}</p>
-      <p className="text-gray-400 text-xs mt-1">{formatDate(req.createdAt)}</p>
     </div>
   )
 }

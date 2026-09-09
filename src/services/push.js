@@ -1,5 +1,5 @@
 /**
- * push.js — Notificações push (Firebase Cloud Messaging).
+ * push.js - Notificações push (Firebase Cloud Messaging).
  *
  * Tokens ficam em users/{uid}/private/push (legível só pelo dono;
  * a Cloud Function lê via Admin SDK, que ignora as rules).

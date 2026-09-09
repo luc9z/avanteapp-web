@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 /**
- * PasswordInput — campo de senha com alternância de visibilidade.
+ * PasswordInput - campo de senha com alternância de visibilidade.
  * Substitui os toggles com emoji (🙈/👁️) por ícones SVG consistentes
  * com o restante da interface.
  */

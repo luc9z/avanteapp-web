@@ -1,5 +1,5 @@
 /**
- * EnablePushBanner — convite para ativar notificações.
+ * EnablePushBanner - convite para ativar notificações.
  * Usa a Notification API do navegador (sem servidor/Blaze): funciona
  * enquanto o app está aberto. Aparece se o navegador suporta e a
  * permissão ainda não foi decidida. Some após ativar/recusar.

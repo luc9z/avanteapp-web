@@ -5,7 +5,7 @@ import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
 import { VetBottomNav } from '../../components/common/BottomNav'
-import { normalizeStatus } from '../../utils/status'
+import { normalizeStatus, isActive } from '../../utils/status'
 import { showToast } from '../../components/common/Toast'
 import {
   format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -123,7 +123,34 @@ export default function AgendaPage() {
   })
   const firstDayOfWeek = getDay(startOfMonth(focusedMonth))
   const appointmentsOnSelected = appointments.filter(a => isSameDay(a.date, selectedDate))
-  const appointmentDays = new Set(appointments.map(a => format(a.date, 'yyyy-MM-dd')))
+
+  /**
+   * Estado de cada dia do calendário. Um dia com vários atendimentos
+   * assume o mais urgente: pendente > em andamento > finalizado - para
+   * que o que precisa de ação nunca fique escondido atrás do que já
+   * terminou.
+   */
+  const dayStatus = (() => {
+    const rank = { pendente: 3, andamento: 2, finalizado: 1 }
+    const map = {}
+    for (const a of appointments) {
+      const s = normalizeStatus(a.status)
+      const kind = s === 'finalizado' ? 'finalizado'
+        : s === 'pendente' ? 'pendente'
+        : isActive(s) ? 'andamento'
+        : 'pendente'
+      const key = format(a.date, 'yyyy-MM-dd')
+      if (!map[key] || rank[kind] > rank[map[key]]) map[key] = kind
+    }
+    return map
+  })()
+
+  // Cores do dia por estado (fundo tingido em vez de um ponto).
+  const DAY_TONE = {
+    pendente:   'bg-amber-100 text-amber-700 font-bold',
+    andamento:  'bg-blue-100 text-blue-700 font-bold',
+    finalizado: 'bg-primary/15 text-primary font-bold',
+  }
 
   return (
     <div className="page-container">
@@ -138,14 +165,14 @@ export default function AgendaPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex mx-4 mt-1 mb-4 bg-gray-100 rounded-2xl p-1">
+      <div data-coach="agenda-tabs" className="flex mx-4 mt-1 mb-4 bg-gray-100 rounded-2xl p-1">
         {[
           { key: 'agenda', label: 'Calendário' },
           { key: 'disponibilidade', label: 'Disponibilidade' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
-              tab === t.key ? 'bg-white text-primary shadow-sm' : 'text-gray-500'
+            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${
+              tab === t.key ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}>
             {t.label}
           </button>
@@ -191,23 +218,41 @@ export default function AgendaPage() {
                   const key = format(day, 'yyyy-MM-dd')
                   const isSelected = isSameDay(day, selectedDate)
                   const isToday = isSameDay(day, new Date())
-                  const hasApp = appointmentDays.has(key)
+                  const status = dayStatus[key]
                   // Verifica se este dia tem disponibilidade configurada
                   const dayOfWeek = getDay(day)
                   const dayAvail = avail?.days?.[dayOfWeek]
                   const hasSlots = avail?.enabled && dayAvail?.active
+                  // Selecionado vence tudo; depois a cor do estado do dia.
+                  const tone = isSelected
+                    ? 'bg-primary text-white font-bold'
+                    : status ? DAY_TONE[status]
+                    : isToday ? 'text-primary font-bold'
+                    : 'text-gray-700 hover:bg-gray-100'
                   return (
                     <button key={key} onClick={() => setSelectedDate(day)}
-                      className={`relative flex flex-col items-center justify-center py-1.5 rounded-xl text-sm font-medium transition-all ${
-                        isSelected ? 'bg-primary text-white' : isToday ? 'text-primary' : 'text-gray-700 hover:bg-gray-100'
-                      } ${hasSlots && !isSelected ? 'ring-1 ring-primary/20' : ''}`}>
+                      title={status ? `Atendimento ${status}` : undefined}
+                      className={`relative flex items-center justify-center h-9 m-0.5 rounded-xl text-sm transition-all ${tone} ${
+                        hasSlots && !isSelected && !status ? 'ring-1 ring-primary/20' : ''
+                      } ${isToday && !isSelected ? 'ring-2 ring-primary/40' : ''}`}>
                       {format(day, 'd')}
-                      {hasApp && (
-                        <span className={`absolute bottom-0.5 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-primary'}`} />
-                      )}
                     </button>
                   )
                 })}
+              </div>
+
+              {/* Legenda - sem ela a cor não comunica nada */}
+              <div data-coach="agenda-legend" className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-gray-100">
+                {[
+                  ['bg-amber-100', 'Pendente'],
+                  ['bg-blue-100', 'Em andamento'],
+                  ['bg-primary/15', 'Finalizado'],
+                ].map(([bg, label]) => (
+                  <span key={label} className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                    <span className={`w-3 h-3 rounded-md ${bg}`} />
+                    {label}
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -216,7 +261,7 @@ export default function AgendaPage() {
               {format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               {avail?.enabled && avail?.days?.[getDay(selectedDate)]?.active && (
                 <span className="ml-2 text-xs text-primary font-normal">
-                  ({avail.days[getDay(selectedDate)].start}–{avail.days[getDay(selectedDate)].end})
+                  ({avail.days[getDay(selectedDate)].start} às {avail.days[getDay(selectedDate)].end})
                 </span>
               )}
             </p>
@@ -259,72 +304,109 @@ export default function AgendaPage() {
           ) : (
             <div className="flex flex-col gap-4">
 
-              {/* Toggle on/off */}
-              <div className="card flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-gray-800 text-sm">Agenda com slots</p>
+              {/* Toggle on/off - mesmo padrão do "Você está online":
+                  a linha inteira é o botão, com o interruptor à direita.
+                  É o primeiro passo obrigatório: nada abaixo aparece
+                  enquanto ele estiver desligado, e era isso que fazia a
+                  tela parecer vazia. */}
+              <button
+                data-coach="disp-toggle"
+                onClick={() => setAvail(a => ({ ...a, enabled: !a.enabled }))}
+                className={`btn-row border ${
+                  avail.enabled
+                    ? 'bg-primary/5 border-primary/30'
+                    : 'bg-gray-50 border-gray-200'
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className={`font-bold text-sm ${avail.enabled ? 'text-primary' : 'text-gray-700'}`}>
+                    Definir meus horários de atendimento
+                  </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {avail.enabled
-                      ? 'Clientes veem apenas seus horários disponíveis'
-                      : 'Clientes escolhem qualquer data e hora'}
+                      ? 'O cliente escolhe só entre os horários que você marcar'
+                      : 'Hoje o cliente pode pedir qualquer dia e hora'}
                   </p>
                 </div>
-                <button
-                  onClick={() => setAvail(a => ({ ...a, enabled: !a.enabled }))}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${avail.enabled ? 'bg-primary' : 'bg-gray-300'}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${avail.enabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
+                <span className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  avail.enabled ? 'bg-primary' : 'bg-gray-300'
+                }`}>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                    avail.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+                  }`} />
+                </span>
+              </button>
 
               {avail.enabled && (
                 <>
-                  {/* Duração dos slots */}
-                  <div className="card">
-                    <p className="text-sm font-bold text-gray-700 mb-3">Duração de cada slot</p>
-                    <div className="flex gap-2">
-                      {[30, 60, 90, 120].map(min => (
+                  {/* Duração de cada atendimento */}
+                  <div data-coach="disp-duracao" className="card">
+                    <p className="text-sm font-bold text-gray-700">Quanto dura cada atendimento?</p>
+                    <p className="text-xs text-gray-400 mt-0.5 mb-3">
+                      É de quanto em quanto tempo os horários são oferecidos ao cliente.
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        [30, '30 min'], [60, '1 hora'], [90, '1h30'], [120, '2 horas'],
+                      ].map(([min, label]) => (
                         <button key={min}
                           onClick={() => setAvail(a => ({ ...a, slotDuration: min }))}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                          className={`py-3 rounded-2xl text-sm font-bold transition-all active:scale-[0.98] border-2 min-h-[48px] ${
                             avail.slotDuration === min
                               ? 'bg-primary text-white border-primary'
                               : 'bg-white text-gray-600 border-gray-200 hover:border-primary/40'
                           }`}>
-                          {min}min
+                          {label}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   {/* Configuração por dia da semana */}
-                  <div className="card">
-                    <p className="text-sm font-bold text-gray-700 mb-3">Horários por dia da semana</p>
-                    <div className="flex flex-col gap-3">
+                  <div data-coach="disp-dias" className="card">
+                    <p className="text-sm font-bold text-gray-700">Em quais dias você atende?</p>
+                    <p className="text-xs text-gray-400 mt-0.5 mb-3">
+                      Ligue os dias e diga de que horas até que horas.
+                    </p>
+                    <div className="flex flex-col gap-2">
                       {[0, 1, 2, 3, 4, 5, 6].map(dayIdx => {
                         const dayConf = avail.days[dayIdx] || { active: false, start: '08:00', end: '18:00' }
                         return (
-                          <div key={dayIdx} className={`rounded-2xl border p-3 transition-all ${
-                            dayConf.active ? 'border-primary/30 bg-primary/3' : 'border-gray-100 bg-gray-50'
+                          <div key={dayIdx} className={`rounded-2xl border transition-all overflow-hidden ${
+                            dayConf.active ? 'border-primary/30 bg-primary/5' : 'border-gray-200 bg-gray-50'
                           }`}>
-                            <div className="flex items-center justify-between mb-2">
-                              <p className={`text-sm font-bold ${dayConf.active ? 'text-primary' : 'text-gray-400'}`}>
+                            {/* Linha do dia - mesmo padrão do "Você está online" */}
+                            <button
+                              onClick={() => updateDay(dayIdx, 'active', !dayConf.active)}
+                              className="btn-row"
+                            >
+                              <span className={`text-sm font-bold ${dayConf.active ? 'text-primary' : 'text-gray-500'}`}>
                                 {WEEKDAY_FULL[dayIdx]}
-                              </p>
-                              <button
-                                onClick={() => updateDay(dayIdx, 'active', !dayConf.active)}
-                                className={`relative w-10 h-5 rounded-full transition-colors ${dayConf.active ? 'bg-primary' : 'bg-gray-300'}`}>
-                                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${dayConf.active ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                              </button>
-                            </div>
+                              </span>
+                              <span className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                                dayConf.active ? 'bg-primary' : 'bg-gray-300'
+                              }`}>
+                                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                                  dayConf.active ? 'translate-x-[22px]' : 'translate-x-0.5'
+                                }`} />
+                              </span>
+                            </button>
+
                             {dayConf.active && (
-                              <div className="flex items-center gap-2 mt-2">
-                                <input type="time" value={dayConf.start}
-                                  onChange={e => updateDay(dayIdx, 'start', e.target.value)}
-                                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none focus:border-primary" />
-                                <span className="text-gray-400 text-xs font-bold">até</span>
-                                <input type="time" value={dayConf.end}
-                                  onChange={e => updateDay(dayIdx, 'end', e.target.value)}
-                                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center outline-none focus:border-primary" />
+                              <div className="flex items-center gap-2 px-4 pb-3">
+                                <div className="flex-1">
+                                  <label className="field-label">Das</label>
+                                  <input type="time" value={dayConf.start}
+                                    onChange={e => updateDay(dayIdx, 'start', e.target.value)}
+                                    className="input-field text-center" />
+                                </div>
+                                <span className="text-gray-400 text-xs font-bold mt-5">até</span>
+                                <div className="flex-1">
+                                  <label className="field-label">Às</label>
+                                  <input type="time" value={dayConf.end}
+                                    onChange={e => updateDay(dayIdx, 'end', e.target.value)}
+                                    className="input-field text-center" />
+                                </div>
                               </div>
                             )}
                           </div>
@@ -339,8 +421,8 @@ export default function AgendaPage() {
               )}
 
               <button onClick={saveAvailability} disabled={savingAvail}
-                className="btn-primary w-full flex items-center justify-center gap-2 py-4">
-                {savingAvail ? <Spinner /> : '💾 Salvar disponibilidade'}
+                className="btn-primary btn-block">
+                {savingAvail ? <Spinner /> : 'Salvar disponibilidade'}
               </button>
             </div>
           )
@@ -366,9 +448,11 @@ function SlotPreview({ avail }) {
   return (
     <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
       <p className="text-2xl font-black text-primary">{totalSlots}</p>
-      <p className="text-xs text-gray-500 mt-0.5">slots disponíveis por semana</p>
+      <p className="text-xs text-gray-500 mt-0.5">
+        horários que o cliente pode escolher por semana
+      </p>
       <p className="text-xs text-gray-400 mt-2">
-        {activeDays.length} dia{activeDays.length !== 1 ? 's' : ''} ativo{activeDays.length !== 1 ? 's' : ''} · slots de {avail.slotDuration} min
+        {activeDays.length} dia{activeDays.length !== 1 ? 's' : ''} de atendimento · {avail.slotDuration} min cada
       </p>
     </div>
   )

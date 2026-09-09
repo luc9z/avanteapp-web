@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import Spinner from '../common/Spinner'
+import AIButton, { AISuggestion } from '../common/AIButton'
 import { showToast } from '../common/Toast'
 import AddressSheet from './AddressSheet'
 import { directChatId, freshExpiry } from '../../services/directChat'
@@ -16,6 +17,31 @@ import 'react-datepicker/dist/react-datepicker.css'
 import './datepicker.css'
 
 registerLocale('pt-BR', ptBR)
+
+/**
+ * Primeiro horário ainda possível hoje, arredondado para cima.
+ *
+ * Às 20:32 com passo de 30 min, o primeiro horário é 21:00 - nem 20:32
+ * nem 20:30, que já passou. O teto evita o caso da virada: às 23:50 o
+ * arredondamento cairia no dia seguinte e liberaria a lista inteira.
+ */
+function primeiroHorarioDeHoje(passoMin = 30, fimHora = 22) {
+  const agora = new Date()
+  const emMinutos = agora.getHours() * 60 + agora.getMinutes()
+  const arredondado = Math.ceil(emMinutos / passoMin) * passoMin
+  const limitado = Math.min(arredondado, fimHora * 60)
+  const d = new Date(agora)
+  d.setHours(Math.floor(limitado / 60), limitado % 60, 0, 0)
+  return d
+}
+
+/** O horário "HH:mm" já passou, considerando o dia escolhido? */
+function jaPassou(hhmm, dia) {
+  if (!dia || !isSameDay(dia, new Date())) return false
+  const [h, m] = hhmm.split(':').map(Number)
+  const agora = new Date()
+  return h * 60 + m <= agora.getHours() * 60 + agora.getMinutes()
+}
 
 /* ── Gera lista de slots do dia baseado na config de disponibilidade ── */
 function generateSlots(dayConfig, slotDuration) {
@@ -66,8 +92,10 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
   const [step, setStep] = useState(0)
   const [service, setService] = useState('')
   const [when, setWhen] = useState(null)
-  const [urgent, setUrgent] = useState(false)
   const [notes, setNotes] = useState('')
+  // Relato reescrito pela IA, aguardando o tutor aceitar ou descartar.
+  const [sugestaoRelato, setSugestaoRelato] = useState('')
+  const [symptoms, setSymptoms] = useState('')
   const [properties, setProperties] = useState([])
   const [selectedPropId, setSelectedPropId] = useState(null)
   const [pets, setPets] = useState([])
@@ -99,8 +127,8 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
     setStep(0)
     setService(services[0] || 'Consulta Geral')
     setWhen(null)
-    setUrgent(false)
     setNotes('')
+    setSymptoms('')
     setSelectedPetId(null)
     setSelectedPropId(null)
     setSlotDate(null)
@@ -175,7 +203,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
 
   function pickService(s) {
     setService(s)
-    setSelectedPetId(null) // espécie pode mudar — reseta animal
+    setSelectedPetId(null) // espécie pode mudar - reseta animal
     setTimeout(() => setStep(1), 180)
   }
   function pickPet(id) {
@@ -199,7 +227,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
       const clientData = clientDoc.data() || {}
       const privData = privDoc?.exists?.() ? privDoc.data() : {}
       const clientPhone = privData.phone || clientData.phone || ''
-      const locationText = [selectedProp.label, selectedProp.address].filter(Boolean).join(' — ')
+      const locationText = [selectedProp.label, selectedProp.address].filter(Boolean).join(', ')
       const chatId = directChatId(user.uid, professional.uid)
 
       const reqRef = await addDoc(collection(db, 'requests'), {
@@ -209,8 +237,9 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
         clientName: clientData.name || user.displayName || 'Cliente',
         clientContact: clientPhone,
         service,
-        urgency: urgent ? 'urgent' : 'normal',
+        urgency: 'normal',
         notes: notes.trim(),
+        intake: symptoms.trim() ? { symptoms: symptoms.trim() } : null,
         requestedTimestamp: Timestamp.fromDate(when),
         requestedTime: format(when, 'HH:mm'),
         status: 'pendente',
@@ -245,6 +274,9 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
         participants: [user.uid, professional.uid],
         clientId: user.uid,
         professionalId: professional.uid,
+        // Quem abriu. Enquanto ninguém escrever, a conversa só aparece
+        // para esta pessoa: o outro lado não deve receber thread vazia.
+        createdBy: user.uid,
         clientName: clientData.name || user.displayName || 'Cliente',
         professionalName: professional.name || 'Profissional',
         requestId: reqRef.id,
@@ -266,11 +298,12 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
 
   if (!open) return null
 
-  const QUESTIONS = ['Tipo de serviço', 'Qual animal?', 'Data e horário', 'Onde será?', 'Confirme tudo']
+  const QUESTIONS = ['Tipo de serviço', 'Qual animal?', 'Data e horário', 'Onde será?', 'Sintomas', 'Confirme tudo']
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
       <div
+        data-coach="schedule-sheet"
         className="bg-white rounded-t-3xl w-full sm:max-w-md sm:mx-auto h-[88vh] overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
@@ -330,20 +363,6 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
                   </button>
                 )
               })}
-
-              <div className="mt-4">
-                <p className="text-sm font-bold text-gray-700 mb-2">É urgente?</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setUrgent(false)}
-                    className={`p-3 rounded-2xl border-2 font-bold text-sm transition-all ${
-                      !urgent ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-gray-500'
-                    }`}>Não, é normal</button>
-                  <button type="button" onClick={() => setUrgent(true)}
-                    className={`p-3 rounded-2xl border-2 font-bold text-sm transition-all ${
-                      urgent ? 'border-red-400 bg-red-50 text-red-600' : 'border-gray-200 text-gray-500'
-                    }`}>🚨 Sim, urgente</button>
-                </div>
-              </div>
             </div>
           )}
 
@@ -380,7 +399,6 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
               <button type="button" onClick={() => { setSelectedPetId(null); setStep(2) }}
                 className="flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-gray-200 text-left
                            hover:border-primary/30 transition-all mt-1">
-                <span className="text-2xl flex-shrink-0">➡️</span>
                 <div className="flex-1">
                   <p className="font-bold text-sm text-gray-700">Continuar sem animal específico</p>
                   <p className="text-xs text-gray-400">Você descreve nas observações</p>
@@ -397,7 +415,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
           {/* ── PASSO 2: Data e horário ──────────────────────── */}
           {step === 2 && (
             <div className="flex flex-col gap-4 animate-fade-up">
-              {/* Modo SLOTS — vet configurou disponibilidade */}
+              {/* Modo SLOTS - vet configurou disponibilidade */}
               {vetAvail ? (
                 <SlotPicker
                   avail={vetAvail}
@@ -417,7 +435,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
                   }}
                 />
               ) : (
-                /* Modo LIVRE — sem config de slots */
+                /* Modo LIVRE - sem config de slots */
                 <>
                   <DatePicker
                     selected={when}
@@ -426,8 +444,12 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
                     inline
                     timeIntervals={30}
                     minDate={new Date()}
-                    minTime={when && when.toDateString() === new Date().toDateString()
-                      ? new Date()
+                    /* O piso olha o dia que está SENDO VISTO, não o já
+                       escolhido. Antes dependia de `when`, que é nulo ao
+                       abrir - e aí caía no 06:00, oferecendo a manhã
+                       inteira mesmo às 20h. */
+                    minTime={isSameDay(when || new Date(), new Date())
+                      ? primeiroHorarioDeHoje(30)
                       : new Date(new Date().setHours(6, 0, 0, 0))}
                     maxTime={new Date(new Date().setHours(22, 0, 0, 0))}
                     locale="pt-BR"
@@ -466,8 +488,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
                         className={`flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${
                           active ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/30'
                         }`}>
-                        <span className="text-2xl flex-shrink-0">📍</span>
-                        <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0">
                           <p className={`font-bold text-base truncate ${active ? 'text-primary' : 'text-gray-800'}`}>{p.label}</p>
                           {p.address && <p className="text-gray-400 text-xs truncate">{p.address}</p>}
                         </div>
@@ -490,26 +511,84 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
             </div>
           )}
 
-          {/* ── PASSO 4: Resumo ──────────────────────────────── */}
+          {/* ── PASSO 4: Sintomas / pré-consulta ────────────── */}
           {step === 4 && (
+            <div className="flex flex-col gap-4 animate-fade-up">
+              <p className="text-sm text-gray-500 -mt-1">
+                Descreva o que está acontecendo. Isso ajuda o profissional a se preparar antes da visita.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {['Sem apetite', 'Febre', 'Vômito', 'Diarreia', 'Apatia', 'Dificuldade de andar', 'Tosse', 'Ferida / inchaço'].map(tag => (
+                  <button key={tag} type="button"
+                    onClick={() => setSymptoms(prev => prev.includes(tag) ? prev : prev ? `${prev}, ${tag}` : tag)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold border-2 border-gray-200 text-gray-600
+                               hover:border-primary/40 hover:bg-primary/5 transition-all">
+                    + {tag}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={symptoms}
+                onChange={e => setSymptoms(e.target.value)}
+                rows={4}
+                placeholder="Descreva os sintomas, há quanto tempo, intensidade..."
+                className="input-field resize-none text-sm"
+              />
+
+              {/* A IA reescreve o relato do tutor no formato que o
+                  veterinário lê rápido. Só organiza o que foi dito -
+                  sugerir sintoma que a pessoa não relatou seria pior
+                  do que não ter o recurso. */}
+              {symptoms.trim().length >= 12 && (
+                <div className="flex flex-col gap-2">
+                  <AIButton
+                    mode="descricao"
+                    label="Organizar com IA"
+                    title="Deixa o relato mais claro para o veterinário, sem mudar o que você contou."
+                    className="self-start"
+                    build={() => ({ prompt: symptoms.trim() })}
+                    onResult={texto => setSugestaoRelato(String(texto).trim())}
+                  />
+                  {sugestaoRelato && (
+                    <AISuggestion
+                      onAccept={() => { setSymptoms(sugestaoRelato); setSugestaoRelato('') }}
+                      onDiscard={() => setSugestaoRelato('')}
+                      acceptLabel="Usar este texto"
+                    >
+                      {sugestaoRelato}
+                    </AISuggestion>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── PASSO 5: Resumo ──────────────────────────────── */}
+          {step === 5 && (
             <div className="flex flex-col gap-3 animate-fade-up">
               <div className="bg-gray-50 rounded-2xl p-4 flex flex-col gap-3">
-                <RowSummary emoji={iconFor(service)} title={service} sub={urgent ? '🚨 Urgente' : 'Normal'} onEdit={() => goTo(0)} />
+                <RowSummary emoji={iconFor(service)} title={service} onEdit={() => goTo(0)} />
                 <hr className="border-gray-200" />
                 <RowSummary emoji={selectedPet ? (EMOJI[selectedPet.species] || '🐾') : '🐾'}
                   title={selectedPet?.name || 'Sem animal específico'}
                   sub={selectedPet ? [selectedPet.species, selectedPet.breed].filter(Boolean).join(' · ') : null}
                   onEdit={() => goTo(1)} />
                 <hr className="border-gray-200" />
-                <RowSummary emoji="📅" title={when ? format(when, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '—'} onEdit={() => goTo(2)} />
+                <RowSummary emoji="📅" title={when ? format(when, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '-'} onEdit={() => goTo(2)} />
                 <hr className="border-gray-200" />
-                <RowSummary emoji="📍" title={selectedProp?.label || '—'} sub={selectedProp?.address} onEdit={() => goTo(3)} />
+                <RowSummary emoji="📍" title={selectedProp?.label || '-'} sub={selectedProp?.address} onEdit={() => goTo(3)} />
+                {symptoms && (
+                  <>
+                    <hr className="border-gray-200" />
+                    <RowSummary emoji="🩺" title="Pré-consulta" sub={symptoms} onEdit={() => goTo(4)} />
+                  </>
+                )}
               </div>
 
               <div>
-                <p className="text-sm font-bold text-gray-700 mb-2">Observações (opcional)</p>
+                <p className="text-sm font-bold text-gray-700 mb-2">Observações adicionais (opcional)</p>
                 <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
-                  placeholder="Sintomas, comportamento, informações extras..."
+                  placeholder="Informações extras para o profissional..."
                   className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none
                              focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none transition-colors" />
               </div>
@@ -529,12 +608,14 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
             <button type="button" onClick={() => goTo(3)} disabled={!when}
               className="flex-1 btn-primary py-3.5 disabled:opacity-40">Continuar</button>
           )}
-          {(step === 0 || step === 1 || step === 3) && (
+          {(step === 0 || step === 1 || step === 3 || step === 4) && (
             <button type="button" onClick={() => goTo(step + 1)}
               disabled={(step === 0 && !service) || (step === 3 && !selectedPropId)}
-              className="flex-1 btn-primary py-3.5 disabled:opacity-40">Continuar</button>
+              className="flex-1 btn-primary py-3.5 disabled:opacity-40">
+              {step === 4 && !symptoms ? 'Pular ' : 'Continuar'}
+            </button>
           )}
-          {step === 4 && (
+          {step === 5 && (
             <button type="button" onClick={handleSubmit} disabled={submitting}
               className="flex-1 btn-primary py-3.5">
               {submitting ? <Spinner /> : 'Confirmar agendamento'}
@@ -561,7 +642,10 @@ function SlotPicker({ avail, slotDate, slotTime, bookedSlots, loadingSlots, onDa
   }
 
   const dayConfig = slotDate ? avail.days?.[getDay(slotDate)] : null
-  const slots = dayConfig ? generateSlots(dayConfig, avail.slotDuration || 60) : []
+  // No dia de hoje, horário que já passou não é opção. Sem este filtro
+  // dava para agendar às 8h da manhã depois das 20h.
+  const slots = (dayConfig ? generateSlots(dayConfig, avail.slotDuration || 60) : [])
+    .filter(t => !jaPassou(t, slotDate))
 
   return (
     <div className="flex flex-col gap-4">
@@ -594,12 +678,16 @@ function SlotPicker({ avail, slotDate, slotTime, bookedSlots, loadingSlots, onDa
       {slotDate && (
         <div>
           <p className="text-xs font-bold text-gray-500 mb-2">
-            Horários disponíveis — {format(slotDate, "dd/MM", { locale: ptBR })}
+            Horários disponíveis em {format(slotDate, "dd/MM", { locale: ptBR })}
           </p>
           {loadingSlots ? (
             <div className="flex justify-center py-4"><Spinner size={20} color="#375337" /></div>
           ) : slots.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">Nenhum horário disponível neste dia.</p>
+            <p className="text-sm text-gray-500 text-center py-4">
+              {isSameDay(slotDate, new Date())
+                ? 'Não há mais horários hoje. Escolha outro dia.'
+                : 'Nenhum horário disponível neste dia.'}
+            </p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {slots.map(t => {

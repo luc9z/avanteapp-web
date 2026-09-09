@@ -1,34 +1,116 @@
 /**
  * Cloud Functions do Avante.
  *
- * aiAssistant — proxy seguro para o Groq (Llama 3.3).
- *   - A chave da API fica no Secret Manager (GROQ_API_KEY), nunca no cliente.
+ * askAI — proxy seguro para o Google Gemini.
+ *   - A chave fica no Secret Manager (GEMINI_API_KEY), NUNCA no bundle.
  *   - Exige usuário autenticado.
- *   - Valida e limita o payload (anti-abuso de custo).
+ *   - Os prompts de sistema vivem AQUI, no servidor: o cliente só
+ *     escolhe um `mode` pré-definido. Assim ninguém consegue apontar a
+ *     nossa cota para outra tarefa qualquer.
+ *   - Teto diário por usuário (anti-abuso de custo).
  *
  * Deploy:
  *   cd functions && npm install
- *   firebase functions:secrets:set GROQ_API_KEY
+ *   firebase functions:secrets:set GEMINI_API_KEY
  *   firebase deploy --only functions
  */
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { defineSecret } = require('firebase-functions/params')
 
-const GROQ_API_KEY = defineSecret('GROQ_API_KEY')
+const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY')
 
-const SYSTEM_PROMPT = `Você é a assistente virtual do Avante, aplicativo de veterinária a domicílio no Brasil.
-Ajude clientes com dúvidas sobre saúde e bem-estar dos pets. Seja concisa e amigável em português brasileiro.
-Quando o usuário descrever sintomas preocupantes ou precisar de atendimento veterinário,
-inclua exatamente [SUGGEST_BOOKING] no final da sua resposta.
-Nunca diagnostique definitivamente — sempre oriente a consultar um veterinário.`
-
+const MODEL = 'gemini-3.6-flash'
 const MAX_MESSAGES = 12
-const MAX_CHARS_PER_MESSAGE = 1000
+const MAX_CHARS_PER_MESSAGE = 1500
+const DAILY_LIMIT = 60          // chamadas por usuário por dia
 
-exports.aiAssistant = onCall(
+/** Remove quebras e caracteres de controle de texto vindo do cliente,
+ *  para que contexto não vire injeção de prompt. */
+function clean(value, max = 120) {
+  return String(value == null ? '' : value)
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+}
+
+/* ── Prompts de sistema (server-side) ───────────────────────────── */
+function clientPrompt(ctx) {
+  const vets = Array.isArray(ctx.vets) ? ctx.vets.slice(0, 4) : []
+  const list = vets.length
+    ? `\n\nVeterinários disponíveis:\n${vets
+        .map(v => `- ${clean(v.name, 60)}${v.featured ? ' ⭐ Destaque' : ''}${v.online ? ' 🟢' : ''} — ${clean(v.specialties, 80)}`)
+        .join('\n')}`
+    : ''
+
+  return `Você é a triagem do AvanteApp (veterinária a domicílio, Brasil).
+
+REGRAS:
+- Máx 2-3 frases curtas. Direto e prático.
+- Dúvidas gerais (vacinas, alimentação, comportamento, rotina): responda direto, SEM sugerir agendamento.
+- Sintomas físicos agudos, dor, ferida, emergência, piora repentina, ou pedido de agendamento: oriente e inclua [SUGGEST_BOOKING] no fim.
+- Se incluir [SUGGEST_BOOKING]: mencione UM veterinário pelo nome.
+- Ao escolher o nome, dê PREFERÊNCIA ao que tem ⭐ Destaque. Só escolha outro se o Destaque claramente não atender a espécie/caso.
+- PROIBIDO: "é fundamental que", "é importante que", discursos longos.
+- Responda em português informal.${list}`
+}
+
+function vetPrompt(ctx) {
+  const areas = ctx.specialties ? `\nÁreas de atuação do profissional: ${clean(ctx.specialties, 200)}.` : ''
+  const agenda = Number(ctx.todayCount) > 0
+    ? `\nHoje ele tem ${Math.min(Number(ctx.todayCount), 99)} atendimento(s) em andamento ou agendado(s).`
+    : ''
+
+  return `Você é copiloto clínico de um MÉDICO VETERINÁRIO brasileiro dentro do app Avante.
+Seu interlocutor é um profissional formado — fale tecnicamente, sem simplificar como faria para um tutor.${areas}${agenda}
+
+REGRAS:
+- Seja direto e objetivo. Use listas curtas quando ajudar.
+- Doses: sempre em mg/kg, com via, intervalo e duração. Diga a espécie a que se aplica.
+- Aponte contraindicações e interações relevantes quando houver risco real.
+- Diagnóstico diferencial: liste as hipóteses mais prováveis primeiro e diga qual exame diferencia cada uma.
+- Se faltar dado essencial (peso, espécie, idade), PERGUNTE antes de responder.
+- Nunca invente valores. Se não tiver certeza de uma dose, diga que precisa ser confirmada em bula/formulário.
+- Feche respostas com doses ou protocolos com: "Confira sempre a bula e o seu julgamento clínico."
+- Responda em português técnico do Brasil.`
+}
+
+const TRIAGE_PROMPT = `Você é um assistente de triagem veterinária. Responda SEMPRE em JSON válido com os campos:
+- urgency: "imediata" | "alta" | "media" | "baixa"
+- specialty: especialidade veterinária mais adequada (1-3 palavras)
+- summary: resumo clínico em 1 frase para o veterinário
+- advice: orientação breve para o tutor enquanto aguarda (1-2 frases)
+Responda APENAS o JSON, sem markdown.`
+
+const MODES = {
+  client: { build: clientPrompt, maxTokens: 700,  temperature: 0.4, json: false },
+  vet:    { build: vetPrompt,    maxTokens: 1200, temperature: 0.3, json: false },
+  triage: { build: () => TRIAGE_PROMPT, maxTokens: 800, temperature: 0.3, json: true },
+}
+
+/** Conta as chamadas do dia e barra quem passar do teto. */
+async function checkQuota(uid) {
+  const { getFirestore } = require('firebase-admin/firestore')
+  const db = getFirestore()
+  const ref = db.doc(`aiUsage/${uid}`)
+  const today = new Date().toISOString().slice(0, 10)
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    const d = snap.exists ? snap.data() : {}
+    const count = d.day === today ? Number(d.count || 0) : 0
+    if (count >= DAILY_LIMIT) {
+      throw new HttpsError('resource-exhausted',
+        'Você atingiu o limite de uso da IA por hoje. Tente novamente amanhã.')
+    }
+    tx.set(ref, { day: today, count: count + 1 }, { merge: true })
+  })
+}
+
+exports.askAI = onCall(
   {
     region: 'southamerica-east1',
-    secrets: [GROQ_API_KEY],
+    secrets: [GEMINI_API_KEY],
     maxInstances: 5,
   },
   async (request) => {
@@ -36,44 +118,66 @@ exports.aiAssistant = onCall(
       throw new HttpsError('unauthenticated', 'Login necessário.')
     }
 
+    const cfg = MODES[request.data?.mode]
+    if (!cfg) throw new HttpsError('invalid-argument', 'Modo de IA inválido.')
+
     const messages = Array.isArray(request.data?.messages) ? request.data.messages : []
     if (messages.length === 0 || messages.length > MAX_MESSAGES) {
       throw new HttpsError('invalid-argument', 'Histórico de mensagens inválido.')
     }
 
-    const chatMessages = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      ...messages.map((m) => {
-        const text = String(m?.content || '').slice(0, MAX_CHARS_PER_MESSAGE)
-        if (!text) throw new HttpsError('invalid-argument', 'Mensagem vazia.')
-        return { role: m.role === 'assistant' ? 'assistant' : 'user', content: text }
-      }),
-    ]
+    await checkQuota(request.auth.uid)
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${GROQ_API_KEY.value()}`,
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 400,
-        temperature: 0.7,
-        messages: chatMessages,
-      }),
+    const contents = messages.map((m) => {
+      const text = String(m?.content || '').slice(0, MAX_CHARS_PER_MESSAGE)
+      if (!text) throw new HttpsError('invalid-argument', 'Mensagem vazia.')
+      return {
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text }],
+      }
     })
 
+    const body = {
+      systemInstruction: { parts: [{ text: cfg.build(request.data?.context || {}) }] },
+      contents,
+      generationConfig: {
+        maxOutputTokens: cfg.maxTokens,
+        temperature: cfg.temperature,
+        // O Gemini 3.x raciocina antes de responder e esse raciocínio
+        // consome o mesmo orçamento de saída — 'low' deixa espaço para
+        // a resposta e reduz a latência.
+        thinkingConfig: { thinkingLevel: 'low' },
+        ...(cfg.json ? { responseMimeType: 'application/json' } : {}),
+      },
+    }
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY.value()}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+    )
+
     if (!res.ok) {
-      console.error('Groq error', res.status, await res.text().catch(() => ''))
+      console.error('Gemini error', res.status, await res.text().catch(() => ''))
       throw new HttpsError('unavailable', 'Assistente indisponível no momento.')
     }
 
     const data = await res.json()
-    const reply = data?.choices?.[0]?.message?.content
-      || 'Não consegui responder agora. Tente novamente.'
+    const candidate = data?.candidates?.[0]
+    const text = (candidate?.content?.parts || [])
+      .filter(p => !p.thought)          // descarta o raciocínio interno
+      .map(p => p.text)
+      .filter(Boolean)
+      .join('')
+      .trim()
 
-    return { reply }
+    if (!text) {
+      if (candidate?.finishReason === 'SAFETY') {
+        throw new HttpsError('failed-precondition', 'A IA não pôde responder isso. Reformule a pergunta.')
+      }
+      throw new HttpsError('unavailable', 'Não consegui responder agora. Tente novamente.')
+    }
+
+    return { text }
   }
 )
 

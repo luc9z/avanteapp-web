@@ -1,5 +1,5 @@
 /**
- * RateRequestPage — Cliente avalia o atendimento após status "finalizado".
+ * RateRequestPage - Cliente avalia o atendimento após status "finalizado".
  * Rota: /rate/:requestId
  */
 import { useEffect, useState } from 'react'
@@ -119,7 +119,7 @@ export default function RateRequestPage() {
       </div>
 
       <div className="px-4 py-5 flex flex-col gap-6">
-        {/* Professional card — dark green */}
+        {/* Professional card - dark green */}
         <div className="rounded-2xl bg-primary px-5 py-4 flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">
             {professionalName[0]}

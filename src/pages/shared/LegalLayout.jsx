@@ -1,5 +1,5 @@
 /**
- * LegalLayout — moldura comum para Termos de Uso e Política de Privacidade.
+ * LegalLayout - moldura comum para Termos de Uso e Política de Privacidade.
  * Páginas públicas (não exigem login).
  */
 import { useNavigate } from 'react-router-dom'

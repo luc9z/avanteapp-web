@@ -3,7 +3,7 @@ import Spinner from '../common/Spinner'
 import MapPicker from './MapPicker'
 import { showToast } from '../common/Toast'
 
-/* ── AddressSheet — bottom sheet para criar/editar uma propriedade ──
+/* ── AddressSheet - bottom sheet para criar/editar uma propriedade ──
    Propriedade = { id, label, address, lat, lng }
    GPS é opcional mas recomendado (pin exato no mapa para o vet).
 ──────────────────────────────────────────────────────────────────── */
@@ -115,7 +115,7 @@ export default function AddressSheet({ open, onClose, onSave, initial }) {
               value={address}
               onChange={e => setAddress(e.target.value)}
               rows={2}
-              placeholder="Estrada X, km 12 — porteira azul, após o posto"
+              placeholder="Estrada X, km 12, porteira azul, após o posto"
               className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none
                          focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none transition-colors"
             />
@@ -140,7 +140,7 @@ export default function AddressSheet({ open, onClose, onSave, initial }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-green-900">Pin marcado no mapa ✓</p>
+                <p className="text-sm font-semibold text-green-900">Pin marcado no mapa</p>
                 <p className="text-xs text-green-600">{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)} · toque para recapturar o GPS</p>
               </div>
             </button>

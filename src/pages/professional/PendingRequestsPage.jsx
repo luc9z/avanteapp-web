@@ -1,8 +1,9 @@
 /**
  * PendingRequestsPage → agora "Solicitações": TODOS os pedidos do
  * veterinário com filtros por status (chips), em tempo real.
- * Aceita deep-link ?status=pendente|ativo|finalizado|rejeitado
- * (usado pelos cartões clicáveis da tela de Relatórios).
+ * Aceita deep-link ?status=pendente|ativo|finalizado|rejeitado e
+ * ?mes=AAAA-MM (usados pelos cartões e pelo gráfico de evolução da tela
+ * de Desempenho - tocar num mês abre a lista já recortada nele).
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
@@ -11,14 +12,11 @@ import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import Spinner from '../../components/common/Spinner'
-import { normalizeStatus, statusInfo } from '../../utils/status'
-import { format } from 'date-fns'
+import { normalizeStatus } from '../../utils/status'
+import RequestCard from '../../components/common/RequestCard'
+import { carregarPerfis } from '../../services/perfis'
+import { format, isSameMonth, parse } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-
-function formatDate(ts) {
-  const d = ts?.toDate ? ts.toDate() : null
-  return d ? format(d, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : ''
-}
 
 function statusGroup(s) {
   const st = normalizeStatus(s)
@@ -33,9 +31,20 @@ export default function PendingRequestsPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const initial = new URLSearchParams(location.search).get('status') || 'pendente'
+  const params = new URLSearchParams(location.search)
+  const initial = params.get('status') || 'pendente'
   const [tab, setTab] = useState(initial)
+  // Recorte por mês vindo do gráfico. Fica removível: quem chegou por ali
+  // precisa conseguir voltar à lista inteira sem sair da tela.
+  const [mes, setMes] = useState(() => {
+    const bruto = params.get('mes')
+    if (!bruto) return null
+    const d = parse(bruto, 'yyyy-MM', new Date())
+    return isNaN(d) ? null : d
+  })
   const [requests, setRequests] = useState(null)
+  // Foto de cada cliente, por uid - o mesmo recurso da tela do tutor.
+  const [fotos, setFotos] = useState({})
 
   useEffect(() => {
     if (!user?.uid) return
@@ -49,7 +58,26 @@ export default function PendingRequestsPage() {
     )
   }, [user?.uid])
 
-  const all = requests || []
+  useEffect(() => {
+    const uids = (requests || []).map(r => r.clientId).filter(Boolean)
+    if (!uids.length) return
+    let vivo = true
+    carregarPerfis(uids).then(perfis => {
+      if (!vivo) return
+      setFotos(f => ({
+        ...f,
+        ...Object.fromEntries(Object.entries(perfis).map(([uid, p]) => [uid, p.photoURL])),
+      }))
+    })
+    return () => { vivo = false }
+  }, [requests])
+
+  const dataDe = r => r.createdAt?.toDate?.() || null
+  const all = (requests || []).filter(r => {
+    if (!mes) return true
+    const d = dataDe(r)
+    return d && isSameMonth(d, mes)
+  })
   const counts = all.reduce((acc, r) => {
     const g = statusGroup(r.status)
     acc[g] = (acc[g] || 0) + 1
@@ -77,6 +105,20 @@ export default function PendingRequestsPage() {
         <h1 className="page-title">Solicitações</h1>
         <div className="w-6" />
       </div>
+
+      {mes && (
+        <div className="px-4 pt-3">
+          <div className="flex items-center gap-2 bg-primary/5 border border-primary/20
+                          rounded-2xl px-3 py-2.5">
+            <span className="text-xs text-gray-600 flex-1">
+              Mostrando <b className="text-primary">{format(mes, "MMMM 'de' yyyy", { locale: ptBR })}</b>
+            </span>
+            <button onClick={() => setMes(null)} className="btn-ghost btn-sm !px-2">
+              Ver todos
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filtros por status */}
       <div className="flex gap-2 px-4 py-3 overflow-x-auto bg-white sticky top-[57px] z-20 border-b border-gray-100">
@@ -114,35 +156,15 @@ export default function PendingRequestsPage() {
           </div>
         ) : (
           <div className="responsive-grid-cards stagger">
-            {visible.map(r => {
-              const info = statusInfo(r.status)
-              return (
-                <div
-                  key={r.id}
-                  className="card cursor-pointer hover:shadow-card-hover transition-all active:scale-[0.99]"
-                  onClick={() => navigate(`/request/${r.id}`)}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="avatar-circle w-10 h-10 text-base flex-shrink-0">
-                        {(r.clientName || '?')[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-gray-900 text-sm truncate">{r.clientName || 'Cliente'}</p>
-                        <p className="text-xs text-gray-400 truncate">{r.service}</p>
-                      </div>
-                    </div>
-                    <span className={`${info.cls} ml-2 flex-shrink-0`}>{info.label}</span>
-                  </div>
-                  <div className="flex flex-col gap-1 text-xs text-gray-400">
-                    {r.petName && <p>🐾 {r.petName}{r.petSpecies ? ` · ${r.petSpecies}` : ''}</p>}
-                    {r.location && <p className="truncate">📍 {r.location}</p>}
-                    {r.urgency === 'urgent' && <p className="text-red-500 font-bold">🚨 Urgente</p>}
-                    <p>{formatDate(r.createdAt)}</p>
-                  </div>
-                </div>
-              )
-            })}
+            {visible.map(r => (
+              <RequestCard
+                key={r.id}
+                req={r}
+                perspectiva="vet"
+                foto={fotos[r.clientId]}
+                onClick={() => navigate(`/request/${r.id}`)}
+              />
+            ))}
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
 /**
- * directChat.js — conversa ÚNICA entre cliente ↔ veterinário.
+ * directChat.js - conversa ÚNICA entre cliente ↔ veterinário.
  *
  * Antes existiam dois chats (um "direto" antes da solicitação e outro
  * por requestId). Agora é UM só thread por par cliente/vet, com id

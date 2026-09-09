@@ -3,11 +3,11 @@ import { collection, query, where, limit, getDocs } from 'firebase/firestore'
 import { db } from '../../firebase'
 
 /**
- * OffersBanner — espaço de monetização com ofertas REAIS.
+ * OffersBanner - espaço de monetização com ofertas REAIS.
  *
  * Lê a coleção `offers` do Firestore (gerenciada por você no console
  * ou num futuro painel admin). Se não houver ofertas ativas, não
- * renderiza nada — diferente do antigo AdBanner, que exibia anúncios
+ * renderiza nada - diferente do antigo AdBanner, que exibia anúncios
  * fictícios hardcoded.
  *
  * Documento esperado em offers/{id}:

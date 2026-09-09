@@ -8,7 +8,7 @@ import { getFunctions } from 'firebase/functions'
  *
  * IMPORTANTE: cada variável é acessada de forma ESTÁTICA
  * (import.meta.env.VITE_X). Acesso dinâmico (import.meta.env[k])
- * faria o Vite embutir o objeto env inteiro no bundle — incluindo
+ * faria o Vite embutir o objeto env inteiro no bundle - incluindo
  * qualquer outra variável presente no .env.local.
  */
 const firebaseConfig = {
@@ -31,7 +31,7 @@ const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 // experimentalAutoDetectLongPolling: quando o WebChannel do Firestore
 // é bloqueado (Brave Shields, adblockers, proxies corporativos), o SDK
-// cai automaticamente para long-polling — o chat continua funcionando.
+// cai automaticamente para long-polling - o chat continua funcionando.
 export const db = initializeFirestore(app, {
   experimentalAutoDetectLongPolling: true,
 })

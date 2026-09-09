@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import ScheduleSheet from '../client/ScheduleSheet'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import AIAssistant from '../client/AIAssistant'
-import { isActive, isFinal } from '../../utils/status'
+import VetAssistant from '../professional/VetAssistant'
+import { precisaDoCliente } from '../../utils/status'
 
 /* ─── Icons ──────────────────────────────────────────────────── */
 const HomeIcon = () => (
@@ -90,23 +91,34 @@ export function VetBottomNav() {
   const isDark = theme === 'dark'
   const uid = user?.uid
   const [unreadCount, setUnreadCount] = useState(0)
+  const [aiOpen, setAiOpen] = useState(false)
+  const [profile, setProfile] = useState(null)
+
+  // Áreas de atuação alimentam o contexto do copiloto clínico.
+  useEffect(() => {
+    if (!uid) return
+    return onSnapshot(doc(db, 'users', uid), snap => setProfile(snap.data() || null), () => {})
+  }, [uid])
 
   useEffect(() => {
     if (!uid) return
+    // Conta client-side com a MESMA regra do sino no Dashboard
+    // (`!professionalRead`), para os dois badges nunca divergirem -
+    // inclui requests sem o campo (ex: emergências antigas).
     const unsub = onSnapshot(
       query(
         collection(db, 'requests'),
-        where('professionalId', '==', uid),
-        where('professionalRead', '==', false)
+        where('professionalId', '==', uid)
       ),
-      snap => setUnreadCount(snap.size),
+      snap => setUnreadCount(snap.docs.filter(d => !d.data().professionalRead).length),
       () => {}
     )
     return unsub
   }, [uid])
 
   return (
-    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
+    <>
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
                     backdrop-blur-md border-t border-transparent flex items-stretch"
          style={{
            background: isDark ? 'rgba(22,32,22,0.95)' : 'rgba(255,255,255,0.92)',
@@ -114,12 +126,35 @@ export function VetBottomNav() {
            paddingBottom: 'env(safe-area-inset-bottom)',
            borderRadius: '20px 20px 0 0',
          }}>
-      <NavItem to="/dashboard"        icon={<HomeIcon />}     label="Início"      isDark={isDark} />
-      <NavItem to="/agenda"           icon={<CalendarIcon />} label="Agenda"      isDark={isDark} />
-      <NavItem to="/pending-requests" icon={<RequestsIcon />} label="Pedidos"     badge={unreadCount} isDark={isDark} />
-      <NavItem to="/reports"          icon={<ReportsIcon />}  label="Relatórios"  isDark={isDark} />
-      <NavItem to="/edit-profile"     icon={<ProfileIcon />}  label="Perfil"      isDark={isDark} />
-    </nav>
+      <NavItem to="/dashboard" icon={<HomeIcon />}     label="Início" badge={unreadCount} isDark={isDark} />
+      <NavItem to="/agenda"    icon={<CalendarIcon />} label="Agenda" isDark={isDark} />
+
+      {/* AVANTE IA - botão central elevado, igual ao do cliente */}
+      <button
+        onClick={() => setAiOpen(true)}
+        className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 min-w-0"
+        aria-label="AVANTE IA"
+      >
+        <span className="w-10 h-10 bg-primary rounded-full flex items-center justify-center
+                         shadow-md active:scale-90 transition-all -mt-4 hover:bg-primary-600">
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        </span>
+        <span className={`text-[10px] font-semibold tracking-wide ${isDark ? 'text-green-400' : 'text-primary'}`}>IA</span>
+      </button>
+
+      <NavItem to="/reports"      icon={<ReportsIcon />} label="Desempenho" isDark={isDark} />
+      <NavItem to="/edit-profile" icon={<ProfileIcon />} label="Perfil"     isDark={isDark} />
+      </nav>
+
+      <VetAssistant
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        specialties={Array.isArray(profile?.specialties) ? profile.specialties : []}
+      />
+    </>
   )
 }
 
@@ -140,12 +175,9 @@ export function ClientBottomNav() {
     const unsub = onSnapshot(
       query(collection(db, 'requests'), where('clientId', '==', uid)),
       snap => {
-        const count = snap.docs.filter(d => {
-          const r = d.data()
-          const needsConfirm = isFinal(r.status) && !r.confirmFinish_client && !r.rated
-          return needsConfirm || isActive(r.status)
-        }).length
-        setNotifCount(count)
+        // Só o que a pessoa precisa resolver. "Em andamento" saiu daqui:
+        // é situação do pedido, não tarefa pendente.
+        setNotifCount(snap.docs.filter(d => precisaDoCliente(d.data())).length)
       },
       () => {}
     )
@@ -164,13 +196,14 @@ export function ClientBottomNav() {
            }}>
 
         <NavItem to="/home"        icon={<SearchIcon />}   label="Buscar"  isDark={isDark} />
-        <NavItem to="/my-requests" icon={<RequestsIcon />} label="Pedidos" badge={notifCount} isDark={isDark} />
+        <NavItem to={notifCount > 0 ? '/my-requests?tab=acao' : '/my-requests'}
+                 icon={<RequestsIcon />} label="Pedidos" badge={notifCount} isDark={isDark} />
 
-        {/* IA — botão central elevado */}
+        {/* IA - botão central elevado */}
         <button
           onClick={() => setAiOpen(true)}
           className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 min-w-0"
-          aria-label="Assistente IA"
+          aria-label="AVANTE IA"
         >
           <span className="w-10 h-10 bg-primary rounded-full flex items-center justify-center
                            shadow-md active:scale-90 transition-all -mt-4 hover:bg-primary-600">

@@ -1,5 +1,5 @@
 /**
- * ReferralPage — sistema de indicação para veterinários.
+ * ReferralPage - sistema de indicação para veterinários.
  * Cada vet tem um código único. Ao indicar outro vet que ativa um plano,
  * o indicador ganha 1 mês grátis no seu plano atual.
  *
@@ -42,24 +42,40 @@ export default function ReferralPage() {
       const d = snap.data() || {}
 
       if (!d.referralCode) {
-        // Gera código único para este vet
+        // Gera o código e SÓ mostra depois de gravar. Se a gravação
+        // falhasse em silêncio, o link levaria um código que não existe
+        // em nenhum usuário - e a indicação nunca seria registrada.
         const newCode = generateCode(d.name || d.firstName || '')
-        await setDoc(doc(db, 'users', uid), { referralCode: newCode }, { merge: true })
-        setCode(newCode)
+        try {
+          await setDoc(doc(db, 'users', uid), { referralCode: newCode }, { merge: true })
+          setCode(newCode)
+        } catch (e) {
+          console.error('[referral] não foi possível salvar o código:', e)
+          showToast('Não foi possível gerar seu código. Tente novamente.', 'error')
+        }
       } else {
         setCode(d.referralCode)
       }
 
       setCredits(d.referralCredits || 0)
 
-      // Busca indicações realizadas
-      const refSnap = await getDocs(collection(db, 'users', uid, 'referrals'))
-      const refs = []
-      for (const r of refSnap.docs) {
-        const vetSnap = await getDoc(doc(db, 'users', r.id))
-        refs.push({ id: r.id, ...r.data(), vetName: vetSnap.data()?.name || 'Veterinário' })
+      // Busca indicações realizadas. Nunca deixa a página presa no loading:
+      // se a leitura falhar (permissão/rede), mostra a página mesmo assim.
+      try {
+        const refSnap = await getDocs(collection(db, 'users', uid, 'referrals'))
+        const refs = await Promise.all(refSnap.docs.map(async r => {
+          const vetSnap = await getDoc(doc(db, 'users', r.id)).catch(() => null)
+          return { id: r.id, ...r.data(), vetName: vetSnap?.data()?.name || 'Veterinário' }
+        }))
+        setReferrals(refs)
+      } catch (e) {
+        console.error('[referral] falha ao carregar indicações:', e)
+        setReferrals([])
+      } finally {
+        setLoading(false)
       }
-      setReferrals(refs)
+    }, err => {
+      console.error('[referral] listener falhou:', err)
       setLoading(false)
     })
   }, [uid])
@@ -78,7 +94,7 @@ export default function ReferralPage() {
 
   async function shareWhatsApp() {
     const text = encodeURIComponent(
-      `Olá! Estou usando o Avante para gerenciar meus atendimentos veterinários a domicílio. Use meu código *${code}* para se cadastrar e ganhe vantagens: ${shareLink}`
+      `Olá! Estou usando o AVANTE para gerenciar meus atendimentos veterinários a domicílio. Use meu código *${code}* para se cadastrar e ganhe vantagens: ${shareLink}`
     )
     window.open(`https://wa.me/?text=${text}`, '_blank')
   }
@@ -130,7 +146,7 @@ export default function ReferralPage() {
                   ? 'bg-green-500 text-white'
                   : 'bg-primary text-white hover:bg-primary-600 active:scale-95'
               }`}>
-              {copied ? '✓ Copiado' : 'Copiar link'}
+              {copied ? 'Copiado' : 'Copiar link'}
             </button>
           </div>
 
@@ -155,7 +171,7 @@ export default function ReferralPage() {
               { icon: '1', text: 'Compartilhe seu código com outros veterinários' },
               { icon: '2', text: 'Quando seu colega se cadastrar e ativar qualquer plano pago, você ganha 1 mês grátis' },
               { icon: '3', text: 'Os créditos são aplicados automaticamente na próxima renovação' },
-              { icon: '★', text: 'Não há limite de indicações — quanto mais você indica, mais meses ganha!' },
+              { icon: '★', text: 'Não há limite de indicações: quanto mais você indica, mais meses ganha!' },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">
@@ -184,7 +200,7 @@ export default function ReferralPage() {
                   <div className="flex-1">
                     <p className="font-semibold text-sm text-gray-800">{r.vetName}</p>
                     <p className="text-xs text-gray-400">
-                      {r.activatedPlan ? `Plano ${r.activatedPlan} ativo · +1 mês creditado` : 'Cadastrado — aguardando ativação de plano'}
+                      {r.activatedPlan ? `Plano ${r.activatedPlan} ativo · +1 mês creditado` : 'Cadastrado, aguardando ativação de plano'}
                     </p>
                   </div>
                   {r.activatedPlan ? (

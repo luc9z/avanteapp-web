@@ -1,5 +1,5 @@
 /**
- * ChatPage — Chat em tempo real entre cliente e veterinário.
+ * ChatPage - Chat em tempo real entre cliente e veterinário.
  * Rota: /chat/:requestId
  *
  * Firestore:
@@ -74,7 +74,7 @@ export default function ChatPage() {
      This fixes the race condition: if messages arrive before the
      request doc, the chat stays in "loading" state until BOTH are
      ready. It also makes the chat auto-unlock when the professional
-     accepts — no page refresh needed.
+     accepts - no page refresh needed.
   ─────────────────────────────────────────────────────────────── */
   const direct = isDirectChat(requestId)
 
@@ -138,6 +138,8 @@ export default function ChatPage() {
           participants: [req.clientId, req.professionalId].filter(Boolean),
           clientId: req.clientId,
           professionalId: req.professionalId,
+          // Quem abriu primeiro. Sem mensagem, só ele enxerga a conversa.
+          createdBy: user?.uid || req.clientId,
           clientName: req.clientName || 'Cliente',
           professionalName: req.professionalName || 'Profissional',
           lastMessage: '',
@@ -349,7 +351,7 @@ export default function ChatPage() {
             {(() => {
               const exp = request.expiresAt?.toDate?.()
               const daysLeft = exp ? Math.max(0, differenceInDays(exp, new Date())) : CHAT_TTL_DAYS
-              return `Conversa temporária — apagada após ${CHAT_TTL_DAYS} dias sem atividade${exp ? ` (expira em ${daysLeft} dia${daysLeft !== 1 ? 's' : ''})` : ''}.`
+              return `Conversa temporária, apagada após ${CHAT_TTL_DAYS} dias sem atividade${exp ? ` (expira em ${daysLeft} dia${daysLeft !== 1 ? 's' : ''})` : ''}.`
             })()}
           </p>
         </div>
@@ -455,7 +457,7 @@ export default function ChatPage() {
                             </div>
                             <div>
                               <p className={`text-sm font-bold ${isMine ? 'text-white' : 'text-primary'}`}>
-                                📍 Localização
+                                Localização
                               </p>
                               <p className={`text-[11px] ${isMine ? 'text-white/70' : 'text-gray-400'}`}>
                                 Toque para ver no mapa
@@ -483,7 +485,7 @@ export default function ChatPage() {
                 </svg>
                 <p className="text-sm font-medium">Inicie a conversa!</p>
                 <p className="text-xs text-center max-w-xs">
-                  Use o ícone 📍 para enviar sua localização diretamente pelo chat.
+                  Use o ícone de localização para enviar sua posição pelo chat.
                 </p>
               </div>
             )}

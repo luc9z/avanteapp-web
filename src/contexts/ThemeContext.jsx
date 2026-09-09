@@ -1,17 +1,19 @@
 /**
- * ThemeContext — modo claro/escuro com persistência.
+ * ThemeContext - modo claro/escuro com persistência.
  * O tema vira a classe `dark` no <html>; o restante acontece via CSS
  * (variantes dark do Tailwind + overrides em globals.scss).
  */
 import { createContext, useContext, useEffect, useState } from 'react'
 
-const ThemeContext = createContext({ theme: 'light', toggleTheme: () => {} })
+const ThemeContext = createContext({ theme: 'dark', toggleTheme: () => {} })
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
+    // O escuro é o padrão do Avante. A preferência de quem já trocou
+    // continua valendo - só quem nunca escolheu cai no escuro.
     const saved = localStorage.getItem('avante-theme')
     if (saved === 'dark' || saved === 'light') return saved
-    return 'light'
+    return 'dark'
   })
 
   useEffect(() => {

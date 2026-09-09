@@ -1,5 +1,5 @@
 /**
- * ProfCard — cartão de veterinário em formato de grade (2 colunas).
+ * ProfCard - cartão de veterinário em formato de grade (2 colunas).
  * - Selo "Destaque" para profissionais com plano destacado (monetização)
  * - Coração de favoritar (salvo no perfil do cliente)
  * - Botão de mensagem: conversa direta ANTES de enviar solicitação
@@ -36,6 +36,7 @@ export default function ProfCard({ prof, isFavorite, onToggleFavorite, onView, o
   return (
     <div
       onClick={onView}
+      data-coach="vet-card"
       className={`relative flex flex-col rounded-2xl bg-white p-3.5 cursor-pointer transition-all
                   active:scale-[0.98] hover:shadow-card-hover ${
         featured
@@ -97,7 +98,7 @@ export default function ProfCard({ prof, isFavorite, onToggleFavorite, onView, o
             </>
           ) : (
             <span className="text-[9px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-              Novo no Avante
+              Novo no AVANTE
             </span>
           )}
         </div>
@@ -115,7 +116,7 @@ export default function ProfCard({ prof, isFavorite, onToggleFavorite, onView, o
         >
           {online ? 'Solicitar' : 'Agendar'}
         </button>
-        {/* Chat antes da solicitação — exclusivo de veterinários Premium.
+        {/* Chat antes da solicitação - exclusivo de veterinários Premium.
             Para os demais, o ícone aparece suspenso (desabilitado) com tooltip. */}
         <button
           onClick={featured ? onMessage : undefined}

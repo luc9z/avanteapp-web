@@ -29,7 +29,10 @@ export default function RegisterPage() {
       // Encontra o referrer pelo código
       const q = query(collection(db, 'users'), where('referralCode', '==', refCode))
       const snap = await getDocs(q)
-      if (snap.empty) return
+      if (snap.empty) {
+        console.warn('[referral] código não encontrado:', refCode)
+        return
+      }
 
       const referrerId = snap.docs[0].id
       // Registra na subcollection referrals/{newUid}
@@ -37,8 +40,10 @@ export default function RegisterPage() {
         referredAt: serverTimestamp(),
         activatedPlan: null,
       })
-    } catch {
-      // Silencioso — falha de referral não bloqueia cadastro
+    } catch (e) {
+      // Não bloqueia o cadastro, mas precisa aparecer no console -
+      // engolir isto foi o que escondeu a indicação quebrada.
+      console.error('[referral] falha ao registrar indicação:', e)
     }
   }
 

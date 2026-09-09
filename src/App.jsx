@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { ToastContainer } from './components/common/Toast'
+import { ConfirmHost } from './components/common/ConfirmDialog'
 import ErrorBoundary from './components/common/ErrorBoundary'
 import RequireRole from './components/common/RequireRole'
+import CoachTour from './components/common/CoachTour'
 import Spinner from './components/common/Spinner'
 import { useAuth } from './contexts/AuthContext'
 import useLocalNotifications from './hooks/useLocalNotifications'
@@ -99,7 +101,12 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
+      {/* Tutorial guiado do primeiro acesso - fora das rotas porque o
+          roteiro atravessa páginas (Home → perfil → agendamento). */}
+      <CoachTour />
       <ToastContainer />
+      {/* Confirmações destrutivas - substitui window.confirm() */}
+      <ConfirmHost />
     </ErrorBoundary>
   )
 }

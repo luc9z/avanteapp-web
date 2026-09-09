@@ -9,7 +9,6 @@ import Spinner from '../../components/common/Spinner'
 import Stars from '../../components/common/Stars'
 import { ClientBottomNav } from '../../components/common/BottomNav'
 import ScheduleSheet from '../../components/client/ScheduleSheet'
-import SymptomChecker from '../../components/client/SymptomChecker'
 import { isOnlineCheck, isFeatured } from '../../components/client/ProfCard'
 import { openDirectChat } from '../../services/directChat'
 import { showToast } from '../../components/common/Toast'
@@ -26,8 +25,6 @@ export default function ProfessionalDetailPage() {
   const [ratings, setRatings] = useState([])
   const [loading, setLoading] = useState(true)
   const [scheduleOpen, setScheduleOpen] = useState(false)
-  const [checkerOpen, setCheckerOpen] = useState(false)
-  const [triageData, setTriageData] = useState(null)
 
   async function handleMessage() {
     try {
@@ -134,7 +131,7 @@ export default function ProfessionalDetailPage() {
               )}
               {profile.phone && (
                 <ProfRow iconPath="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  label="Telefone" value={profile.phone} href={`tel:${profile.phone}`} />
+                  label="Telefone" value={profile.phone} />
               )}
               {profile.email && (
                 <ProfRow iconPath="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
@@ -243,12 +240,13 @@ export default function ProfessionalDetailPage() {
            style={{ bottom: 'calc(3.9rem + env(safe-area-inset-bottom, 0px))' }}>
         <div className="bg-white border border-gray-100 shadow-card-hover rounded-2xl p-2.5 flex gap-2 animate-fade-up">
           <button
-            onClick={() => setCheckerOpen(true)}
+            onClick={() => setScheduleOpen(true)}
+            data-coach="request-btn"
             className="flex-1 btn-primary py-3"
           >
             {isOnlineCheck(profile) ? 'Solicitar atendimento' : 'Agendar atendimento'}
           </button>
-          {/* Chat antes da solicitação — exclusivo Premium (suspenso para os demais) */}
+          {/* Chat antes da solicitação - exclusivo Premium (suspenso para os demais) */}
           {(() => {
             const premium = profile && isFeatured(profile)
             return (
@@ -281,28 +279,11 @@ export default function ProfessionalDetailPage() {
 
       <ClientBottomNav />
 
-      <SymptomChecker
-        open={checkerOpen}
-        vetName={profile?.name || 'veterinário'}
-        onClose={() => setCheckerOpen(false)}
-        onProceed={(triage) => {
-          setTriageData(triage)
-          setCheckerOpen(false)
-          setScheduleOpen(true)
-        }}
-        onSkip={() => {
-          setTriageData(null)
-          setCheckerOpen(false)
-          setScheduleOpen(true)
-        }}
-      />
-
       <ScheduleSheet
         open={scheduleOpen}
         professional={profile}
         user={user}
-        triage={triageData}
-        onClose={() => { setScheduleOpen(false); setTriageData(null) }}
+        onClose={() => setScheduleOpen(false)}
       />
     </>
   )

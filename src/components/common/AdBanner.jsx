@@ -1,7 +1,7 @@
 /**
- * AdBanner — banner de anúncio grande, lido do Firestore.
+ * AdBanner - banner de anúncio grande, lido do Firestore.
  *
- * Coleção `offers` — campos:
+ * Coleção `offers` - campos:
  *   active: true
  *   size: 'large'          ← filtra banners grandes (small = OffersBanner)
  *   title, subtitle, cta, url, emoji
@@ -81,7 +81,7 @@ export default function AdBanner({ className = '', fallback = null, audience = '
         {/* Text */}
         <div className="flex-1 min-w-0 z-10">
           <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">
-            Parceiro Avante
+            Parceiro AVANTE
           </span>
           <p className="font-black text-white text-base leading-tight mt-0.5">{offer.title}</p>
           {offer.subtitle && (

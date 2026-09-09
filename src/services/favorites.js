@@ -1,5 +1,5 @@
 /**
- * favorites.js — Favoritar VETERINÁRIOS (não solicitações).
+ * favorites.js - Favoritar VETERINÁRIOS (não solicitações).
  * Armazenado como array de uids em users/{uid}.favorites.
  */
 import { doc, setDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore'

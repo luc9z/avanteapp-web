@@ -1,5 +1,5 @@
 /**
- * Charts — gráficos leves em SVG puro (sem dependências externas).
+ * Charts - gráficos leves em SVG puro (sem dependências externas).
  * Usados na página de Relatórios do veterinário, alimentados em
  * tempo real por onSnapshot.
  */
@@ -62,15 +62,34 @@ export function DonutChart({ data, size = 168, thickness = 26, centerLabel, cent
 }
 
 /* ── Barras verticais (ex.: atendimentos por mês) ─────────────── */
-export function BarChart({ data, height = 130, color = '#375337' }) {
+/**
+ * @param {(item, i) => void} [onSelect] torna cada barra clicável - usado
+ *   para abrir a lista já filtrada pelo mês tocado.
+ */
+export function BarChart({ data, height = 130, color = '#375337', onSelect }) {
   const max = Math.max(...data.map(d => d.value), 1)
+  const clicavel = typeof onSelect === 'function'
 
   return (
     <div className="flex items-end gap-2" style={{ height: height + 26 }}>
       {data.map((d, i) => {
         const h = Math.max((d.value / max) * height, d.value > 0 ? 6 : 3)
+        // Coluna inteira é o alvo: acertar só a barra seria difícil no
+        // celular, ainda mais nos meses de valor baixo.
+        const Wrapper = clicavel ? 'button' : 'div'
         return (
-          <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1 min-w-0">
+          <Wrapper
+            key={i}
+            {...(clicavel ? {
+              type: 'button',
+              onClick: () => onSelect(d, i),
+              title: `Ver solicitações de ${d.label}`,
+              className: 'flex-1 flex flex-col items-center justify-end gap-1 min-w-0 h-full rounded-lg ' +
+                'transition-all duration-200 hover:-translate-y-px hover:bg-black/5 active:scale-[0.98]',
+            } : {
+              className: 'flex-1 flex flex-col items-center justify-end gap-1 min-w-0',
+            })}
+          >
             <span className="text-[10px] font-bold text-gray-600">{d.value > 0 ? d.value : ''}</span>
             <div
               className="w-full rounded-t-lg"
@@ -81,10 +100,36 @@ export function BarChart({ data, height = 130, color = '#375337' }) {
                 transition: 'height 0.5s ease',
               }}
             />
-            <span className="text-[10px] text-gray-400 truncate w-full text-center">{d.label}</span>
-          </div>
+            <span className="text-[10px] text-gray-500 truncate w-full text-center">{d.label}</span>
+          </Wrapper>
         )
       })}
+    </div>
+  )
+}
+
+/* ── Anel de progresso (ex.: meta mensal) ─────────────────────── */
+export function ProgressRing({ percent, size = 132, thickness = 12, color = '#375337', label, sub }) {
+  const pct = Math.max(0, Math.min(100, percent || 0))
+  const r = (size - thickness) / 2
+  const c = 2 * Math.PI * r
+  const dash = (pct / 100) * c
+
+  return (
+    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={thickness} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke={color} strokeWidth={thickness} strokeLinecap="round"
+          strokeDasharray={`${dash} ${c - dash}`}
+          style={{ transition: 'stroke-dasharray 0.6s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-xl font-bold text-gray-900 leading-none tabular-nums">{label}</span>
+        {sub && <span className="text-[10px] text-gray-400 mt-1 text-center px-2">{sub}</span>}
+      </div>
     </div>
   )
 }

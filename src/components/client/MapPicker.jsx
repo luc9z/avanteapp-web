@@ -1,5 +1,5 @@
 /**
- * MapPicker — mapa com pin arrastável para marcar o local EXATO.
+ * MapPicker - mapa com pin arrastável para marcar o local EXATO.
  * Resolve o problema do GPS impreciso: o usuário captura a posição
  * aproximada (ou parte do centro da região) e ajusta o pin com o
  * dedo até a porteira/casa certa.

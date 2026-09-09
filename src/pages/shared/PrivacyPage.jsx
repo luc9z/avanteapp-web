@@ -1,5 +1,5 @@
 /**
- * PrivacyPage — Política de Privacidade do Avante (LGPD).
+ * PrivacyPage - Política de Privacidade do Avante (LGPD).
  * Conteúdo base; revise com apoio jurídico antes da operação comercial.
  */
 import LegalLayout, { LegalSection } from './LegalLayout'
@@ -8,14 +8,14 @@ export default function PrivacyPage() {
   return (
     <LegalLayout title="Política de Privacidade" updatedAt="22 de junho de 2026">
       <p>
-        Esta Política descreve como o <strong>Avante</strong> coleta, usa, compartilha e
+        Esta Política descreve como o <strong>AVANTE</strong> coleta, usa, compartilha e
         protege os seus dados pessoais, em conformidade com a <strong>Lei Geral de Proteção
-        de Dados (LGPD — Lei nº 13.709/2018)</strong>.
+        de Dados (LGPD, Lei nº 13.709/2018)</strong>.
       </p>
 
       <LegalSection n="1" title="Controlador dos dados">
         <p>
-          O Avante é o controlador dos dados tratados na plataforma. Contato do encarregado
+          O AVANTE é o controlador dos dados tratados na plataforma. Contato do encarregado
           (DPO): <strong>privacidade@avante.app</strong>.
         </p>
       </LegalSection>

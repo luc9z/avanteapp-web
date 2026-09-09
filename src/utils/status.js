@@ -1,5 +1,5 @@
 /**
- * status.js — Fonte única de verdade para status de solicitações.
+ * status.js - Fonte única de verdade para status de solicitações.
  * Substitui as 4 implementações duplicadas de normalizeStatus que
  * existiam em ClientHomePage, ClientRequestsPage, AgendaPage e Dashboard.
  */
@@ -53,6 +53,41 @@ export const STATUS_INFO = {
   finalizado:   { label: 'Finalizado',             cls: 'badge-done' },
 }
 
+/**
+ * O pedido espera uma AÇÃO do cliente agora?
+ *
+ * É o que o contador da aba "Pedidos" mostra. Antes ele somava também os
+ * pedidos "em andamento", que não pedem nada de ninguém - o número
+ * aparecia sem que houvesse o que fazer, e não havia como descobrir a
+ * qual pedido ele se referia.
+ *
+ * São dois casos, os mesmos que já viram cartão em "Atualizações":
+ *  - orçamento recebido, esperando aprovar ou recusar;
+ *  - atendimento finalizado, esperando confirmação e avaliação.
+ */
+export function precisaDoCliente(r) {
+  const st = normalizeStatus(r?.status)
+  if (st === 'orcamento') return true
+  if (st === 'finalizado') return r?.rated !== true
+  return false
+}
+
+/**
+ * A frase que explica a pendência, para o cartão do pedido dizer o que
+ * a pessoa precisa fazer - não só que "tem algo".
+ * Devolve null quando nada é esperado do cliente.
+ */
+export function acaoDoCliente(r) {
+  const st = normalizeStatus(r?.status)
+  if (st === 'orcamento') return 'Orçamento recebido, aprove ou recuse'
+  if (st === 'finalizado' && r?.rated !== true) {
+    return r?.confirmFinish_client === true
+      ? 'Avalie o atendimento'
+      : 'Confirme que o atendimento foi concluído'
+  }
+  return null
+}
+
 export function statusInfo(s) {
-  return STATUS_INFO[normalizeStatus(s)] || { label: s || '—', cls: 'badge-done' }
+  return STATUS_INFO[normalizeStatus(s)] || { label: s || '-', cls: 'badge-done' }
 }

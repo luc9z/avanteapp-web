@@ -1,5 +1,5 @@
 /**
- * localNotify.js — notificações no navegador SEM servidor (sem FCM/Blaze).
+ * localNotify.js - notificações no navegador SEM servidor (sem FCM/Blaze).
  *
  * Funciona enquanto houver uma aba do app aberta (mesmo em segundo plano):
  * os listeners em tempo real do Firestore detectam novos pedidos/mensagens

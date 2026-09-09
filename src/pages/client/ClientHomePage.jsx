@@ -5,6 +5,7 @@ import {
   onSnapshot, doc, getDoc, addDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
+import { comNotas } from '../../services/ratings'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
 import Modal from '../../components/common/Modal'
@@ -58,7 +59,7 @@ export default function ClientHomePage() {
   const [dismissedNotifs, setDismissedNotifs] = useState({})
   const [scheduleProf, setScheduleProf] = useState(null)     // vet selecionado p/ agendar
   const [urgencyOpen, setUrgencyOpen] = useState(false)
-  const [urgencyForm, setUrgencyForm] = useState({ animal: '', notes: '' })
+  const [urgencyForm, setUrgencyForm] = useState({ species: '', breed: '', notes: '' })
   const [sendingUrgency, setSendingUrgency] = useState(false)
 
   const LIMIT = 20
@@ -108,9 +109,9 @@ export default function ClientHomePage() {
       }
     )
 
-    // Subscribe to chats — detect unread messages from professional
+    // Subscribe to chats - detect unread messages from professional
     const chatUnsub = onSnapshot(
-      query(collection(db, 'chats'), where('clientId', '==', uid)),
+      query(collection(db, 'chats'), where('participants', 'array-contains', uid)),
       snap => {
         const chatsWithUnread = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
@@ -180,6 +181,13 @@ export default function ClientHomePage() {
   function processSnap(snap, refresh) {
     const docs = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
     setProfessionals(prev => refresh ? docs : [...prev, ...docs])
+    // A nota do documento do vet nao e recalculada por ninguem (a Cloud
+    // Function exige plano Blaze), entao vem das avaliacoes. Chega
+    // depois da lista para nao atrasar a primeira pintura.
+    comNotas(docs).then(comNota => {
+      const porUid = new Map(comNota.map(v => [v.uid, v]))
+      setProfessionals(prev => prev.map(p => porUid.get(p.uid) || p))
+    })
     setLastDoc(snap.docs[snap.docs.length - 1] || null)
     setHasMore(snap.docs.length === LIMIT)
     const online = docs.filter(isOnlineCheck).length
@@ -251,8 +259,42 @@ export default function ClientHomePage() {
     }
   }
 
+  async function checkProfileComplete() {
+    try {
+      const [userSnap, privSnap] = await Promise.all([
+        getDoc(doc(db, 'users', uid)),
+        getDoc(doc(db, 'users', uid, 'private', 'profile')).catch(() => null),
+      ])
+      const userData = userSnap.data() || {}
+      const privData = privSnap?.exists?.() ? privSnap.data() : {}
+      const phone = privData.phone || userData.phone
+      const cpf = privData.cpf || userData.cpf
+      if (!phone || !cpf) {
+        showToast('Preencha CPF e telefone no seu perfil antes de solicitar', 'error')
+        navigate('/edit-profile')
+        return false
+      }
+      return true
+    } catch {
+      return true
+    }
+  }
+
+  async function handleUrgencyClick() {
+    const ok = await checkProfileComplete()
+    if (!ok) return
+    setUrgencyForm({ species: '', breed: '', notes: '' })
+    setUrgencyOpen(true)
+  }
+
+  async function handleScheduleRequest(prof) {
+    const ok = await checkProfileComplete()
+    if (!ok) return
+    setScheduleProf(prof)
+  }
+
   async function handleUrgency() {
-    if (!urgencyForm.animal.trim()) return showToast('Informe o animal', 'error')
+    if (!urgencyForm.species.trim()) return showToast('Selecione a espécie do animal', 'error')
     if (!urgencyForm.notes.trim()) return showToast('Descreva o problema', 'error')
     setSendingUrgency(true)
     try {
@@ -263,22 +305,24 @@ export default function ClientHomePage() {
       await addDoc(collection(db, 'requests'), {
         isUrgent: true,
         status: 'urgente',
-        urgentExpiry: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        urgentExpiry: new Date(Date.now() + 120 * 60 * 1000).toISOString(),
         clientId: uid,
         clientName: userData.name || user.displayName || '',
         clientEmail: user.email || '',
         clientContact: privData.phone || userData.phone || '',
-        animal: urgencyForm.animal.trim(),
+        species: urgencyForm.species.trim(),
+        animal: [urgencyForm.species.trim(), urgencyForm.breed.trim()].filter(Boolean).join(' · '),
         notes: urgencyForm.notes.trim(),
-        service: 'Atendimento de urgência',
+        service: 'Atendimento de emergência',
+        professionalRead: false,
         statusHistory: [],
         createdAt: serverTimestamp(),
       })
-      showToast('🚨 Urgência enviada! Vets serão notificados.', 'success')
+      showToast('Emergência enviada! Vets serão notificados.', 'success')
       setUrgencyOpen(false)
-      setUrgencyForm({ animal: '', notes: '' })
+      setUrgencyForm({ species: '', breed: '', notes: '' })
     } catch (e) {
-      showToast(friendlyError(e, 'Não foi possível enviar a urgência.'), 'error')
+      showToast(friendlyError(e, 'Não foi possível enviar a emergência.'), 'error')
     } finally {
       setSendingUrgency(false)
     }
@@ -330,17 +374,19 @@ export default function ClientHomePage() {
           )}
           <span className="font-semibold text-sm">Olá, {firstName}</span>
         </Link>
-        <ThemeToggle />
-        <button onClick={handleLogout} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button onClick={handleLogout} className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-full hover:bg-red-50">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Fixed header: green hero + search + filters */}
       <div className="flex-shrink-0">
-        {/* Green hero — padronizado com o painel do veterinário */}
+        {/* Green hero - padronizado com o painel do veterinário */}
         <div className="bg-gradient-to-br from-primary-600 via-primary to-primary-700 px-4 pt-4 pb-5 rounded-b-3xl shadow-lg animate-fade-up">
           <h2 className="text-white text-lg font-bold leading-tight">Cuide do seu pet onde estiver</h2>
           <p className="text-white/70 text-xs mb-4">Veterinários a domicílio, prontos para atender</p>
@@ -360,14 +406,10 @@ export default function ClientHomePage() {
               <p className="text-[11px] text-white/70 mt-1">Histórico</p>
             </Link>
           </div>
-          {/* Urgência */}
-          <button onClick={() => setUrgencyOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500/90 hover:bg-red-500 active:scale-[0.98] transition-all text-white font-bold text-sm">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Preciso de atendimento urgente
+          {/* Emergência - usa a variante destrutiva do design system,
+              então segue a mesma altura, raio e animação dos demais botões. */}
+          <button onClick={handleUrgencyClick} className="btn-danger-solid btn-block">
+            Emergência veterinária
           </button>
         </div>
 
@@ -434,18 +476,11 @@ export default function ClientHomePage() {
 
       {/* Scroll area: ofertas + atualizações + lista de profissionais */}
       <div className="flex-1 overflow-y-auto px-4 pb-nav" onScroll={handleScroll}>
-        <div className="pt-4 flex flex-col gap-3.5">
-          <EnablePushBanner
-            uid={uid}
-            message="Ative as notificações para saber na hora quando o veterinário aceitar seu pedido."
-          />
-          <AdBanner audience="client" />
-          <OffersBanner audience="client" />
-        </div>
-        {/* Atualizações */}
+        {/* Atualizações - o que está acontecendo com OS MEUS pedidos
+            vem antes de qualquer banner promocional. */}
         {(activeRequests.some(r => dismissedNotifs[`req-${r.id}`] !== r._kind + r.status) ||
           activeChats.some(c => dismissedNotifs[`chat-${c.id}`] !== c.lastMessage)) && (
-          <div className="pt-5 flex flex-col gap-2.5">
+          <div className="pt-4 flex flex-col gap-2.5">
             <div className="flex items-center gap-2 mb-0.5">
               <span className="w-1.5 h-4 bg-primary rounded-full" />
               <p className="text-sm font-bold text-gray-700">Atualizações</p>
@@ -486,6 +521,16 @@ export default function ClientHomePage() {
           </div>
         )}
 
+        {/* Avisos e ofertas - depois do que é do próprio usuário */}
+        <div className="pt-4 flex flex-col gap-3.5">
+          <EnablePushBanner
+            uid={uid}
+            message="Ative as notificações para saber na hora quando o veterinário aceitar seu pedido."
+          />
+          <OffersBanner audience="client" />
+          <AdBanner audience="client" />
+        </div>
+
         {/* Professionals heading */}
         <div className="flex items-center gap-2 pt-5 pb-3">
           <span className="w-1.5 h-4 bg-primary rounded-full" />
@@ -513,7 +558,7 @@ export default function ClientHomePage() {
                 onToggleFavorite={() => handleToggleFavorite(d.uid)}
                 onMessage={() => handleMessage(d)}
                 onView={() => navigate(`/professional/${d.uid}`)}
-                onRequest={() => setScheduleProf(d)}
+                onRequest={() => handleScheduleRequest(d)}
               />
             ))}
           </div>
@@ -556,13 +601,13 @@ export default function ClientHomePage() {
                 onClick={() => setTempSpecialties(prev =>
                   active ? prev.filter(x => x !== s) : [...prev, s]
                 )}
-                className={`px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border transition-all ${
                   active
                     ? 'bg-primary text-white border-primary shadow-sm'
                     : 'bg-white text-gray-600 border-gray-300 hover:border-primary'
                 }`}
               >
-                {active && '✓ '}{s}
+                {active && <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}{s}
               </button>
             )
           })}
@@ -578,52 +623,146 @@ export default function ClientHomePage() {
         onClose={() => setScheduleProf(null)}
       />
 
-      {/* ── Modal Urgência ─────────────────────────────── */}
-      <Modal open={urgencyOpen} onClose={() => setUrgencyOpen(false)} title="">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 pb-2 border-b border-red-100">
-            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold text-gray-900 text-sm">Atendimento Urgente</p>
-              <p className="text-xs text-gray-400">Vets online serão notificados — 15 min para aceitar</p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Animal <span className="text-red-500">*</span></label>
-            <input
-              value={urgencyForm.animal}
-              onChange={e => setUrgencyForm(f => ({ ...f, animal: e.target.value }))}
-              placeholder="Ex: Cachorro - Rex, 3 anos"
-              className="input-field"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">Descreva o problema <span className="text-red-500">*</span></label>
-            <textarea
-              value={urgencyForm.notes}
-              onChange={e => setUrgencyForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Ex: Não consegue respirar, deitado há 2h, não come..."
-              className="input-field resize-none h-24"
-            />
-          </div>
-          <p className="text-[11px] text-gray-400 text-center">
-            Seu contato será compartilhado com o vet que aceitar.
-          </p>
-          <button
-            onClick={handleUrgency}
-            disabled={sendingUrgency}
-            className="w-full py-3.5 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm transition-colors disabled:opacity-60"
-          >
-            {sendingUrgency ? 'Enviando...' : '🚨 Solicitar agora'}
-          </button>
-        </div>
-      </Modal>
+      {/* ── Wizard Emergência ──────────────────────────── */}
+      {urgencyOpen && (
+        <UrgencyWizard
+          form={urgencyForm}
+          setForm={setUrgencyForm}
+          onSend={handleUrgency}
+          sending={sendingUrgency}
+          onClose={() => setUrgencyOpen(false)}
+        />
+      )}
 
+      {/* O tutorial do primeiro acesso é o CoachTour, montado no App:
+          ele conduz a pessoa pelo agendamento real, atravessando páginas. */}
+
+    </div>
+  )
+}
+
+
+/* ── Wizard de urgência conversacional ────────────────────────── */
+function UrgencyWizard({ form, setForm, onSend, sending, onClose }) {
+  const [step, setStep] = useState(0)
+  const [dir, setDir] = useState(1)
+
+  function goNext() { setDir(1); setStep(s => s + 1) }
+  function goBack() {
+    if (step === 0) { onClose(); return }
+    setDir(-1); setStep(s => s - 1)
+  }
+
+  const steps = ['breed', 'notes']
+  const current = steps[step]
+  const stepKey = `${step}-${dir}`
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40" />
+      <div
+        className="relative w-full max-w-2xl bg-white rounded-t-3xl flex flex-col overflow-hidden"
+        style={{ minHeight: '52vh', maxHeight: '88vh', boxShadow: 'var(--shadow-sheet)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-center pt-3">
+          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        </div>
+
+        <div className="flex items-center gap-3 px-5 pt-3 pb-2">
+          <button onClick={goBack}
+            className="p-1 text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">
+            {step === 0
+              ? <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            }
+          </button>
+          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-full bg-red-500 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${Math.max(6, (step / (steps.length - 1)) * 100)}%` }} />
+          </div>
+          <span className="text-xs text-gray-400 flex-shrink-0">{step + 1} / {steps.length}</span>
+        </div>
+
+        <div className="flex justify-center mt-1 mb-0.5">
+          <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-50 text-red-600">
+            Emergência veterinária
+          </span>
+        </div>
+
+        <div
+          key={stepKey}
+          className={`flex-1 px-5 pt-4 pb-6 overflow-y-auto flex flex-col gap-5 ${dir > 0 ? 'wizard-fwd' : 'wizard-back'}`}
+        >
+          {current === 'breed' && (
+            <>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Qual é o animal?</h2>
+                <p className="text-sm text-gray-400 mt-1">Selecione a espécie</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Cão', emoji: '🐶' },
+                  { label: 'Gato', emoji: '🐱' },
+                  { label: 'Bovino', emoji: '🐄' },
+                  { label: 'Equino', emoji: '🐴' },
+                  { label: 'Ave', emoji: '🐔' },
+                  { label: 'Ovino/Caprino', emoji: '🐑' },
+                  { label: 'Suíno', emoji: '🐷' },
+                  { label: 'Outro', emoji: '🐾' },
+                ].map(s => (
+                  <button key={s.label} type="button"
+                    onClick={() => { setForm(f => ({ ...f, species: s.label })); setTimeout(goNext, 180) }}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all active:scale-[0.97] ${
+                      form.species === s.label
+                        ? 'border-red-400 bg-red-50'
+                        : 'border-gray-200 hover:border-red-300'
+                    }`}>
+                    <span className="text-2xl">{s.emoji}</span>
+                    <span className="font-semibold text-sm text-gray-800">{s.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="field-label">Raça (opcional)</label>
+                <input
+                  type="text"
+                  value={form.breed}
+                  onChange={e => setForm(f => ({ ...f, breed: e.target.value }))}
+                  placeholder="Ex: Labrador, Nelore, Crioulo..."
+                  className="input-field"
+                />
+              </div>
+              <button onClick={goNext} disabled={!form.species} className="btn-primary">
+                Avançar
+              </button>
+            </>
+          )}
+          {current === 'notes' && (
+            <>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">O que está acontecendo?</h2>
+                <p className="text-sm text-gray-400 mt-1">Descreva os sintomas ou a situação de emergência</p>
+              </div>
+              <textarea
+                rows={5}
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                placeholder="Ex: Não consegue respirar, deitado há 2h, vômitos, convulsão..."
+                className="input-field resize-none"
+                autoFocus
+              />
+              <p className="text-[11px] text-gray-400 text-center -mt-2">
+                Seu contato será compartilhado com o vet que aceitar.
+              </p>
+              <button onClick={onSend} disabled={sending || !form.notes.trim()}
+                className="w-full py-3.5 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-bold text-sm transition-colors disabled:opacity-60">
+                {sending ? 'Enviando...' : 'Solicitar agora'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

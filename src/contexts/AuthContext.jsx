@@ -13,6 +13,7 @@ import {
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, googleProvider } from '../firebase'
 import { clearRoleCache } from '../services/userRole'
+import { clearUserStorage } from '../services/userStorage'
 
 const AuthContext = createContext(null)
 
@@ -54,14 +55,17 @@ export function AuthProvider({ children }) {
       const cleanName = name.trim()
       if (cleanName) {
         await updateProfile(cred.user, { displayName: cleanName }).catch(() => {})
-        await setDoc(doc(db, 'users', cred.user.uid), {
-          uid: cred.user.uid,
-          email: cred.user.email,
-          name: cleanName,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }, { merge: true }).catch(() => {})
       }
+      // Fora do if e sem engolir o erro: uma conta sem este documento
+      // existe no Authentication e nao existe no app - a pessoa loga e
+      // cai numa tela vazia, sem nada indicando o motivo.
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        name: cleanName,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
       await sendEmailVerification(cred.user)
       return cred.user
     } catch (e) {
@@ -89,6 +93,9 @@ export function AuthProvider({ children }) {
   async function logout() {
     await signOut(auth)
     clearRoleCache()
+    // Apaga conversas da IA, tutoriais e avisos dispensados. Sem isso,
+    // quem entrasse depois no mesmo navegador via os dados do anterior.
+    clearUserStorage()
     setUser(null)
     setError(null)
   }

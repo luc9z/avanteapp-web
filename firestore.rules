@@ -2,86 +2,222 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users: qualquer autenticado lê (perfil público do vet); só o
-    // próprio dono escreve no seu documento. As avaliações ficam na
-    // subcoleção ratings (não tocam este doc), então não há exceção.
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if false;
+    // Admin do app: documento em admins/{uid}. Usado para liberar
+    // leituras agregadas do painel /admin (nunca escrita de dados alheios).
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Professionals: authenticated users can read; only the professional can write their own document
+    // Papéis gravados pelo app. O cadastro do veterinário grava
+    // 'medico_veterinario' (ConfirmDataPage) e o do tutor grava 'client'
+    // (UserTypePage) — nenhum outro valor é escrito em lugar nenhum.
+    // 'vet' e 'professional' ficam aceitos só por compatibilidade com
+    // contas antigas.
+    function ehVet(p) {
+      return p in ['medico_veterinario', 'vet', 'professional'];
+    }
+
+    // Veterinário cadastrado. Usado para dar acesso clínico (pets e
+    // prontuário) a quem atende — nunca a clientes de outras contas.
+    function isVetUser() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && ehVet(get(/databases/$(database)/documents/users/$(request.auth.uid))
+                   .data.get('profession', ''));
+    }
+
+    // Campos que o próprio usuário NUNCA pode escrever no seu documento:
+    //  - averageRating/ratingCount: é a nota que o cliente vê na busca.
+    //    Sem isto o veterinário se dava 5,0 e ia para o topo.
+    //  - disabled: senão a conta desativada pelo admin se reativa sozinha.
+    function camposProtegidosIntactos() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['averageRating', 'ratingCount', 'disabled']);
+    }
+
+    // Users: o próprio dono e o admin sempre leem. O perfil do
+    // veterinário é público (a busca do cliente depende disso), mas o
+    // documento de um CLIENTE só é visível para ele, para o admin e
+    // para veterinários — sem isso qualquer pessoa que criasse uma
+    // conta varria nome e e-mail de toda a base.
+    match /users/{userId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == userId
+            || isAdmin()
+            || ehVet(resource.data.get('profession', ''))
+            || isVetUser());
+
+      allow create: if request.auth != null
+        && (request.auth.uid == userId || isAdmin());
+      allow update: if request.auth != null
+        && (isAdmin()
+            || (request.auth.uid == userId && camposProtegidosIntactos()));
+      allow delete: if isAdmin();
+    }
+
+    // Professionals: coleção legada, só leitura de perfil público.
     match /professionals/{professionalId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == professionalId;
     }
 
-    // Email Index: authenticated users can read; any authenticated user can write (used for lookup)
+    // Email Index: nenhuma tela do app lê ou escreve esta coleção.
+    // Enquanto estava aberta, qualquer autenticado podia sobrescrever a
+    // entrada de outra pessoa. Fechada até existir um uso real.
     match /email_index/{email} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if false;
     }
 
     // Private subcollection: só o próprio usuário acessa (CPF, data de nascimento, etc.)
     match /users/{userId}/private/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // O admin lê apenas para conseguir varrer e apagar na exclusão da
+      // conta — uma listagem precisa de permissão de leitura.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isAdmin();
     }
 
-    // Pets: só o dono cadastra/edita/exclui
+    // Configurações do usuário (ex: settings/availability — os horários
+    // de atendimento do veterinário). O dono escreve; qualquer
+    // autenticado lê, porque o cliente precisa dos horários livres do
+    // vet para montar a tela de agendamento.
+    match /users/{userId}/settings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isAdmin();   // exclusão em cascata da conta
+    }
+
+    // Pets: só o dono cadastra/edita/exclui. Veterinários leem (precisam
+    // dos dados do animal para abrir o prontuário durante o atendimento).
     match /users/{userId}/pets/{petId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null
+        && (request.auth.uid == userId || isVetUser() || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow delete: if (request.auth != null && request.auth.uid == userId) || isAdmin();
     }
 
     // Registros clínicos: dono lê/escreve; veterinário autenticado pode adicionar
     match /users/{userId}/pets/{petId}/records/{recordId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null
+        && (request.auth.uid == userId || isVetUser() || isAdmin());
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if (request.auth != null && request.auth.uid == userId) || isAdmin();
     }
 
-    // Ratings: authenticated users can read any rating; only the client who made the rating can write
+    // Ratings: qualquer autenticado lê (a nota é pública), mas quem
+    // escreve é somente o CLIENTE autor — e nunca o próprio avaliado.
+    // Antes, `request.auth.uid == userId` deixava o veterinário criar
+    // notas sobre si mesmo e sobrescrever as ruins.
     match /users/{userId}/ratings/{ratingId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (request.auth.uid == request.resource.data.clientId || request.auth.uid == userId);
+
+      allow create: if request.auth != null
+        && request.auth.uid != userId
+        && request.auth.uid == request.resource.data.clientId;
+
+      // Corrigir a própria avaliação é permitido; trocar de autor não.
+      allow update: if request.auth != null
+        && request.auth.uid != userId
+        && request.auth.uid == resource.data.clientId
+        && request.resource.data.clientId == resource.data.clientId;
+
+      allow delete: if isAdmin();
     }
 
-    // Requests: o cliente cria com clientId == seu uid; apenas o cliente
-    // OU o veterinário designado podem ler e atualizar a solicitação.
+    // Referrals (indicações): o dono (indicador) lê as suas. Quem cria a
+    // indicação é o próprio indicado, no ato do cadastro — por isso o id
+    // do documento é o uid dele. Antes qualquer autenticado escrevia na
+    // subárvore de qualquer usuário, e a indicação credita plano.
+    match /users/{userId}/referrals/{refId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create, update: if request.auth != null && request.auth.uid == refId;
+      allow delete: if isAdmin();
+    }
+
+    // Requests: o cliente cria com clientId == seu uid.
+    // Leitura/atualização: o cliente dono, o veterinário designado, OU
+    // qualquer VETERINÁRIO autenticado quando a solicitação é uma
+    // EMERGÊNCIA ainda em aberto (status 'urgente' e sem professionalId).
+    // O recorte por veterinário é essencial: a emergência carrega nome,
+    // telefone, endereço e coordenadas do cliente.
     match /requests/{requestId} {
+      // O cliente aprova o orçamento escrevendo em quote.approvedAt, então
+      // `quote` precisa continuar gravável por ele — mas o VALOR não, senão
+      // dava para zerar o total depois do atendimento feito.
+      function totalDoOrcamentoIntacto() {
+        return !('quote' in resource.data)
+          || request.resource.data.get('quote', {}).get('total', 0)
+             == resource.data.get('quote', {}).get('total', 0);
+      }
+      function clienteNaoTrocaAsPartes() {
+        return !request.resource.data.diff(resource.data).affectedKeys()
+                  .hasAny(['clientId', 'professionalId', 'professionalName']);
+      }
+
       allow create: if request.auth != null
         && request.resource.data.clientId == request.auth.uid;
-      allow read, update: if request.auth != null
+
+      allow read: if request.auth != null
         && (resource.data.clientId == request.auth.uid
-            || resource.data.professionalId == request.auth.uid);
-      allow delete: if false;
+            || resource.data.professionalId == request.auth.uid
+            || isAdmin()
+            || (resource.data.status == 'urgente'
+                && !('professionalId' in resource.data)
+                && isVetUser()));
+
+      allow update: if request.auth != null
+        && (isAdmin()          // moderação pelo painel (devolver à fila)
+            || (resource.data.clientId == request.auth.uid
+                && clienteNaoTrocaAsPartes()
+                && totalDoOrcamentoIntacto())
+            || resource.data.professionalId == request.auth.uid
+            || (resource.data.status == 'urgente'
+                && !('professionalId' in resource.data)
+                && isVetUser()
+                && request.resource.data.professionalId == request.auth.uid));
+
+      allow delete: if isAdmin();
     }
 
-    // Appointments: only the designated professional can create an appointment for themselves;
-    // client or professional can read an appointment
-    // additionally allow the assigned professional (or the client) to update the appointment
+    // Appointments: só as duas partes do atendimento (cliente e
+    // veterinário) leem/escrevem. Antes qualquer autenticado lia e
+    // alterava QUALQUER agendamento da plataforma.
     match /appointments/{appointmentId} {
-      allow create: if request.auth != null;
-      allow read: if request.auth != null;
-      allow update: if request.auth != null;
+      allow create: if request.auth != null
+        && (request.resource.data.professionalId == request.auth.uid
+            || request.resource.data.clientId == request.auth.uid);
+      allow read, update: if request.auth != null
+        && (resource.data.professionalId == request.auth.uid
+            || resource.data.clientId == request.auth.uid
+            || isAdmin());
+      allow delete: if isAdmin();
     }
 
-    // Chats: one chat doc per request, with a messages subcollection.
-    // Any authenticated user can read/create the chat doc; messages can only be
-    // created by their own sender (senderId must match the caller).
+    // Chats: SÓ os participantes da conversa. Antes qualquer usuário
+    // autenticado conseguia ler todas as conversas e mensagens do app.
+    // `resource == null` libera o getDoc do chat ainda inexistente,
+    // que o app faz antes de criar a conversa.
     match /chats/{chatId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
-      // Apagar chat expirado: só quem participa da conversa
-      allow delete: if request.auth != null
+      allow read: if request.auth != null
+        && (resource == null || request.auth.uid in resource.data.participants || isAdmin());
+      allow create: if request.auth != null
+        && request.auth.uid in request.resource.data.participants;
+      allow update: if request.auth != null
         && request.auth.uid in resource.data.participants;
+      allow delete: if isAdmin()
+        || (request.auth != null && request.auth.uid in resource.data.participants);
 
       match /messages/{messageId} {
-        allow read: if request.auth != null;
-        allow create: if request.auth != null
-          && request.auth.uid == request.resource.data.senderId;
-        // Apagar mensagens (limpeza de chat expirado)
-        allow delete: if request.auth != null;
+        function inChat() {
+          return request.auth != null
+            && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        }
+        allow read: if inChat();
+        allow create: if inChat() && request.auth.uid == request.resource.data.senderId;
+        allow delete: if inChat() || isAdmin();
       }
     }
 
@@ -94,15 +230,13 @@ service cloud.firestore {
     // Offers: admin lê/escreve; clientes autenticados só leem
     match /offers/{offerId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if isAdmin();
     }
 
     // Config (plans, coupons, etc.): todos autenticados leem; só admin escreve
     match /config/{docId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow write: if isAdmin();
     }
 
     // Payments: usuário lê os próprios; só Cloud Functions escrevem (via admin SDK)
@@ -110,6 +244,30 @@ service cloud.firestore {
       allow read: if request.auth != null
         && request.auth.uid == resource.data.uid;
       allow write: if false;
+    }
+
+    // Prontuário digital (medicalRecords/{petId}).
+    // O documento-pai guarda `ownerId` e o acesso é do dono do animal ou
+    // de um veterinário cadastrado. As subcoleções consultam o pai
+    // porque uma listagem não pode depender do dado de cada doc.
+    match /medicalRecords/{petId} {
+      function recordAccess() {
+        return request.auth != null && (
+          !exists(/databases/$(database)/documents/medicalRecords/$(petId))
+          || get(/databases/$(database)/documents/medicalRecords/$(petId))
+               .data.get('ownerId', '') == request.auth.uid
+          || isVetUser()
+          || isAdmin()          // exclusão em cascata da conta
+        );
+      }
+
+      allow read, write: if request.auth != null
+        && (resource == null
+            || resource.data.get('ownerId', '') == request.auth.uid
+            || isVetUser() || isAdmin());
+
+      match /entries/{entryId} { allow read, write: if recordAccess(); }
+      match /weightLog/{logId} { allow read, write: if recordAccess(); }
     }
 
     // Default: deny everything else

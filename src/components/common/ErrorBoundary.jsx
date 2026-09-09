@@ -1,7 +1,7 @@
 import { Component } from 'react'
 
 /**
- * ErrorBoundary — captura erros de renderização e de carregamento
+ * ErrorBoundary - captura erros de renderização e de carregamento
  * de chunks (lazy import), exibindo uma tela de recuperação em vez
  * de quebrar o app inteiro.
  *

@@ -1,5 +1,5 @@
 /**
- * errors.js — Mensagens de erro amigáveis.
+ * errors.js - Mensagens de erro amigáveis.
  * Antes o app exibia `e.message` cru em toasts ("Erro: Missing or
  * insufficient permissions"), o que vaza detalhes internos e parece
  * quebrado para o usuário. Aqui os erros do Firebase são traduzidos

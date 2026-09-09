@@ -1,5 +1,5 @@
 /**
- * useLocalNotifications — escuta, em tempo real, novos pedidos (para o vet)
+ * useLocalNotifications - escuta, em tempo real, novos pedidos (para o vet)
  * e novas mensagens de chat (para ambos) e dispara notificações locais.
  *
  * Sem servidor: roda no cliente enquanto o app estiver aberto. Ignora o

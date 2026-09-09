@@ -2,6 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ════ DESIGN TOKENS ══════════════════════════════════════════════
+   Fonte única de verdade para cores, espaços, raios, sombras e z-index.
+   Usar em CSS inline: var(--color-primary) etc.
+   No dark mode, as superfícies são remapeadas na seção .dark abaixo. */
+:root {
+  /* ── Colors ── */
+  --color-primary:        #375337;
+  --color-primary-600:    #2e4530;
+  --color-primary-muted:  rgba(55, 83, 55, 0.10);
+  --color-primary-light:  #f0f5f0;
+  --color-surface:        #ffffff;
+  --color-surface-alt:    #f8f9fa;
+  --color-border:         #e5e7eb;
+  --color-border-soft:    #f3f4f6;
+  --color-text:           #1f2937;
+  --color-text-soft:      #6b7280;
+  --color-text-muted:     #9ca3af;
+  --color-danger:         #ef4444;
+  --color-danger-bg:      #fef2f2;
+  --color-warning:        #f59e0b;
+  --color-warning-bg:     #fffbeb;
+  --color-info:           #3b82f6;
+  --color-info-bg:        #eff6ff;
+
+  /* ── Entry type tokens (Prontuário) ── */
+  --entry-consulta:       #3b82f6;
+  --entry-consulta-bg:    #eff6ff;
+  --entry-vacina:         #22c55e;
+  --entry-vacina-bg:      #f0fdf4;
+  --entry-exame:          #8b5cf6;
+  --entry-exame-bg:       #faf5ff;
+  --entry-medicamento:    #f59e0b;
+  --entry-medicamento-bg: #fffbeb;
+  --entry-cirurgia:       #ef4444;
+  --entry-cirurgia-bg:    #fef2f2;
+
+  /* ── Spacing ── */
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-page: 16px;   /* padding lateral padrão de página */
+  --space-card: 16px;   /* padding interno do .card */
+  --space-gap:  12px;   /* gap padrão entre cards/items */
+
+  /* ── Border radius ── */
+  --radius-sm:   8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-2xl: 24px;
+  --radius-pill: 9999px;
+  --radius-icon: 10px;   /* ícone dentro de badge quadrado */
+
+  /* ── Typography ── */
+  --font-xs:   11px;
+  --font-sm:   12px;
+  --font-base: 14px;
+  --font-md:   16px;
+  --font-lg:   18px;
+  --font-xl:   20px;
+  --font-2xl:  24px;
+  --font-hero: 30px;
+
+  /* ── Shadows ── */
+  --shadow-sm:    0 1px 4px rgba(0,0,0,0.06);
+  --shadow-card:  0 2px 8px rgba(0,0,0,0.08);
+  --shadow-hover: 0 4px 16px rgba(0,0,0,0.12);
+  --shadow-sheet: 0 -8px 32px rgba(0,0,0,0.12);
+
+  /* ── Z-index scale ── */
+  --z-topbar: 30;
+  --z-modal:  50;
+  --z-toast:  60;
+
+  /* ── Nav height ── */
+  --nav-h: 64px;
+}
+
 @layer base {
   * {
     box-sizing: border-box;
@@ -34,7 +114,7 @@
     overflow-x: hidden;
   }
 
-  /* Touch targets — minimum 44px for accessibility */
+  /* Touch targets - minimum 44px for accessibility */
   button, a, [role="button"] {
     min-height: 36px;
     cursor: pointer;
@@ -55,23 +135,71 @@
 
 @layer components {
 
-  /* ── Buttons ─────────────────────────────────────────────── */
+  /* ── Buttons ─────────────────────────────────────────────────
+     FAMÍLIA ÚNICA. Todo botão do app sai daqui - nunca escrever
+     padding/raio/altura soltos no JSX.
+
+     Base (herdada por todas as variantes), calibrada pelo toggle
+     "Você está online": raio 2xl, py-3, escala 0.98 no toque.
+       .btn            → base neutra (use só com uma variante)
+       .btn-primary    → ação principal (verde sólido)
+       .btn-outline    → ação secundária (contorno verde)
+       .btn-soft       → ação terciária (verde translúcido)
+       .btn-ghost      → ação discreta (só texto)
+       .btn-danger     → destrutiva (contorno vermelho)
+       .btn-danger-solid → destrutiva enfática (emergência)
+     Tamanhos: .btn-sm (compacto) · padrão · .btn-lg (destaque) */
+  /* Base: TODO botão sobe 1px no hover e afunda no toque. O movimento
+     é o mesmo em toda a família - só a cor muda por variante, e cada
+     variante escurece o próprio tom em vez de virar branco ou cinza. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold text-sm
+           py-3 px-6 rounded-2xl min-h-[48px] select-none
+           transition-all duration-200
+           hover:-translate-y-px active:translate-y-0 active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed
+           disabled:hover:translate-y-0 disabled:active:scale-100;
+  }
+
   .btn-primary {
-    @apply bg-primary text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200
-           hover:bg-primary-600 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
-           flex items-center justify-center gap-2 text-sm min-h-[44px];
+    @apply btn bg-primary text-white shadow-sm hover:bg-primary-600 hover:shadow-md;
   }
 
+  /* Contorno: preenche com o próprio verde, não com branco. */
   .btn-outline {
-    @apply border-2 border-primary text-primary font-semibold py-3 px-6 rounded-xl transition-all duration-200
-           hover:bg-primary-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
-           flex items-center justify-center gap-2 text-sm min-h-[44px];
+    @apply btn border-2 border-primary text-primary bg-transparent
+           hover:bg-primary/10 hover:shadow-sm;
   }
 
+  .btn-soft {
+    @apply btn bg-primary/10 text-primary hover:bg-primary/20 hover:shadow-sm;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-gray-500 font-medium
+           hover:text-gray-800 hover:bg-gray-100;
+  }
+
+  /* Destrutivo com contorno: escurece no vermelho, mantendo a leitura. */
   .btn-danger {
-    @apply border-2 border-red-500 text-red-500 font-semibold py-3 px-6 rounded-xl transition-all duration-200
-           hover:bg-red-50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
-           flex items-center justify-center gap-2 text-sm min-h-[44px];
+    @apply btn border-2 border-red-400 text-red-500 bg-transparent
+           hover:bg-red-50 hover:border-red-500 hover:text-red-600 hover:shadow-sm;
+  }
+
+  .btn-danger-solid {
+    @apply btn bg-red-500 text-white shadow-sm hover:bg-red-600 hover:shadow-md;
+  }
+
+  /* Modificadores de tamanho e largura */
+  .btn-sm    { @apply py-2 px-4 text-xs min-h-[38px] rounded-xl gap-1.5; }
+  .btn-lg    { @apply py-4 px-7 text-base min-h-[56px]; }
+  .btn-block { @apply w-full; }
+
+  /* Botão-linha: usado em toggles e seletores de largura total
+     (padrão visual do "Você está online"). */
+  .btn-row {
+    @apply w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl
+           transition-all duration-200 active:scale-[0.98] text-left;
   }
 
   /* ── Inputs ──────────────────────────────────────────────── */
@@ -107,7 +235,7 @@
   }
 
   /* ── Tipografia padronizada ──────────────────────────────── */
-  /* Escala única usada em todo o app — evita text-[10px]/[13px] soltos. */
+  /* Escala única usada em todo o app - evita text-[10px]/[13px] soltos. */
   .page-title    { @apply text-lg font-bold text-primary; }           /* título de topbar */
   .section-title { @apply flex items-center gap-2 text-base font-bold text-gray-800 mb-3; }
   .section-title::before {
@@ -136,7 +264,7 @@
 
   /* ── Layout ──────────────────────────────────────────────── */
   .page-container {
-    /* Mobile: coluna confortável. Desktop: ocupa a tela de verdade —
+    /* Mobile: coluna confortável. Desktop: ocupa a tela de verdade -
        as telas pareciam vazias porque tudo vivia numa faixa de 640px. */
     @apply w-full max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto min-h-screen min-h-dvh
            bg-white relative overflow-x-hidden lg:px-2 transition-[max-width] duration-200;
@@ -146,7 +274,7 @@
   .responsive-grid-2 { @apply grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4; }
   .responsive-grid-cards { @apply grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4; }
 
-  /* Main scrollable area — accounts for bottom nav + safe area */
+  /* Main scrollable area - accounts for bottom nav + safe area */
   .page-scroll {
     @apply flex-1 overflow-y-auto px-4;
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
@@ -164,6 +292,48 @@
     @apply flex items-center justify-center rounded-full font-bold text-primary bg-primary/10 flex-shrink-0;
   }
 
+  /* ── Cartão de plano (Dashboard do vet) ──────────────────────
+     Todos partem do verde do sistema; o plano é sinalizado por um
+     acento sutil (hairline + selo), não por trocar a cor inteira. */
+  .plan-card {
+    @apply relative overflow-hidden rounded-2xl p-4 text-white
+           border transition-all duration-200;
+  }
+  .plan-free {
+    background: linear-gradient(135deg, #3f5c3f 0%, #2e4530 55%, #223422 100%);
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 6px 22px rgba(34, 52, 34, 0.35);
+  }
+  .plan-essencial {
+    background: linear-gradient(135deg, #35604f 0%, #274a3f 55%, #1c352d 100%);
+    border-color: rgba(125, 211, 178, 0.32);
+    box-shadow: 0 6px 22px rgba(28, 53, 45, 0.4);
+  }
+  .plan-premium {
+    background: linear-gradient(135deg, #3b5a3b 0%, #2b4230 55%, #1f3123 100%);
+    border-color: rgba(212, 175, 96, 0.55);
+    box-shadow: 0 6px 24px rgba(31, 49, 35, 0.45);
+  }
+  /* Selo do plano no canto do cartão */
+  .plan-badge {
+    @apply inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0;
+  }
+  .plan-badge-free      { @apply bg-white/15 text-white/85; }
+  .plan-badge-essencial { background: rgba(125, 211, 178, 0.2); color: #a7e8cd; }
+  .plan-badge-premium   { background: rgba(212, 175, 96, 0.18); color: #e5c77e; }
+
+  /* ── Stat tile (Desempenho / Admin) ──────────────────────────
+     Bloco de número + rótulo, com acento colorido opcional. */
+  .stat-tile {
+    @apply bg-white rounded-2xl p-4 shadow-card flex flex-col gap-1 transition-all duration-200;
+  }
+  .stat-tile-tap {
+    @apply stat-tile cursor-pointer hover:shadow-card-hover active:scale-[0.98];
+  }
+  .stat-value { @apply text-2xl font-bold leading-none tabular-nums; }
+  .stat-label { @apply text-xs font-semibold text-gray-600 leading-tight; }
+  .stat-hint  { @apply text-[11px] text-gray-400 leading-tight; }
+
   /* ── Stars ───────────────────────────────────────────────── */
   .star-filled { color: #f59e0b; }
   .star-empty  { color: #d1d5db; }
@@ -175,23 +345,66 @@
 }
 
 /* ── Toasts ───────────────────────────────────────────────────── */
-.toast {
-  @apply fixed z-50 px-5 py-3 rounded-xl text-sm font-medium text-white shadow-lg;
-  bottom: calc(5rem + env(safe-area-inset-bottom, 16px));
+/* A pilha e quem posiciona; cada toast e estatico dentro dela. Quando
+   o toast tambem era `fixed`, dois avisos seguidos caiam no mesmo
+   ponto e um escondia o outro.
+
+   O texto quebra em varias linhas: mensagens de erro sao longas e no
+   celular `nowrap` cortava justamente o fim do que importava ler. */
+.toast-stack {
+  position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  max-width: calc(100vw - 2rem);
-  white-space: nowrap;
-  animation: slideUp 0.3s ease;
+  bottom: calc(5rem + env(safe-area-inset-bottom, 16px));
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: calc(100vw - 2rem);
+  max-width: 420px;
+  pointer-events: none;
 }
 
-.toast-success { @apply bg-green-600; }
-.toast-error   { @apply bg-red-600; }
-.toast-info    { @apply bg-blue-600; }
+.toast {
+  @apply flex items-start gap-2.5 w-full px-4 py-3 rounded-2xl text-sm font-medium text-white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+  line-height: 1.35;
+  word-break: break-word;
+  pointer-events: auto;
+  animation: toastIn 0.28s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+.toast-out { animation: toastOut 0.2s ease forwards; }
 
-@keyframes slideUp {
-  from { transform: translate(-50%, 20px); opacity: 0; }
-  to   { transform: translate(-50%, 0);    opacity: 1; }
+.toast-icon { @apply w-5 h-5 flex-shrink-0; margin-top: 1px; }
+
+.toast-close {
+  @apply flex-shrink-0 p-1 rounded-lg transition-colors;
+  min-height: 0;
+  margin-right: -4px;
+  color: rgba(255, 255, 255, 0.7);
+  &:hover { color: #fff; background-color: rgba(255, 255, 255, 0.15); }
+}
+
+.toast-action {
+  @apply flex-shrink-0 text-xs font-bold uppercase tracking-wide px-2 py-1 rounded-lg transition-colors;
+  min-height: 0;
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.2);
+  &:hover { background-color: rgba(255, 255, 255, 0.3); }
+}
+
+.toast-success { background-color: #15803d; }
+.toast-error   { background-color: #b91c1c; }
+.toast-warning { background-color: #b45309; }
+.toast-info    { background-color: #1d4ed8; }
+
+@keyframes toastIn {
+  from { transform: translateY(16px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+@keyframes toastOut {
+  to { transform: translateY(8px) scale(0.97); opacity: 0; }
 }
 
 /* ── Modal ────────────────────────────────────────────────────── */
@@ -275,7 +488,7 @@
   .stagger-#{$i} { animation-delay: #{$i * 55}ms; }
 }
 
-/* Card de destaque (plano Pro) — borda gradiente discreta */
+/* Card de destaque (plano Pro) - borda gradiente discreta */
 .featured-card {
   position: relative;
   background:
@@ -377,6 +590,26 @@
 
   /* Componentes base */
   .card        { background-color: #1a221c; border-color: #232d26; }
+  .stat-tile   { background-color: #1a221c; }
+
+  /* No escuro, `hover:bg-*-50` clareava para quase branco. Cada variante
+     passa a escurecer no próprio tom, mantendo o mesmo gesto do claro. */
+  .btn-ghost {
+    color: #7a827a;
+    &:hover { color: #f1f3f1; background-color: rgba(255, 255, 255, 0.06); }
+  }
+  .btn-outline {
+    border-color: rgba(143, 188, 143, 0.55);
+    &:hover { background-color: rgba(143, 188, 143, 0.12); }
+  }
+  .btn-soft:hover { background-color: rgba(143, 188, 143, 0.18); }
+  .btn-danger {
+    &:hover {
+      background-color: rgba(248, 113, 113, 0.14);
+      border-color: rgba(248, 113, 113, 0.75);
+      color: #fca5a5;
+    }
+  }
   .input-field { background-color: #151c17; border-color: #33403a; color: #e7e9e7;
                  &::placeholder { color: #5b635b; } &:focus { background-color: #1a221c; } }
   .topbar      { background-color: #1a221c; border-color: #232d26; }
@@ -390,4 +623,198 @@
 
   /* Mapa (Leaflet) menos estourado no escuro */
   .leaflet-container { filter: brightness(0.85) contrast(1.05); }
+
+  /* Dark: remapeia tokens */
+  --color-surface:     #1a221c;
+  --color-surface-alt: #151c17;
+  --color-border:      #33403a;
+  --color-text:        #e7e9e7;
+  --color-text-soft:   #959d95;
+  --color-text-muted:  #7a827a;
+}
+
+/* ── Planos: escada + brilho do card em destaque ─────────────────
+   O degrau sobe um pouco no hover, reforçando a ideia de progressão. */
+.plan-step {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s ease,
+              border-color 0.2s ease;
+}
+.plan-step:hover  { transform: translateY(-6px); }
+.plan-step:active { transform: translateY(-2px) scale(0.99); }
+
+/* Faixa de luz que atravessa o card do plano mais completo */
+.plan-shine::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.09) 45%,
+    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.09) 55%,
+    transparent 100%
+  );
+  animation: planShine 3.6s ease-in-out infinite;
+}
+@keyframes planShine {
+  0%        { left: -60%; }
+  55%, 100% { left: 120%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-step:hover { transform: none; }
+  .plan-shine::before { animation: none; }
+}
+
+/* ── Wizard conversacional - animações de transição entre steps ── */
+@keyframes wizardFromRight {
+  from { transform: translateX(28px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes wizardFromLeft {
+  from { transform: translateX(-28px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.wizard-fwd  { animation: wizardFromRight 0.22s cubic-bezier(0.4,0,0.2,1) both; }
+.wizard-back { animation: wizardFromLeft  0.22s cubic-bezier(0.4,0,0.2,1) both; }
+
+/* ── Guia do app: cartão de destino da IA ─────────────────────────
+   Fica dentro da bolha de resposta, então precisa se distinguir do
+   texto sem competir com ele: fundo próprio, sem sombra, e o caminho
+   numerado como uma receita. */
+.ia-destino {
+  @apply rounded-2xl border p-3 flex flex-col gap-2.5 w-full;
+  background-color: var(--color-primary-light);
+  border-color: rgba(55, 83, 55, 0.18);
+  animation: fadeUp 0.3s ease both;
+}
+
+/* Duas linhas SEMPRE. Com flex-wrap o selo ficava ao lado do titulo
+   curto e acima do longo: o cartao mudava de forma conforme o texto. */
+.ia-destino-cabecalho { @apply flex flex-col items-start gap-1.5; }
+
+.ia-destino-aba {
+  @apply text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-lg flex-shrink-0;
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.ia-destino-titulo { @apply text-sm font-bold text-gray-900 leading-snug min-w-0; }
+
+.ia-destino-passos {
+  @apply flex flex-col gap-1.5 list-none p-0 m-0;
+
+  li { @apply flex items-start gap-2 text-xs leading-relaxed text-gray-700; }
+}
+
+.ia-destino-num {
+  @apply flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center
+         text-[10px] font-bold;
+  background-color: rgba(55, 83, 55, 0.14);
+  color: var(--color-primary);
+}
+
+/* No escuro o verde claro do cartão sumiria contra a bolha cinza. */
+.dark {
+  .ia-destino {
+    background-color: rgba(143, 188, 143, 0.10);
+    border-color: rgba(143, 188, 143, 0.28);
+  }
+  .ia-destino-aba  { background-color: #2a3f2a; color: #d7e7d7; }
+  .ia-destino-num  { background-color: rgba(143, 188, 143, 0.22); color: #8fbc8f; }
+}
+
+/* ── Planos: o card escolhido ─────────────────────────────────────
+   Anel branco por fora da borda, não uma troca de cor da borda. A cor
+   da borda pertence ao plano (verde = atual, dourado = Premium); se a
+   seleção também mudasse a borda, os dois estados ficariam iguais -
+   era exatamente o que acontecia com o Essencial escolhido e o
+   Premium: os dois dourados. */
+.plan-selected {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.92),
+              0 10px 28px rgba(0, 0, 0, 0.45);
+  transform: translateY(-4px);
+}
+.plan-selected:hover { transform: translateY(-7px); }
+
+/* No tema claro o anel branco sumiria contra o fundo. */
+:root:not(.dark) .plan-selected {
+  box-shadow: 0 0 0 3px var(--color-primary),
+              0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* ── AVANTE IA: opção sugerida no chat ────────────────────────────
+   Um único formato para tudo que o assistente oferece antes da
+   primeira pergunta, seja atalho do app ou assunto do domínio. */
+.ia-opcao {
+  @apply w-full text-left px-4 py-3 min-h-[48px] rounded-2xl border
+         text-sm font-semibold transition-all duration-200
+         flex flex-col gap-0.5;
+  background-color: var(--color-surface-alt);
+  border-color: var(--color-border);
+  color: var(--color-text);
+
+  &:hover  { @apply -translate-y-px; border-color: rgba(55, 83, 55, 0.4); }
+  &:active { @apply translate-y-0 scale-[0.98]; }
+}
+
+/* A pergunta de exemplo, em tom menor: mostra o formato sem competir
+   com o assunto. */
+.ia-opcao-exemplo {
+  @apply text-xs font-normal leading-snug;
+  color: var(--color-text-soft);
+}
+
+.ia-opcao-grupo {
+  @apply text-[11px] font-bold uppercase tracking-wide mb-1.5;
+  color: var(--color-text-soft);
+}
+
+.dark .ia-opcao:hover { border-color: rgba(143, 188, 143, 0.45); }
+
+/* ── Registrar em lote: linha de animal ───────────────────────────
+   A linha precisa dizer sozinha se está marcada. Antes só existia
+   hover, e no tema escuro o hover claro passava a impressão de item
+   desabilitado - a pessoa não sabia o que tinha escolhido. */
+.pet-lote {
+  @apply flex items-center gap-3 px-3 py-3 min-h-[56px] rounded-2xl border cursor-pointer
+         transition-all duration-200 select-none;
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+
+  &:hover  { border-color: rgba(55, 83, 55, 0.4); }
+  &:active { @apply scale-[0.99]; }
+}
+
+.pet-lote-on {
+  background-color: var(--color-primary-muted);
+  border-color: var(--color-primary);
+}
+
+.pet-lote-caixa {
+  @apply w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0
+         transition-colors duration-200;
+  border-color: var(--color-border);
+  color: #fff;
+}
+.pet-lote-on .pet-lote-caixa {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.dark {
+  .pet-lote:hover { border-color: rgba(143, 188, 143, 0.45); }
+  .pet-lote-on {
+    background-color: rgba(143, 188, 143, 0.14);
+    border-color: rgba(143, 188, 143, 0.65);
+  }
+  .pet-lote-on .pet-lote-caixa {
+    background-color: #8fbc8f;
+    border-color: #8fbc8f;
+    color: #14261a;
+  }
 }

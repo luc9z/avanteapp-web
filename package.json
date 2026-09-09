@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:rules": "firebase emulators:exec --only firestore \"node scripts/testar-regras.mjs\"",
+    "test:mapa": "node scripts/testar-mapa.mjs"
   },
   "dependencies": {
     "date-fns": "^3.6.0",

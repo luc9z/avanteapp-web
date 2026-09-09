@@ -1,5 +1,5 @@
 /**
- * ChatsListPage — todas as conversas do usuário (cliente ou vet),
+ * ChatsListPage - todas as conversas do usuário (cliente ou vet),
  * em tempo real, ordenadas pela mensagem mais recente.
  * Inclui conversas diretas (antes da solicitação) e de atendimentos.
  */
@@ -36,17 +36,20 @@ export default function ChatsListPage() {
       const d = snap.data() || {}
       setIsClient(d.profession === 'client' || !d.profession)
     }).catch(() => {})
-    const u1 = onSnapshot(
-      query(collection(db, 'chats'), where('clientId', '==', uid)),
-      snap => setAsClient(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      () => setAsClient([])
+    // Uma única query por `participants` - é a forma que as regras de
+    // segurança conseguem validar (o filtro prova que o usuário faz
+    // parte de toda conversa retornada). O papel em cada conversa é
+    // separado no cliente.
+    const unsub = onSnapshot(
+      query(collection(db, 'chats'), where('participants', 'array-contains', uid)),
+      snap => {
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setAsClient(all.filter(c => c.clientId === uid))
+        setAsProf(all.filter(c => c.professionalId === uid))
+      },
+      () => { setAsClient([]); setAsProf([]) }
     )
-    const u2 = onSnapshot(
-      query(collection(db, 'chats'), where('professionalId', '==', uid)),
-      snap => setAsProf(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      () => setAsProf([])
-    )
-    return () => { u1(); u2() }
+    return () => unsub()
   }, [uid])
 
   // Limpeza oportunista: apaga chats expirados (>7 dias) ao abrir a lista.
@@ -73,11 +76,28 @@ export default function ChatsListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asClient, asProf])
 
+  /**
+   * Conversa sem nenhuma mensagem só aparece para quem a abriu.
+   *
+   * O app cria o documento do chat assim que alguém entra na conversa,
+   * antes de qualquer mensagem. Sem este recorte, o veterinário recebia
+   * uma conversa vazia só porque o cliente tocou em "Chat".
+   *
+   * Conversas antigas não têm `createdBy`; nelas quem abre é sempre o
+   * cliente, então é ele quem continua vendo.
+   */
+  function visivelPara(c, quem) {
+    if (c.lastMessage) return true
+    return (c.createdBy || c.clientId) === quem
+  }
+
   const chats = useMemo(() => {
     if (asClient === null || asProf === null) return null
-    // Dedup by chatId first, then by participant pair — keep most recently updated per pair
+    // Dedup by chatId first, then by participant pair - keep most recently updated per pair
     const byId = new Map()
-    for (const c of [...asClient, ...asProf]) byId.set(c.id, c)
+    for (const c of [...asClient, ...asProf]) {
+      if (visivelPara(c, uid)) byId.set(c.id, c)
+    }
 
     const byPair = new Map()
     for (const c of [...byId.values()]) {

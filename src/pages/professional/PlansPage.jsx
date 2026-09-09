@@ -1,5 +1,5 @@
 /**
- * PlansPage — planos do veterinário, estilo "premium" (referência: X/Twitter).
+ * PlansPage - planos do veterinário, estilo "premium" (referência: X/Twitter).
  * Cards escuros lado a lado, toggle Mensal/Anual (anual = 2 meses grátis),
  * selo "Melhor valor", cupom e barra fixa de pagamento via AbacatePay.
  */
@@ -101,7 +101,7 @@ export default function PlansPage() {
           planCoupon: code,
           updatedAt: serverTimestamp(),
         }, { merge: true })
-        showToast(`Cupom ${code} aplicado — plano ativado! 🎉`, 'success')
+        showToast(`Cupom ${code} aplicado, plano ativado!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
         return
       }
@@ -109,7 +109,7 @@ export default function PlansPage() {
       // Cupons dinâmicos via Cloud Function (requer Blaze plan)
       const { data } = await redeemCoupon({ planId: selectedId, code })
       if (data?.activated) {
-        showToast(`Cupom ${code} aplicado — plano ativado com 100% de desconto! 🎉`, 'success')
+        showToast(`Cupom ${code} aplicado, plano ativado com 100% de desconto!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
       } else if (data?.discount > 0) {
         showToast(`Cupom válido: ${data.discount}% de desconto no pagamento.`, 'success')
@@ -139,7 +139,7 @@ export default function PlansPage() {
         return
       }
 
-      // Pagamento via PIX em breve — use cupom para ativar agora
+      // Pagamento via PIX em breve - use cupom para ativar agora
       showToast('Pagamento via PIX em breve! Use o cupom BEMVINDO para ativar agora.', 'info')
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
@@ -171,7 +171,7 @@ export default function PlansPage() {
         <div className="flex flex-col items-center text-center gap-4 pt-2 pb-7 animate-fade-up">
           <img src="/images/avante_mark_white.png" alt="" className="w-14 h-14 opacity-95" />
           <h1 className="text-white font-bold text-2xl sm:text-3xl">
-            {onboarding ? 'Escolha seu plano para começar' : 'Evolua seu perfil no Avante'}
+            {onboarding ? 'Escolha seu plano para começar' : 'Evolua seu perfil no AVANTE'}
           </h1>
 
           {/* Toggle Mensal/Anual */}
@@ -199,45 +199,80 @@ export default function PlansPage() {
         {plans === null ? (
           <div className="flex justify-center py-20"><Spinner size={30} color="#8fbc8f" /></div>
         ) : (
-          <div className="grid grid-cols-3 gap-3 items-center stagger">
+          /* Escada: Free → Essencial → Premium. Cada degrau é um pouco
+             mais alto que o anterior (items-end alinha as bases), então
+             a progressão de valor fica visível antes de ler qualquer
+             preço. O Premium é o topo da escada, e não o centro. */
+          <div className="grid grid-cols-3 gap-3 items-end stagger">
             {[...plans].sort((a, b) => {
-              // Premium no centro
-              const order = { free: 0, essencial: 2, premium: 1, destaque: 1 }
+              const order = { free: 0, essencial: 1, premium: 2, destaque: 2 }
               return (order[a.id] ?? 1) - (order[b.id] ?? 1)
             }).map(p => {
               const isSel = p.id === selectedId
               const isDestaque = p.id === 'premium' || p.id === 'destaque'
+              const isEssencial = p.id === 'essencial'
               const isCurrent = p.id === currentPlan
+              // Altura mínima crescente - é o que desenha a escada.
+              const degrau = isDestaque ? 'min-h-[26rem] p-5 pt-7'
+                : isEssencial ? 'min-h-[23rem] p-4 pt-6'
+                : 'min-h-[20rem] p-4 pt-6'
               return (
                 <button key={p.id} type="button" onClick={() => setSelectedId(p.id)}
-                  className={`relative rounded-2xl p-4 text-left transition-all flex flex-col gap-3 ${
-                    isDestaque ? 'sm:scale-110 z-10 py-6 shadow-2xl' : ''
+                  aria-pressed={isSel}
+                  className={`plan-step relative rounded-2xl text-left flex flex-col gap-3 ${degrau} ${
+                    isDestaque ? 'z-10' : ''
                   } ${
+                    /* A borda diz QUAL PLANO é: verde o seu atual, dourado
+                       o Premium, neutra os demais. Nunca diz seleção. */
                     isCurrent
-                      ? 'bg-emerald-400/[0.08] border-2 border-emerald-400 shadow-[0_0_24px_rgba(52,211,153,0.18)]'
-                      : isSel
-                      ? 'bg-white/[0.06] border-2 border-amber-400 shadow-[0_0_28px_rgba(245,180,40,0.22)]'
+                      ? 'bg-emerald-400/[0.08] border-2 border-emerald-400'
                       : isDestaque
-                      ? 'bg-white/[0.07] border-2 border-amber-400/60'
+                      ? 'bg-white/[0.07] border-2 border-amber-400/60 shadow-xl'
                       : 'bg-white/[0.04] border border-white/10 hover:border-white/25'
+                  } ${
+                    /* A seleção é um anel branco POR FORA da borda, então
+                       aparece sobre qualquer um dos três fundos sem se
+                       confundir com a cor do plano. */
+                    isSel ? 'plan-selected' : ''
                   }`}>
+                  {/* Brilho sutil que percorre o card do Premium */}
+                  {isDestaque && !isCurrent && (
+                    <span aria-hidden className="plan-shine pointer-events-none absolute inset-0 rounded-2xl overflow-hidden" />
+                  )}
+
+                  {/* Marca de escolhido - some junto com o anel branco.
+                      Cor sozinha não basta: em tela clara, no sol, ou para
+                      quem enxerga menos, o anel some e a marca fica. */}
+                  {isSel && (
+                    <span aria-hidden
+                      className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-white
+                                 flex items-center justify-center shadow-lg">
+                      <svg className="w-3.5 h-3.5 text-gray-900" fill="none" stroke="currentColor"
+                        strokeWidth={3.2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    </span>
+                  )}
+
                   {/* Badge topo */}
                   {isCurrent ? (
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-400 text-emerald-950 text-[10px] font-bold
                                      px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap">
-                      ✓ Plano atual
+                      Plano atual
                     </span>
                   ) : isDestaque && (
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-400 text-gray-900 text-[10px] font-bold
                                      px-2.5 py-0.5 rounded-full shadow-lg whitespace-nowrap">
-                      Melhor valor
+                      Mais completo
                     </span>
                   )}
 
-                  <div className="mt-1">
-                    <p className="text-white font-bold text-base">{p.name}</p>
+                  <div className="mt-1 relative">
+                    <p className={`text-white font-bold ${isDestaque ? 'text-lg' : 'text-base'}`}>{p.name}</p>
                     <p className="mt-1">
-                      <span className="text-white font-bold text-2xl tracking-tight">{brl(priceFor(p))}</span>
+                      <span className={`text-white font-bold tracking-tight ${isDestaque ? 'text-3xl' : 'text-2xl'}`}>
+                        {brl(priceFor(p))}
+                      </span>
                       {p.price > 0 && <span className="text-white/40 text-xs ml-1">{periodLabel}</span>}
                     </p>
                     {period === 'anual' && p.price > 0 && (
@@ -247,7 +282,7 @@ export default function PlansPage() {
                     )}
                   </div>
 
-                  <ul className="flex flex-col gap-2 flex-1">
+                  <ul className="flex flex-col gap-2 flex-1 relative">
                     {(p.benefits || []).map((b, i) => (
                       <li key={i} className="flex items-start gap-2 text-[12px] text-white/85 leading-snug">
                         <Check /> {b}
@@ -285,7 +320,7 @@ export default function PlansPage() {
             </button>
           </div>
           <p className="text-white/30 text-[10px]">
-            Aplicado ao plano selecionado ({selected?.name || '—'}).
+            Aplicado ao plano selecionado ({selected?.name || '-'}).
           </p>
         </div>
       </div>
@@ -295,9 +330,9 @@ export default function PlansPage() {
            style={{ background: barBg, backdropFilter: 'blur(14px)' }}>
         <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">
-            <p className="text-white font-bold text-sm">{selected?.name || '—'}</p>
+            <p className="text-white font-bold text-sm">{selected?.name || '-'}</p>
             <p className="text-white/85">
-              <span className="font-bold text-xl">{selected ? brl(priceFor(selected)) : '—'}</span>
+              <span className="font-bold text-xl">{selected ? brl(priceFor(selected)) : '-'}</span>
               {selected?.price > 0 && (
                 <>
                   <span className="text-white/40 text-xs ml-1">{periodLabel}</span>
@@ -312,7 +347,7 @@ export default function PlansPage() {
             className="bg-white text-gray-900 font-bold rounded-full px-10 py-3.5 text-sm
                        hover:bg-gray-100 active:scale-[0.98] disabled:opacity-50 transition-all">
             {paying ? <Spinner size={16} />
-              : selected?.id === currentPlan ? '✓ Plano já ativo'
+              : selected?.id === currentPlan ? 'Plano já ativo'
               : selected?.price > 0 ? 'Assinar e pagar' : 'Ativar grátis'}
           </button>
         </div>
