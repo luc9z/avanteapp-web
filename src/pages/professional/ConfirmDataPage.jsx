@@ -125,7 +125,7 @@ export default function ConfirmDataPage() {
   const inputCls = 'input-field'
 
   return (
-    <div className="page-container pb-nav">
+    <div className="page-container largura-leitura pb-nav">
       {/* ── Green hero ──────────────────────────────────────── */}
       <div className="bg-primary px-5 pt-12 pb-6 relative rounded-b-3xl shadow-lg">
         <Link to="/user-type" className="absolute top-4 left-4 text-white/80 hover:text-white">

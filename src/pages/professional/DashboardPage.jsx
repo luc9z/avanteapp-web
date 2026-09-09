@@ -235,7 +235,7 @@ export default function DashboardPage() {
     : (profile?.specialty || 'Não informado')
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-painel">
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar">
         <span className="page-title">Painel</span>

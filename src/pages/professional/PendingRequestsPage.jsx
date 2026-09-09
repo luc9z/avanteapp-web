@@ -15,6 +15,8 @@ import Spinner from '../../components/common/Spinner'
 import { normalizeStatus } from '../../utils/status'
 import RequestCard from '../../components/common/RequestCard'
 import { carregarPerfis } from '../../services/perfis'
+import useTelaLarga from '../../hooks/useTelaLarga'
+import RequestDetailsPage from './RequestDetailsPage'
 import { format, isSameMonth, parse } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -45,6 +47,13 @@ export default function PendingRequestsPage() {
   const [requests, setRequests] = useState(null)
   // Foto de cada cliente, por uid - o mesmo recurso da tela do tutor.
   const [fotos, setFotos] = useState({})
+  const telaLarga = useTelaLarga()
+  const [aberto, setAberto] = useState(null)
+
+  function abrir(id) {
+    if (telaLarga) setAberto(id)
+    else navigate(`/request/${id}`)
+  }
 
   useEffect(() => {
     if (!user?.uid) return
@@ -95,7 +104,7 @@ export default function PendingRequestsPage() {
   const visible = tab === 'todos' ? all : all.filter(r => statusGroup(r.status) === tab)
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-lista">
       <div className="topbar">
         <Link to="/dashboard" className="text-primary" aria-label="Voltar">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,7 +150,8 @@ export default function PendingRequestsPage() {
         ))}
       </div>
 
-      <div className="px-4 py-4 pb-nav">
+      <div className="px-4 py-4 pb-nav lista-detalhe">
+        <div className="lista-coluna">
         {requests === null ? (
           <div className="flex justify-center py-16"><Spinner size={32} color="#375337" /></div>
         ) : visible.length === 0 ? (
@@ -162,9 +172,23 @@ export default function PendingRequestsPage() {
                 req={r}
                 perspectiva="vet"
                 foto={fotos[r.clientId]}
-                onClick={() => navigate(`/request/${r.id}`)}
+                selecionado={telaLarga && aberto === r.id}
+                onClick={() => abrir(r.id)}
               />
             ))}
+          </div>
+        )}
+        </div>
+
+        {telaLarga && (
+          <div className="detalhe-coluna">
+            {aberto ? (
+              <RequestDetailsPage idEmbutido={aberto} embutido />
+            ) : (
+              <div className="detalhe-vazio">
+                <p className="text-sm text-gray-500">Escolha uma solicitação para ver os detalhes aqui.</p>
+              </div>
+            )}
           </div>
         )}
       </div>

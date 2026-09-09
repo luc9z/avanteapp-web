@@ -361,7 +361,7 @@ export default function ClientHomePage() {
   const firstName = (myName || user?.displayName || '').split(' ')[0] || user?.email?.split('@')[0] || 'Usuário'
 
   return (
-    <div className="page-container flex flex-col h-screen">
+    <div className="page-container largura-lista flex flex-col h-screen">
       {/* Topbar */}
       <div className="topbar flex-shrink-0">
         <Link to="/edit-profile" className="flex items-center gap-2 text-primary">

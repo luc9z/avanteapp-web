@@ -109,8 +109,10 @@ function ConfirmDialog({ open, title, message, onConfirm, onCancel }) {
 }
 
 /* ── Main ─────────────────────────────────────────────────────── */
-export default function RequestDetailsPage() {
-  const { id } = useParams()
+export default function RequestDetailsPage({ idEmbutido, embutido = false }) {
+  // Embutida, recebe o id por prop; como página, lê da URL.
+  const { id: idDaRota } = useParams()
+  const id = idEmbutido || idDaRota
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -301,7 +303,7 @@ export default function RequestDetailsPage() {
     <div className="flex items-center justify-center min-h-screen"><Spinner size={32} color="#375337" /></div>
   )
   if (!req) return (
-    <div className="page-container">
+    <div className={embutido ? '' : 'page-container largura-leitura'}>
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,16 +345,20 @@ export default function RequestDetailsPage() {
 
   return (
     <>
-      <div className="page-container">
+      <div className={embutido ? 'w-full' : 'page-container'}>
         {/* ── Green Header ─────────────────────────────────── */}
-        <div className="bg-primary px-4 pt-4 pb-6">
+        <div className={`bg-primary px-4 pt-4 pb-6 ${embutido ? 'rounded-t-3xl' : ''}`}>
           {/* Topbar row */}
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => navigate(-1)} className="text-white/80 hover:text-white">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
+            {/* Embutida, a lista continua visível ao lado: voltar não
+                faz sentido e o espaço fica para o título. */}
+            {embutido ? <div className="w-6" /> : (
+              <button onClick={() => navigate(-1)} className="text-white/80 hover:text-white">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
             <p className="font-semibold text-white text-base">Detalhes do Atendimento</p>
             <div className="w-6" />
           </div>
@@ -894,7 +900,7 @@ export default function RequestDetailsPage() {
         onConfirm={handleDialogConfirm}
         onCancel={() => setDialog(null)}
       />
-      {req && (user?.uid === req.clientId ? <ClientBottomNav /> : <VetBottomNav />)}
+      {!embutido && req && (user?.uid === req.clientId ? <ClientBottomNav /> : <VetBottomNav />)}
     </>
   )
 }

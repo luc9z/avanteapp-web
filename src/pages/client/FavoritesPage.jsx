@@ -69,7 +69,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-lista">
       <div className="topbar">
         <h1 className="page-title">Favoritos</h1>
         {favIds?.length > 0 && (

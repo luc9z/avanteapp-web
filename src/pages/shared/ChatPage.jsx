@@ -308,7 +308,7 @@ export default function ChatPage() {
 
   /* ── Render ─────────────────────────────────────────────────── */
   return (
-    <div className="page-container flex flex-col h-screen">
+    <div className="page-container largura-leitura flex flex-col h-screen">
 
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar flex-shrink-0 shadow-sm">

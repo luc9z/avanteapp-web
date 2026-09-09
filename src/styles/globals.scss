@@ -272,7 +272,7 @@
 
   /* Grade utilitária que escala com a tela */
   .responsive-grid-2 { @apply grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4; }
-  .responsive-grid-cards { @apply grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4; }
+  .responsive-grid-cards { @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4; }
 
   /* Main scrollable area - accounts for bottom nav + safe area */
   .page-scroll {
@@ -817,4 +817,145 @@
     border-color: #8fbc8f;
     color: #14261a;
   }
+}
+
+/* ════ DESKTOP ════════════════════════════════════════════════════
+   O app nasceu para o celular e no monitor virava uma coluna estreita
+   com a navegação flutuando no rodapé - o canto mais longe do olho de
+   quem está com a mão no mouse. A partir de lg a navegação vai para a
+   lateral e o conteúdo ganha largura por TIPO, não uma largura só. */
+
+:root { --rail-w: 15rem; }
+
+/* A lateral é fixa e fora do fluxo, então o espaço dela é aberto aqui.
+   Fazer isso no #root mantém o `mx-auto` das páginas centralizando no
+   que sobra, sem tocar em nenhuma tela. */
+@media (min-width: 1024px) {
+  .com-rail #root { padding-left: var(--rail-w); }
+}
+
+.nav-rail {
+  @apply hidden fixed top-0 left-0 bottom-0 z-40 flex-col gap-1 px-3 py-4;
+  width: var(--rail-w);
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+@media (min-width: 1024px) { .nav-rail { @apply flex; } }
+
+.nav-rail-marca {
+  @apply flex items-center gap-2 px-3 pb-4 mb-2 text-lg;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav-rail-item {
+  @apply flex items-center gap-3 px-3 py-3 min-h-[48px] rounded-2xl text-sm font-semibold
+         no-underline transition-all duration-200;
+  color: var(--color-text-soft);
+
+  &:hover {
+    color: var(--color-primary);
+    background-color: var(--color-primary-muted);
+  }
+}
+
+.nav-rail-ativo {
+  background-color: var(--color-primary);
+  color: #fff;
+  &:hover { background-color: var(--color-primary); color: #fff; }
+}
+
+.nav-rail-badge {
+  @apply absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 rounded-full
+         text-[10px] font-bold text-white flex items-center justify-center;
+  background-color: var(--color-danger);
+}
+
+.nav-rail-ia {
+  @apply flex items-center justify-center gap-2 px-3 py-3 min-h-[48px] rounded-2xl
+         text-sm font-bold text-white transition-all duration-200
+         hover:-translate-y-px active:translate-y-0;
+  background-color: var(--color-primary);
+  &:hover { background-color: var(--color-primary-600); }
+}
+
+.dark {
+  .nav-rail       { background-color: #141b16; border-right-color: #232d26; }
+  .nav-rail-ativo { background-color: #2a3f2a; color: #e7f0e7; }
+  .nav-rail-item:hover { color: #8fbc8f; }
+}
+
+/* ── Larguras por tipo de conteúdo ────────────────────────────────
+   Uma largura só não serve: formulário a 1150px tem linha longa demais
+   para o olho acompanhar, e painel de números fica apertado em 640px.
+   As classes abaixo entram SOMENTE no desktop, então o celular não
+   muda em nada. */
+@media (min-width: 1024px) {
+  /* Leitura e formulários: linha curta o bastante para não cansar. */
+  .largura-leitura .page-container,
+  .page-container.largura-leitura { max-width: 46rem; }
+
+  /* Listas: cabe duas colunas de cartão com folga. */
+  .page-container.largura-lista { max-width: 64rem; }
+
+  /* Painéis: números e gráficos aproveitam a tela. */
+  .page-container.largura-painel { max-width: 80rem; }
+}
+
+/* A barra de baixo some no desktop; o respiro dela também. */
+@media (min-width: 1024px) {
+  .pb-nav { padding-bottom: 2rem; }
+  .nav-barra { display: none; }
+}
+
+/* ── Lista e detalhe lado a lado ──────────────────────────────────
+   No celular só existe a lista: tocar leva à página do pedido, como
+   sempre. A partir de lg a lista encolhe e o detalhe abre ao lado, o
+   que tira o vai-e-volta de abrir, ler, voltar e abrir o próximo. */
+.lista-detalhe { display: block; }
+.lista-coluna  { min-width: 0; }
+.detalhe-coluna { display: none; }
+
+@media (min-width: 1024px) {
+  .lista-detalhe {
+    display: grid;
+    grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  /* A lista rola sozinha e o detalhe acompanha, cada um no seu ritmo. */
+  .lista-coluna {
+    max-height: calc(100dvh - 8rem);
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+
+  .detalhe-coluna {
+    display: block;
+    position: sticky;
+    top: 5rem;
+    max-height: calc(100dvh - 7rem);
+    overflow-y: auto;
+    border-radius: var(--radius-2xl);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Ao lado do detalhe a lista fica estreita: uma coluna de cartão. */
+  .lista-coluna .responsive-grid-cards { @apply grid-cols-1; }
+}
+
+.detalhe-vazio {
+  @apply flex items-center justify-center text-center px-6;
+  min-height: 20rem;
+}
+
+/* O cartão aberto precisa se distinguir do resto da lista. */
+.req-card-aberto {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+.dark .req-card-aberto {
+  border-color: #8fbc8f !important;
+  box-shadow: 0 0 0 2px #8fbc8f;
 }

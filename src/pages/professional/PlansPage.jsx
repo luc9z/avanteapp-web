@@ -149,7 +149,8 @@ export default function PlansPage() {
 
   return (
     <div className="min-h-screen min-h-dvh" style={{ background: pageBg }}>
-      <div className="max-w-3xl mx-auto px-4 pb-44">
+      {/* No desktop os tres planos cabem lado a lado com folga. */}
+      <div className="max-w-3xl lg:max-w-5xl mx-auto px-4 pb-44 lg:pb-20">
 
         {/* Topo */}
         <div className="flex items-center justify-between py-4">

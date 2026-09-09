@@ -178,7 +178,7 @@ export default function MedicalRecordPage() {
   )
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-leitura">
       {/* Topbar */}
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary">

@@ -269,7 +269,7 @@ export default function ReportsPage() {
   const goalFalta = Math.max(0, monthlyGoal - goalBase)
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-painel">
       <div className="topbar">
         <span className="page-title">Desempenho</span>
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
