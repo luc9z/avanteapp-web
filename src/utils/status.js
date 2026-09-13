@@ -14,6 +14,7 @@ const STATUS_ALIASES = {
   pausado: ['pausado', 'paused'],
   aguardando: ['aguardando_cliente', 'awaiting_client', 'aguardando_confirmacao'],
   orcamento: ['aguardando_orcamento', 'orcamento', 'quote_pending'],
+  orcamento_recusado: ['orcamento_recusado', 'quote_rejected'],
   urgente: ['urgente', 'urgent'],
 }
 
@@ -29,7 +30,7 @@ export function normalizeStatus(s) {
 }
 
 /** Status em que existe um atendimento ativo entre cliente e profissional. */
-export const ACTIVE_STATUSES = ['aceito', 'a_caminho', 'em_andamento', 'pausado', 'orcamento']
+export const ACTIVE_STATUSES = ['aceito', 'a_caminho', 'em_andamento', 'pausado', 'orcamento', 'orcamento_recusado']
 
 /** Status finais que aguardam ação do cliente (confirmar/avaliar). */
 export const FINAL_STATUSES = ['finalizado']
@@ -48,6 +49,7 @@ export const STATUS_INFO = {
   pausado:      { label: 'Em pausa',               cls: 'badge-paused' },
   aguardando:   { label: 'Aguardando confirmação', cls: 'badge-paused' },
   orcamento:    { label: 'Orçamento enviado',      cls: 'badge-pending' },
+  orcamento_recusado: { label: 'Orçamento recusado', cls: 'badge-rejected' },
   urgente:      { label: 'Urgente',                cls: 'badge-rejected' },
   rejeitado:    { label: 'Recusado',               cls: 'badge-rejected' },
   finalizado:   { label: 'Finalizado',             cls: 'badge-done' },
@@ -67,6 +69,8 @@ export const STATUS_INFO = {
  */
 export function precisaDoCliente(r) {
   const st = normalizeStatus(r?.status)
+  // Recusado o orçamento, quem deve agir é o veterinário - o cliente
+  // já respondeu e não tem nada a fazer até chegar proposta nova.
   if (st === 'orcamento') return true
   if (st === 'finalizado') return r?.rated !== true
   return false
@@ -80,6 +84,7 @@ export function precisaDoCliente(r) {
 export function acaoDoCliente(r) {
   const st = normalizeStatus(r?.status)
   if (st === 'orcamento') return 'Orçamento recebido, aprove ou recuse'
+  if (st === 'orcamento_recusado') return null
   if (st === 'finalizado' && r?.rated !== true) {
     return r?.confirmFinish_client === true
       ? 'Avalie o atendimento'

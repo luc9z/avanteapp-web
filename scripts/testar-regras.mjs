@@ -101,6 +101,10 @@ await teste('cliente NÃO zera o total do orçamento', () =>
   assertFails(updateDoc(doc(db(CLIENTE), 'requests', 'com_orcamento'), {
     quote: { total: 0, items: [], approvedAt: null },
   })))
+await teste('cliente recusa o orçamento (status próprio, valor intacto)', () =>
+  assertSucceeds(updateDoc(doc(db(CLIENTE), 'requests', 'com_orcamento'), {
+    status: 'orcamento_recusado', 'quote.rejectedAt': '2026-01-02T10:00:00Z',
+  })))
 await teste('cliente NÃO troca o veterinário do atendimento', () =>
   assertFails(updateDoc(doc(db(CLIENTE), 'requests', 'com_orcamento'), { professionalId: VET2 })))
 

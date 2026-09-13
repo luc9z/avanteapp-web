@@ -793,8 +793,21 @@ function notifConfig(r) {
   }
 
   // active
-  const s = (r.status || '').toLowerCase()
+  const s = normalizeStatus(r.status)
   const map = {
+    orcamento: {
+      accent: 'orange',
+      icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      title: 'Orçamento recebido',
+      subtitle: `${prof} enviou uma proposta. Aprove ou recuse.`,
+      cta: 'Ver orçamento',
+    },
+    orcamento_recusado: {
+      accent: 'gray',
+      icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      title: 'Orçamento recusado',
+      subtitle: `Aguardando ${prof} enviar uma proposta nova.`,
+    },
     aceito:       { accent: 'green',  icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Pedido aceito!', subtitle: `${prof} aceitou sua solicitação` },
     accepted:     { accent: 'green',  icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Pedido aceito!', subtitle: `${prof} aceitou sua solicitação` },
     a_caminho:    { accent: 'blue',   icon: 'M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM3 8h14l-1 7H4L3 8z', title: 'A caminho', subtitle: `${prof} está indo até você` },
@@ -802,7 +815,7 @@ function notifConfig(r) {
     pausado:      { accent: 'orange', icon: 'M6 19h4V5H6v14zm8-14v14h4V5h-4z', title: 'Atendimento pausado', subtitle: r.service },
   }
   const c = map[s] || { accent: 'gray', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', title: r.service, subtitle: prof }
-  return { ...c, cta: 'Ver', to: (x) => `/request/${x.id}` }
+  return { cta: 'Ver', ...c, to: (x) => `/request/${x.id}` }
 }
 
 const NOTIF_ACCENTS = {

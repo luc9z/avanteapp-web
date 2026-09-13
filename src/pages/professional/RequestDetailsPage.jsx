@@ -41,7 +41,7 @@ function hStepIndex(status) {
   const s = normalizeStatus(status)
   if (s === 'finalizado') return 4
   if (['em_andamento', 'pausado'].includes(s)) return 3
-  if (['aceito', 'a_caminho', 'orcamento', 'aguardando'].includes(s)) return 2
+  if (['aceito', 'a_caminho', 'orcamento', 'orcamento_recusado', 'aguardando'].includes(s)) return 2
   if (['pendente', 'urgente'].includes(s)) return 1
   // Recusado não tem etapa: a tela trata por isRejected. Listado aqui só
   // para não disparar o aviso de status desconhecido.
@@ -69,6 +69,8 @@ function statusBadge(status) {
     return { label: 'Recusado', cls: 'bg-red-500 text-white' }
   if (s === 'orcamento')
     return { label: 'Orçamento enviado', cls: 'bg-amber-500 text-white' }
+  if (s === 'orcamento_recusado')
+    return { label: 'Orçamento recusado', cls: 'bg-red-500 text-white' }
   if (s === 'aguardando')
     return { label: 'Aguardando confirmação', cls: 'bg-amber-400 text-white' }
   if (s === 'urgente')
@@ -802,6 +804,44 @@ export default function RequestDetailsPage() {
                   <p className="text-center text-sm text-gray-500 py-3">Aguardando aprovação do orçamento pelo cliente</p>
                 )}
 
+                {/* ORÇAMENTO RECUSADO: refazer a proposta ou encerrar */}
+                {status === 'orcamento_recusado' && isProf && (
+                  <div className="flex flex-col gap-3">
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                      <p className="text-sm font-bold text-red-700">O cliente recusou o orçamento</p>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        Você pode enviar uma proposta nova com outro valor, ou encerrar o pedido.
+                      </p>
+                      {req.quote?.total != null && (
+                        <p className="text-xs text-gray-500 mt-1.5">
+                          Proposta recusada: R$ {Number(req.quote.total).toFixed(2).replace('.', ',')}
+                        </p>
+                      )}
+                    </div>
+
+                    <QuoteComposer requestId={id} req={req} rotulo="Atualizar proposta" onSent={() => {}} />
+
+                    <button
+                      onClick={() => askConfirm(
+                        'Recusar pedido',
+                        'O atendimento será encerrado e o cliente avisado. Não há como desfazer.',
+                        rejectRequest,
+                      )}
+                      disabled={rejecting}
+                      className="btn-danger btn-block"
+                    >
+                      {rejecting ? <Spinner /> : 'Recusar pedido'}
+                    </button>
+                  </div>
+                )}
+
+                {/* O cliente vê que a bola está com o veterinário */}
+                {status === 'orcamento_recusado' && !isProf && (
+                  <p className="text-center text-sm text-gray-500 py-3">
+                    Você recusou o orçamento. O veterinário pode enviar uma proposta nova.
+                  </p>
+                )}
+
                 {/* A_CAMINHO → Iniciar */}
                 {status === 'a_caminho' && (
                   <GreenBtn onClick={() => triggerStatus('em_andamento')} disabled={updating} loading={updating}
@@ -852,10 +892,14 @@ export default function RequestDetailsPage() {
                   }).catch(() => showToast('Erro ao aprovar orçamento', 'error'))
                 }}
                 onReject={async () => {
+                  /* Guarda a proposta recusada em vez de apagar: o
+                     veterinário precisa dela para montar a próxima, e
+                     sumir com ela deixava os dois sem referência. */
                   await updateDoc(doc(db, 'requests', id), {
-                    status: 'aceito',
-                    quote: null,
-                    statusHistory: [...(req.statusHistory || []), { status: 'aceito', at: new Date().toISOString() }],
+                    status: 'orcamento_recusado',
+                    'quote.rejectedAt': new Date().toISOString(),
+                    statusHistory: [...(req.statusHistory || []),
+                      { status: 'orcamento_recusado', at: new Date().toISOString() }],
                   }).catch(() => showToast('Erro ao recusar orçamento', 'error'))
                 }}
               />
@@ -1352,7 +1396,7 @@ export async function downloadReceiptPDF(req) {
 
 
 /* ── QuoteComposer - vet envia orçamento ─────────────────────── */
-function QuoteComposer({ requestId, req, onSent }) {
+function QuoteComposer({ requestId, req, onSent, rotulo = 'Enviar Orçamento' }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([{ desc: '', qty: 1, price: '' }])
   const [saving, setSaving] = useState(false)
@@ -1374,7 +1418,8 @@ function QuoteComposer({ requestId, req, onSent }) {
     try {
       await updateDoc(doc(db, 'requests', requestId), {
         status: 'orcamento',
-        quote: { items, total, sentAt: new Date().toISOString(), approvedAt: null },
+        // rejectedAt sai junto: é proposta nova, não a recusada de antes.
+        quote: { items, total, sentAt: new Date().toISOString(), approvedAt: null, rejectedAt: null },
         statusHistory: arrayUnion({ status: 'orcamento', at: new Date().toISOString() }),
       })
       showToast('Orçamento enviado ao cliente!', 'success')
@@ -1391,7 +1436,7 @@ function QuoteComposer({ requestId, req, onSent }) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      Enviar Orçamento
+      {rotulo}
     </button>
   )
 
