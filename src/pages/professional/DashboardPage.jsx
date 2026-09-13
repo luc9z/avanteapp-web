@@ -14,7 +14,7 @@ import { ThemeToggle } from '../../contexts/ThemeContext'
 import AdBanner from '../../components/common/AdBanner'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { directChatId } from '../../services/directChat'
-import { isPending, isActive, normalizeStatus } from '../../utils/status'
+import { isPending, isActive, normalizeStatus, statusInfo } from '../../utils/status'
 import { vetCoversSpecies } from '../../utils/specialties'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -26,11 +26,18 @@ function formatDate(ts) {
   return format(d, 'dd/MM/yyyy - HH:mm', { locale: ptBR })
 }
 
-const ACTIVE_STATUS_LABEL = {
-  aceito: { label: 'Pedido Aceito', color: 'bg-green-500 text-white' },
-  a_caminho: { label: 'A Caminho', color: 'bg-blue-500 text-white' },
-  em_andamento: { label: 'Em Atendimento', color: 'bg-primary text-white' },
-  pausado: { label: 'Pausado', color: 'bg-orange-400 text-white' },
+/**
+ * Só as CORES vivem aqui. O texto do selo sai de statusInfo(), em
+ * utils/status.js, porque mapa de rótulo duplicado por tela sempre
+ * atrasa: um status novo aparecia como a chave crua do banco.
+ */
+const CORES_STATUS_ATIVO = {
+  aceito:             'bg-green-500 text-white',
+  a_caminho:          'bg-blue-500 text-white',
+  em_andamento:       'bg-primary text-white',
+  pausado:            'bg-orange-400 text-white',
+  orcamento:          'bg-amber-500 text-white',
+  orcamento_recusado: 'bg-red-500 text-white',
 }
 
 /* ── component ───────────────────────────────────────────────── */
@@ -402,7 +409,8 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-3">
               {activeRequests.slice(0, 2).map(r => {
                 const s = normalizeStatus(r.status)
-                const { label: sLabel, color: sColor } = ACTIVE_STATUS_LABEL[s] || { label: r.status, color: 'bg-gray-400 text-white' }
+                const sLabel = statusInfo(r.status).label
+                const sColor = CORES_STATUS_ATIVO[s] || 'bg-gray-400 text-white'
                 return (
                   <div
                     key={r.id}

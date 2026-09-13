@@ -53,29 +53,34 @@ function hStepIndex(status) {
 }
 
 /* ── Status badge config ─────────────────────────────────────── */
+/**
+ * O selo do topo do atendimento.
+ *
+ * Só as cores moram aqui - esta tela usa selo sólido, as listas usam
+ * selo suave. O TEXTO sai de statusInfo(): quando cada tela tinha o
+ * próprio mapa, um status novo aparecia cru em algumas e certo em
+ * outras.
+ */
+const CORES_SELO = {
+  pendente:           'bg-amber-400 text-white',
+  urgente:            'bg-red-500 text-white',
+  aceito:             'bg-green-500 text-white',
+  a_caminho:          'bg-blue-400 text-white',
+  orcamento:          'bg-amber-500 text-white',
+  orcamento_recusado: 'bg-red-500 text-white',
+  aguardando:         'bg-amber-400 text-white',
+  em_andamento:       'bg-blue-500 text-white',
+  pausado:            'bg-orange-400 text-white',
+  rejeitado:          'bg-red-500 text-white',
+  finalizado:         'bg-gray-200 text-gray-700',
+}
+
 function statusBadge(status) {
   const s = normalizeStatus(status)
-  if (['finalizado', 'done'].includes(s))
-    return { label: 'Finalizado', cls: 'bg-gray-200 text-gray-700' }
-  if (['em_andamento', 'in_progress'].includes(s))
-    return { label: 'Em Andamento', cls: 'bg-blue-500 text-white' }
-  if (s === 'pausado')
-    return { label: 'Pausado', cls: 'bg-orange-400 text-white' }
-  if (['aceito', 'accepted', 'confirmado'].includes(s))
-    return { label: 'Aceito', cls: 'bg-green-500 text-white' }
-  if (s === 'a_caminho')
-    return { label: 'A Caminho', cls: 'bg-blue-400 text-white' }
-  if (s === 'rejeitado')
-    return { label: 'Recusado', cls: 'bg-red-500 text-white' }
-  if (s === 'orcamento')
-    return { label: 'Orçamento enviado', cls: 'bg-amber-500 text-white' }
-  if (s === 'orcamento_recusado')
-    return { label: 'Orçamento recusado', cls: 'bg-red-500 text-white' }
-  if (s === 'aguardando')
-    return { label: 'Aguardando confirmação', cls: 'bg-amber-400 text-white' }
-  if (s === 'urgente')
-    return { label: 'Urgente', cls: 'bg-red-500 text-white' }
-  return { label: 'Pendente', cls: 'bg-amber-400 text-white' }
+  return {
+    label: statusInfo(status).label,
+    cls: CORES_SELO[s] || 'bg-gray-400 text-white',
+  }
 }
 
 function formatDateTime(ts) {

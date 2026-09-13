@@ -5,7 +5,7 @@ import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
 import { VetBottomNav } from '../../components/common/BottomNav'
-import { normalizeStatus, isActive } from '../../utils/status'
+import { normalizeStatus, isActive, statusInfo } from '../../utils/status'
 import { showToast } from '../../components/common/Toast'
 import {
   format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval,
@@ -13,14 +13,16 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-const STATUS_LABELS = {
-  aceito:       { label: 'Aceito',       cls: 'badge-accepted' },
-  pendente:     { label: 'Pendente',     cls: 'badge-pending' },
-  em_andamento: { label: 'Em andamento', cls: 'bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full' },
-  finalizado:   { label: 'Finalizado',   cls: 'bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full' },
-  rejeitado:    { label: 'Rejeitado',    cls: 'badge-rejected' },
-  a_caminho:    { label: 'A caminho',    cls: 'badge-on-way' },
-  orcamento:    { label: 'Orçamento',    cls: 'badge-pending' },
+/** Só as classes; o rótulo vem de statusInfo(). */
+const CLASSES_STATUS = {
+  aceito:             'badge-accepted',
+  pendente:           'badge-pending',
+  em_andamento:       'bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full',
+  finalizado:         'bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-0.5 rounded-full',
+  rejeitado:          'badge-rejected',
+  a_caminho:          'badge-on-way',
+  orcamento:          'badge-pending',
+  orcamento_recusado: 'badge-rejected',
 }
 
 const WEEKDAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -275,7 +277,8 @@ export default function AgendaPage() {
             )}
 
             {!loading && appointmentsOnSelected.map(a => {
-              const { label, cls } = STATUS_LABELS[a.status] || { label: a.status, cls: 'badge-pending' }
+              const label = statusInfo(a.status).label
+              const cls = CLASSES_STATUS[normalizeStatus(a.status)] || 'badge-pending'
               return (
                 <div key={a.id}
                   className="card mb-3 cursor-pointer hover:shadow-card-hover transition-shadow"

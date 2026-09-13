@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:rules": "firebase emulators:exec --only firestore \"node scripts/testar-regras.mjs\"",
-    "test:mapa": "node scripts/testar-mapa.mjs"
+    "test:mapa": "node scripts/testar-mapa.mjs",
+    "test:status": "node scripts/testar-status.mjs"
   },
   "dependencies": {
     "date-fns": "^3.6.0",

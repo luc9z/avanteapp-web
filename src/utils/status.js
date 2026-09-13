@@ -4,7 +4,7 @@
  * existiam em ClientHomePage, ClientRequestsPage, AgendaPage e Dashboard.
  */
 
-const STATUS_ALIASES = {
+export const STATUS_ALIASES = {
   pendente: ['pending', 'pendente'],
   aceito: ['accepted', 'aceito', 'confirmed', 'confirmado'],
   rejeitado: ['rejected', 'rejeitado', 'cancelled', 'cancelado', 'canceled'],
@@ -94,5 +94,11 @@ export function acaoDoCliente(r) {
 }
 
 export function statusInfo(s) {
-  return STATUS_INFO[normalizeStatus(s)] || { label: s || '-', cls: 'badge-done' }
+  const conhecido = STATUS_INFO[normalizeStatus(s)]
+  if (conhecido) return conhecido
+  // Status gravado por uma versão que este app não conhece. Avisa no
+  // console para virar entrada nova aqui, e NUNCA devolve a chave: o
+  // usuário não tem por que ler nome de campo de banco.
+  if (s && import.meta.env?.DEV) console.warn('[status] sem rótulo:', s)
+  return { label: 'Situação não reconhecida', cls: 'badge-done' }
 }

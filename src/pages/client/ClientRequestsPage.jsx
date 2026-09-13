@@ -14,19 +14,6 @@ import OffersBanner from '../../components/client/OffersBanner'
 
 // Base comum de todos os badges - só a cor muda por status.
 const BADGE_BASE = 'text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap'
-const STATUS_INFO = {
-  urgente:      { label: 'Urgente',                color: 'bg-red-100 text-red-600' },
-  pendente:     { label: 'Pendente',               color: 'bg-orange-100 text-orange-600' },
-  aceito:       { label: 'Aceito',                 color: 'bg-green-100 text-green-700' },
-  orcamento:    { label: 'Orçamento Enviado',      color: 'bg-amber-100 text-amber-700' },
-  a_caminho:    { label: 'A Caminho',              color: 'bg-blue-100 text-blue-700' },
-  em_andamento: { label: 'Em Andamento',           color: 'bg-blue-100 text-blue-700' },
-  pausado:      { label: 'Em Pausa',               color: 'bg-orange-100 text-orange-600' },
-  aguardando:   { label: 'Aguardando Confirmação', color: 'bg-orange-100 text-orange-600' },
-  rejeitado:    { label: 'Recusado',               color: 'bg-red-100 text-red-600' },
-  finalizado:   { label: 'Finalizado',             color: 'bg-gray-100 text-gray-600' },
-}
-
 export default function ClientRequestsPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
