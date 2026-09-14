@@ -46,6 +46,8 @@ export default function PlansPage() {
   const [plans, setPlans] = useState(null)
   const [currentPlan, setCurrentPlan] = useState(null)
   const [selectedId, setSelectedId] = useState('premium')
+  // Quem já tem plano chega com ele marcado, não com o Premium fixo.
+  const [tocouNaSelecao, setTocouNaSelecao] = useState(false)
   const [period, setPeriod] = useState('mensal') // mensal | anual
   const [coupon, setCoupon] = useState('')
   const [couponBusy, setCouponBusy] = useState(false)
@@ -61,8 +63,11 @@ export default function PlansPage() {
   useEffect(() => {
     if (!user?.uid) return
     return onSnapshot(doc(db, 'users', user.uid), snap => {
-      setCurrentPlan(snap.data()?.plan || null)
+      const p = snap.data()?.plan || null
+      setCurrentPlan(p)
+      if (p && !tocouNaSelecao) setSelectedId(p)
     }, () => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
 
   useEffect(() => {
@@ -131,6 +136,10 @@ export default function PlansPage() {
       if (selected.price <= 0) {
         await setDoc(doc(db, 'users', user.uid), {
           plan: selected.id,
+          // featured é consequência do plano. Sem reescrever aqui, quem
+          // saía do Premium continuava com o selo de Destaque na busca:
+          // o plano mudava e a vantagem do anterior ficava.
+          featured: ['premium', 'destaque'].includes(selected.id),
           planActivatedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }, { merge: true })
@@ -217,7 +226,7 @@ export default function PlansPage() {
                 : isEssencial ? 'min-h-[23rem] p-4 pt-6'
                 : 'min-h-[20rem] p-4 pt-6'
               return (
-                <button key={p.id} type="button" onClick={() => setSelectedId(p.id)}
+                <button key={p.id} type="button" onClick={() => { setTocouNaSelecao(true); setSelectedId(p.id) }}
                   aria-pressed={isSel}
                   className={`plan-step relative rounded-2xl text-left flex flex-col gap-3 ${degrau} ${
                     isDestaque ? 'z-10' : ''

@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:rules": "firebase emulators:exec --only firestore \"node scripts/testar-regras.mjs\"",
     "test:mapa": "node scripts/testar-mapa.mjs",
-    "test:status": "node scripts/testar-status.mjs"
+    "test:status": "node scripts/testar-status.mjs",
+    "semear": "node scripts/semear-local.mjs"
   },
   "dependencies": {
     "date-fns": "^3.6.0",

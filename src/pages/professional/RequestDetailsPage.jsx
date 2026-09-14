@@ -137,7 +137,8 @@ export default function RequestDetailsPage() {
   const notesInitRef = useRef(false)
 
   // Vet GPS: ativo só quando status = a_caminho e o usuário é o profissional
-  useVetTracking(id, !!(user?.uid && user.uid === req?.professionalId && req?.status === 'a_caminho'))
+  useVetTracking(id, !!(user?.uid && user.uid === req?.professionalId &&
+    normalizeStatus(req?.status) === 'a_caminho'))
 
   useEffect(() => {
     if (!id) return
@@ -322,7 +323,7 @@ export default function RequestDetailsPage() {
     </div>
   )
 
-  const status = (req.status || '').toLowerCase()
+  const status = normalizeStatus(req.status)
   const urgency = (req.urgency || '').toLowerCase()
   const currentHStep = hStepIndex(status)
   const isRejected = status === 'rejeitado'
@@ -799,10 +800,19 @@ export default function RequestDetailsPage() {
                 {/* ACEITO → Enviar Orçamento OU A Caminho */}
                 {status === 'aceito' && isProf && (
                   <div className="flex flex-col gap-2">
-                    <QuoteComposer requestId={id} req={req} onSent={() => {}} />
-                    <GreenBtn onClick={() => triggerStatus('a_caminho')} disabled={updating} loading={updating}
-                      iconPath="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0zM3 8h14l-1 7H4L3 8z"
-                      label="A Caminho (sem orçamento)" />
+                    <QuoteComposer requestId={id} req={req} onSent={() => {}} primario />
+                    <button
+                      onClick={() => askConfirm(
+                        'Ir sem enviar orçamento',
+                        'O cliente não vai aprovar nenhum valor antes da visita. Você combina o preço pessoalmente. Continuar?',
+                        () => updateStatus('a_caminho'),
+                      )}
+                      disabled={updating}
+                      className="w-full py-2.5 text-sm font-semibold text-gray-500 hover:text-gray-700
+                                 disabled:opacity-50 transition-colors"
+                    >
+                      {updating ? <Spinner /> : 'Ir sem enviar orçamento'}
+                    </button>
                   </div>
                 )}
                 {status === 'orcamento' && isProf && (
@@ -840,13 +850,6 @@ export default function RequestDetailsPage() {
                   </div>
                 )}
 
-                {/* O cliente vê que a bola está com o veterinário */}
-                {status === 'orcamento_recusado' && !isProf && (
-                  <p className="text-center text-sm text-gray-500 py-3">
-                    Você recusou o orçamento. O veterinário pode enviar uma proposta nova.
-                  </p>
-                )}
-
                 {/* A_CAMINHO → Iniciar */}
                 {status === 'a_caminho' && (
                   <GreenBtn onClick={() => triggerStatus('em_andamento')} disabled={updating} loading={updating}
@@ -878,6 +881,13 @@ export default function RequestDetailsPage() {
                   </div>
                 )}
               </>
+            )}
+
+            {/* O cliente vê que a bola está com o veterinário */}
+            {status === 'orcamento_recusado' && !isProf && (
+              <p className="text-center text-sm text-gray-500 py-3">
+                Você recusou o orçamento. O veterinário pode enviar uma proposta nova.
+              </p>
             )}
 
             {/* ── Cliente: aguardando orçamento / deslocamento ─── */}
@@ -1401,7 +1411,7 @@ export async function downloadReceiptPDF(req) {
 
 
 /* ── QuoteComposer - vet envia orçamento ─────────────────────── */
-function QuoteComposer({ requestId, req, onSent, rotulo = 'Enviar Orçamento' }) {
+function QuoteComposer({ requestId, req, onSent, rotulo = 'Enviar Orçamento', primario = false }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([{ desc: '', qty: 1, price: '' }])
   const [saving, setSaving] = useState(false)
@@ -1435,8 +1445,10 @@ function QuoteComposer({ requestId, req, onSent, rotulo = 'Enviar Orçamento' })
 
   if (!open) return (
     <button onClick={() => setOpen(true)}
-      className="w-full py-2.5 rounded-xl border-2 border-primary/40 text-primary font-semibold text-sm
-                 flex items-center justify-center gap-2 hover:bg-primary/5 transition-colors">
+      className={`w-full rounded-xl font-semibold text-sm flex items-center justify-center
+                  gap-2 transition-colors ${primario
+        ? 'py-4 bg-primary text-white font-bold hover:bg-primary-600 active:scale-95'
+        : 'py-2.5 border-2 border-primary/40 text-primary hover:bg-primary/5'}`}>
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

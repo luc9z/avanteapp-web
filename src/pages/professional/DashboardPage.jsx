@@ -47,6 +47,9 @@ export default function DashboardPage() {
   const uid = user?.uid
 
   const [profile, setProfile] = useState(null)
+  // Catálogo de planos: o nome exibido tem que ser o que o admin
+  // configurou, senão um plano novo ou renomeado aparece como "Free".
+  const [catalogoPlanos, setCatalogoPlanos] = useState(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [requests, setRequests] = useState([])
   const [activeRequests, setActiveRequests] = useState([])
@@ -59,6 +62,13 @@ export default function DashboardPage() {
   const [totalChats, setTotalChats] = useState(0)
 
   /* ── listeners ─────────────────────────────────────────────── */
+  useEffect(() => {
+    return onSnapshot(doc(db, 'config', 'plans'),
+      snap => setCatalogoPlanos(Array.isArray(snap.data()?.plans) ? snap.data().plans : null),
+      () => setCatalogoPlanos(null),   // sem catálogo, cai no nome do próprio id
+    )
+  }, [])
+
   useEffect(() => {
     if (!uid) return
     return onSnapshot(doc(db, 'users', uid), snap => {
@@ -235,6 +245,12 @@ export default function DashboardPage() {
     essencial: { card: 'plan-card plan-essencial', glow: 'bg-emerald-300/10',     badge: 'plan-badge-essencial' },
     premium:   { card: 'plan-card plan-premium',   glow: 'bg-amber-200/10',       badge: 'plan-badge-premium' },
   }[planKey]
+  /* Nome do plano assinado. Sem catálogo carregado, mostra o próprio
+     id com inicial maiúscula - errado é mostrar "Free" para quem pagou. */
+  const idPlano = profile?.plan || 'free'
+  const nomeDoPlano = catalogoPlanos?.find(p => p.id === idPlano)?.name
+    || idPlano.charAt(0).toUpperCase() + idPlano.slice(1)
+
   const rating = liveRating?.avg ?? profile?.averageRating ?? 0
   const ratingCount = liveRating?.count ?? profile?.ratingCount ?? 0
   const specialties = Array.isArray(profile?.specialties)
@@ -294,7 +310,7 @@ export default function DashboardPage() {
             {(() => {
               const LABEL = { free: 'Free', essencial: 'Essencial', premium: 'Premium', destaque: 'Premium' }
               const ICON  = { free: '○', essencial: '◆', premium: '★', destaque: '★' }
-              const plan = profile?.plan || 'free'
+              const plan = idPlano
               return (
                 <Link to="/plans"
                   className={`plan-badge ${CARD_THEME.badge} self-start active:scale-95 transition-transform`}>
@@ -401,6 +417,52 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* ── Plano ───────────────────────────────────────────
+             Fica logo abaixo do perfil: é a primeira coisa depois das
+             urgências, que são as únicas com pressa maior.
+             O nome sai de config/plans, não de uma lista fixa aqui -
+             com a lista fixa, um plano renomeado ou criado pelo admin
+             aparecia como "Free" mesmo depois de assinado. */}
+        {(() => {
+          const ehPremium = ['premium', 'destaque'].includes(profile?.plan)
+          const plano = nomeDoPlano
+          return (
+            <Link to="/plans" data-coach="vet-plano"
+              className={`flex items-center gap-3 rounded-2xl p-4 transition-all
+                          duration-200 hover:-translate-y-px active:translate-y-0 active:scale-[0.99] ${
+                ehPremium
+                  ? 'card hover:shadow-card-hover'
+                  : 'bg-gradient-to-r from-amber-400 to-amber-500 shadow-[0_4px_16px_rgba(245,158,11,0.3)] hover:opacity-95'
+              }`}>
+              <div className="flex-1 min-w-0">
+                <p className={`text-[10px] font-bold uppercase tracking-wide ${
+                  ehPremium ? 'text-gray-400' : 'text-white/70'}`}>
+                  Seu plano: {plano}
+                </p>
+                <p className={`font-bold text-sm mt-0.5 ${ehPremium ? 'text-gray-800' : 'text-white'}`}>
+                  {ehPremium ? 'Gerenciar assinatura' : 'Apareça primeiro na busca'}
+                </p>
+                <p className={`text-xs mt-0.5 ${ehPremium ? 'text-gray-500' : 'text-white/85'}`}>
+                  {ehPremium
+                    ? 'Trocar de plano ou cancelar quando quiser'
+                    : 'Receba mais pedidos com o selo de destaque'}
+                </p>
+              </div>
+              <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-xl px-3.5 min-h-[44px]
+                                text-xs font-bold whitespace-nowrap ${
+                ehPremium
+                  ? 'border border-primary/40 text-primary'
+                  : 'bg-white text-amber-700 shadow-sm'
+              }`}>
+                {ehPremium ? 'Trocar' : 'Ver planos'}
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </Link>
+          )
+        })()}
 
         {/* ── Atendimento Atual ──────────────────────────────── */}
         {activeRequests.length > 0 && (
@@ -624,52 +686,6 @@ export default function DashboardPage() {
           <p className="text-xs text-gray-400 font-medium mb-1">Área de atuação</p>
           <p className="text-primary font-semibold text-sm leading-snug">{specialties}</p>
         </div>
-
-        {/* ── Plano ───────────────────────────────────────────
-             Antes o cartão sumia no Premium, e quem já assinava ficava
-             sem caminho visível para trocar ou cancelar - só o selo
-             pequeno do topo. Agora ele fica sempre, mudando de tom: a
-             oferta é dourada, a gestão é discreta. */}
-        {(() => {
-          const ehPremium = ['premium', 'destaque'].includes(profile?.plan)
-          const plano = profile?.plan === 'essencial' ? 'Essencial'
-            : ehPremium ? 'Premium' : 'Free'
-          return (
-            <Link to="/plans" data-coach="vet-plano"
-              className={`flex items-center gap-3 rounded-2xl p-4 transition-all
-                          duration-200 hover:-translate-y-px active:translate-y-0 active:scale-[0.99] ${
-                ehPremium
-                  ? 'card hover:shadow-card-hover'
-                  : 'bg-gradient-to-r from-amber-400 to-amber-500 shadow-[0_4px_16px_rgba(245,158,11,0.3)] hover:opacity-95'
-              }`}>
-              <div className="flex-1 min-w-0">
-                <p className={`text-[10px] font-bold uppercase tracking-wide ${
-                  ehPremium ? 'text-gray-400' : 'text-white/70'}`}>
-                  Seu plano: {plano}
-                </p>
-                <p className={`font-bold text-sm mt-0.5 ${ehPremium ? 'text-gray-800' : 'text-white'}`}>
-                  {ehPremium ? 'Gerenciar assinatura' : 'Apareça primeiro na busca'}
-                </p>
-                <p className={`text-xs mt-0.5 ${ehPremium ? 'text-gray-500' : 'text-white/85'}`}>
-                  {ehPremium
-                    ? 'Trocar de plano ou cancelar quando quiser'
-                    : 'Receba mais pedidos com o selo de destaque'}
-                </p>
-              </div>
-              <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-xl px-3.5 min-h-[44px]
-                                text-xs font-bold whitespace-nowrap ${
-                ehPremium
-                  ? 'border border-primary/40 text-primary'
-                  : 'bg-white text-amber-700 shadow-sm'
-              }`}>
-                {ehPremium ? 'Trocar' : 'Ver planos'}
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </span>
-            </Link>
-          )
-        })()}
 
         {/* Anúncios - apenas para veterinários no plano Free */}
         {(!profile?.plan || profile?.plan === 'free') && (

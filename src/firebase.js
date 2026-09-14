@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { initializeFirestore } from 'firebase/firestore'
+import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth'
+import { initializeFirestore, connectFirestoreEmulator } from 'firebase/firestore'
 import { getFunctions } from 'firebase/functions'
 
 /**
@@ -37,5 +37,23 @@ export const db = initializeFirestore(app, {
 })
 export const functions = getFunctions(app, 'southamerica-east1')
 export const googleProvider = new GoogleAuthProvider()
+
+/**
+ * Emuladores locais, so em desenvolvimento e so quando pedido.
+ *
+ * Serve para abrir as telas logadas sem tocar em dado de producao -
+ * conferir uma tela de verdade exige ver a tela cheia, nao uma
+ * simulacao. Nunca liga sozinho: depende de VITE_USE_EMULATORS no
+ * .env.local, e o servidor de dev precisa ser reiniciado depois de
+ * mexer nessa variavel (o Vite le o env so no start).
+ */
+if (import.meta.env.DEV && import.meta.env.VITE_USE_EMULATORS === 'true') {
+  // O HMR reexecuta este módulo, e ligar o emulador duas vezes joga
+  // (auth/emulator-config-failed). Sem o try, o erro derrubava a
+  // ligação inteira e o app voltava a falar com PRODUÇÃO em silêncio.
+  try { connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true }) } catch { /* já ligado */ }
+  try { connectFirestoreEmulator(db, '127.0.0.1', 8099) } catch { /* já ligado */ }
+  console.info('[firebase] usando emuladores locais')
+}
 
 export default app
