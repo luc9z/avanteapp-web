@@ -22,6 +22,12 @@ const env = await initializeTestEnvironment({
   firestore: { rules: readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8099 },
 })
 
+// Com o emulador do dia a dia já de pé, o banco do teste sobrevive entre
+// rodadas, e um "criar" da rodada anterior vira "sobrescrever" na
+// seguinte. Limpa só ESTE projeto ('avante-regras-teste'): os dados do
+// app ficam em outro projectId e não são tocados.
+await env.clearFirestore()
+
 const VET = 'vet_1'
 const VET2 = 'vet_2'
 const CLIENTE = 'cliente_1'
@@ -124,8 +130,42 @@ await teste('indicado cria a própria indicação', () =>
   assertSucceeds(setDoc(doc(db(CLIENTE2), 'users', VET, 'referrals', CLIENTE2), { activatedPlan: null })))
 await teste('terceiro NÃO injeta indicação em nome de outro', () =>
   assertFails(setDoc(doc(db(CLIENTE2), 'users', VET, 'referrals', 'outro_uid'), { activatedPlan: 'premium' })))
+await teste('indicação NÃO nasce já creditada', () =>
+  assertFails(setDoc(doc(db(CLIENTE), 'users', VET, 'referrals', CLIENTE), { activatedPlan: 'premium' })))
+await teste('ninguém indica a si mesmo', () =>
+  assertFails(setDoc(doc(db(VET), 'users', VET, 'referrals', VET), { activatedPlan: null })))
+await teste('indicado marca que ativou o plano', () =>
+  assertSucceeds(updateDoc(doc(db(CLIENTE2), 'users', VET, 'referrals', CLIENTE2), {
+    activatedPlan: 'premium', activatedAt: '2026-10-08T00:00:00Z', viaCupom: null,
+  })))
+await teste('indicado NÃO mexe em outros campos da indicação', () =>
+  assertFails(updateDoc(doc(db(CLIENTE2), 'users', VET, 'referrals', CLIENTE2), { referredAt: 'ontem' })))
+await teste('quem indicou lê as próprias indicações', () =>
+  assertSucceeds(getDocs(collection(db(VET), 'users', VET, 'referrals'))))
+await teste('outro vet NÃO lê as indicações alheias', () =>
+  assertFails(getDocs(collection(db(VET2), 'users', VET, 'referrals'))))
 await teste('email_index não é mais gravável', () =>
   assertFails(setDoc(doc(db(CLIENTE2), 'email_index', 'maria@ex.com'), { uid: CLIENTE2 })))
+
+console.log('\n== Códigos de indicação ==')
+await teste('vet reserva o próprio código', () =>
+  assertSucceeds(setDoc(doc(db(VET), 'referralCodes', 'ANA1234'), { uid: VET })))
+await teste('ninguém reserva código em nome de outro', () =>
+  assertFails(setDoc(doc(db(VET2), 'referralCodes', 'BRUN1234'), { uid: VET })))
+await teste('código já reservado NÃO é sobrescrito', () =>
+  assertFails(setDoc(doc(db(VET2), 'referralCodes', 'ANA1234'), { uid: VET2 })))
+await teste('código fora do formato é recusado', () =>
+  assertFails(setDoc(doc(db(VET2), 'referralCodes', 'abc-1'), { uid: VET2 })))
+await teste('conta recém-criada acha o indicador pelo código', () =>
+  assertSucceeds(getDoc(doc(db('conta_nova'), 'referralCodes', 'ANA1234'))))
+await teste('visitante sem conta NÃO lê código', () =>
+  assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'referralCodes', 'ANA1234'))))
+await teste('ninguém lista todos os códigos (daria a lista de quem indica)', () =>
+  assertFails(getDocs(collection(db(CLIENTE), 'referralCodes'))))
+await teste('admin lista os códigos', () =>
+  assertSucceeds(getDocs(collection(db(ADMIN), 'referralCodes'))))
+await teste('dono NÃO apaga o código (só o admin)', () =>
+  assertFails(deleteDoc(doc(db(VET), 'referralCodes', 'ANA1234'))))
 
 console.log('\n== Admin ==')
 await teste('admin lê a base inteira', () =>

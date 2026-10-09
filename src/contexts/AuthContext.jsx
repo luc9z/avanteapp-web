@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  getAdditionalUserInfo,
   signOut,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -14,6 +15,7 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db, googleProvider } from '../firebase'
 import { clearRoleCache } from '../services/userRole'
 import { clearUserStorage } from '../services/userStorage'
+import { registrarOrigem } from '../services/origem'
 
 const AuthContext = createContext(null)
 
@@ -56,17 +58,29 @@ export function AuthProvider({ children }) {
       if (cleanName) {
         await updateProfile(cred.user, { displayName: cleanName }).catch(() => {})
       }
-      // Fora do if e sem engolir o erro: uma conta sem este documento
-      // existe no Authentication e nao existe no app - a pessoa loga e
-      // cai numa tela vazia, sem nada indicando o motivo.
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        uid: cred.user.uid,
-        email: cred.user.email,
-        name: cleanName,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true })
+      // Uma conta sem este documento existe no Authentication e não
+      // existe no app. Se a gravação falhar, a conta é DESFEITA: sem
+      // isso a pessoa ficava presa, porque tentar de novo dava "email já
+      // em uso" e entrar levava a uma conta vazia.
+      try {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          uid: cred.user.uid,
+          email: cred.user.email,
+          name: cleanName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true })
+      } catch (e) {
+        console.error('[cadastro] documento do usuário:', e)
+        await deleteUser(cred.user).catch(() => {})
+        setError('Não foi possível concluir o cadastro. Tente novamente.')
+        return null
+      }
+      await registrarOrigem(cred.user.uid)
+      // O e-mail de verificação não decide o cadastro: falhar aqui
+      // (limite de envio, por exemplo) não pode parecer conta não criada.
       await sendEmailVerification(cred.user)
+        .catch(e => console.error('[cadastro] e-mail de verificação:', e))
       return cred.user
     } catch (e) {
       setError(translateFirebaseError(e.code))
@@ -81,6 +95,19 @@ export function AuthProvider({ children }) {
       setIsProcessing(true)
       setError(null)
       const cred = await signInWithPopup(auth, googleProvider)
+      // Primeiro login pelo Google É o cadastro. Antes nada era gravado
+      // aqui: a conta ficava sem createdAt (sumia dos "novos em 30
+      // dias" do admin), sem origem e sem a indicação de quem convidou.
+      if (getAdditionalUserInfo(cred)?.isNewUser) {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          uid: cred.user.uid,
+          email: cred.user.email,
+          name: cred.user.displayName || '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true }).catch(e => console.error('[auth] doc do usuário Google:', e))
+        await registrarOrigem(cred.user.uid)
+      }
       return cred.user
     } catch (e) {
       setError(translateFirebaseError(e.code))

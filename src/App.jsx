@@ -43,6 +43,7 @@ const MedicalRecordPage      = lazy(() => import('./pages/shared/MedicalRecordPa
 const AdminPage              = lazy(() => import('./pages/admin/AdminPage'))
 const TermsPage              = lazy(() => import('./pages/shared/TermsPage'))
 const PrivacyPage            = lazy(() => import('./pages/shared/PrivacyPage'))
+const LandingPage            = lazy(() => import('./pages/shared/LandingPage'))
 
 function PageLoader() {
   return (
@@ -68,6 +69,8 @@ export default function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          {/* Apresentação pública: destino do link da bio e das indicações */}
+          <Route path="/conheca" element={<LandingPage />} />
 
           {/* Compartilhadas (qualquer usuário autenticado) */}
           <Route path="/user-type" element={<Auth><UserTypePage /></Auth>} />

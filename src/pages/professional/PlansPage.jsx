@@ -14,6 +14,7 @@ import { showToast } from '../../components/common/Toast'
 import { DEFAULT_PLANS } from '../admin/AdminPage'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { useTheme } from '../../contexts/ThemeContext'
+import { avisarAtivacaoDePlano } from '../../services/origem'
 
 const createCheckout = httpsCallable(functions, 'createPlanCheckout')
 const redeemCoupon = httpsCallable(functions, 'redeemCoupon')
@@ -106,6 +107,8 @@ export default function PlansPage() {
           planCoupon: code,
           updatedAt: serverTimestamp(),
         }, { merge: true })
+        // Quem indicou fica sabendo. Marcado como cupom: não gera mês grátis.
+        await avisarAtivacaoDePlano(user.uid, selectedId, code)
         showToast(`Cupom ${code} aplicado, plano ativado!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
         return
@@ -114,6 +117,7 @@ export default function PlansPage() {
       // Cupons dinâmicos via Cloud Function (requer Blaze plan)
       const { data } = await redeemCoupon({ planId: selectedId, code })
       if (data?.activated) {
+        await avisarAtivacaoDePlano(user.uid, selectedId, code)
         showToast(`Cupom ${code} aplicado, plano ativado com 100% de desconto!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
       } else if (data?.discount > 0) {
@@ -148,7 +152,10 @@ export default function PlansPage() {
         return
       }
 
-      // Pagamento via PIX em breve - use cupom para ativar agora
+      // Pagamento via PIX em breve - use cupom para ativar agora.
+      // Quando existir: a confirmação do pagamento precisa chamar
+      // avisarAtivacaoDePlano(uid, plano) SEM cupom. É o único caminho
+      // que gera mês grátis para quem indicou.
       showToast('Pagamento via PIX em breve! Use o cupom BEMVINDO para ativar agora.', 'info')
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)

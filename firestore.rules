@@ -133,7 +133,35 @@ service cloud.firestore {
     // subárvore de qualquer usuário, e a indicação credita plano.
     match /users/{userId}/referrals/{refId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow create, update: if request.auth != null && request.auth.uid == refId;
+      // A entrada nasce sem plano: ninguém se cadastra já creditando o
+      // colega. E ninguém indica a si mesmo.
+      allow create: if request.auth != null
+        && request.auth.uid == refId
+        && request.auth.uid != userId
+        && request.resource.data.get('activatedPlan', null) == null;
+      // Depois, o indicado só marca a ativação do plano.
+      allow update: if request.auth != null
+        && request.auth.uid == refId
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['activatedPlan', 'activatedAt', 'viaCupom']);
+      allow delete: if isAdmin();
+    }
+
+    // Códigos de indicação: código -> uid de quem indica.
+    // Existe porque achar o indicador consultando users por referralCode
+    // era recusado pelas regras para quem acabou de criar a conta (a
+    // consulta não prova que só devolve veterinários). Aqui é leitura
+    // direta de UM documento, e o perfil de ninguém fica exposto.
+    match /referralCodes/{code} {
+      allow get: if request.auth != null;
+      // Listar daria a lista de quem indica. Só o admin.
+      allow list: if isAdmin();
+      // Cada um reserva o próprio código. Se o código já existe, isto
+      // vira update e é recusado: é o que garante código único.
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && code.matches('^[A-Z0-9]{4,12}$');
+      allow update: if false;
       allow delete: if isAdmin();
     }
 

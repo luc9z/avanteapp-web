@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:rules": "firebase emulators:exec --only firestore \"node scripts/testar-regras.mjs\"",
+    "test:rules": "node scripts/rodar-regras.mjs",
     "test:mapa": "node scripts/testar-mapa.mjs",
     "test:status": "node scripts/testar-status.mjs",
-    "semear": "node scripts/semear-local.mjs"
+    "semear": "node scripts/semear-local.mjs",
+    "test:origem": "node scripts/testar-origem.mjs",
+    "test": "npm run test:status && npm run test:mapa && npm run test:origem && npm run test:rules"
   },
   "dependencies": {
     "date-fns": "^3.6.0",

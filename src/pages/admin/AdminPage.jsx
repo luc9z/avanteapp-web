@@ -35,6 +35,7 @@ import { confirmDialog } from '../../components/common/ConfirmDialog'
 import { friendlyError } from '../../utils/errors'
 import { normalizeStatus, statusInfo } from '../../utils/status'
 import { contarVinculos, excluirConta } from '../../services/deleteAccount'
+import { montarLink, nomeDoCanal } from '../../utils/origem'
 
 /* ── Ofertas pré-moldadas (edite à vontade depois de inserir) ──── */
 const OFFER_TEMPLATES = [
@@ -365,6 +366,28 @@ function OverviewTab({ onGo }) {
       .sort((a, b) => b[1] - a[1]).slice(0, 5)
       .map(([label, value]) => ({ label, value }))
 
+    // De onde vêm os cadastros. Conta só quem tem `origem`: contas de
+    // antes da medição não têm, e misturar as duas daria um "direto"
+    // inflado que não diz nada.
+    const medidos = users.filter(u => u.origem)
+    const porCanal = {}
+    for (const u of medidos) {
+      const c = u.origem.canal || 'direto'
+      porCanal[c] = (porCanal[c] || 0) + 1
+    }
+    const canais = Object.entries(porCanal)
+      .sort((a, b) => b[1] - a[1])
+      .map(([c, value]) => ({ label: nomeDoCanal(c), value }))
+
+    const nomePorId = Object.fromEntries(users.map(u => [u.id, u.name || u.email || 'Sem nome']))
+    const porIndicador = {}
+    for (const u of users) {
+      if (u.referredByUid) porIndicador[u.referredByUid] = (porIndicador[u.referredByUid] || 0) + 1
+    }
+    const topIndicadores = Object.entries(porIndicador)
+      .sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([id, value]) => ({ label: nomePorId[id] || 'Conta removida', value }))
+
     const conversao = requests.length ? Math.round((finalizados.length / requests.length) * 100) : 0
     const ticket = finalizados.length ? gmv / finalizados.length : 0
 
@@ -374,6 +397,7 @@ function OverviewTab({ onGo }) {
       finalizados: finalizados.length, pendentes: pendentes.length,
       urgentes: urgentes.length, emAndamento: emAndamento.length,
       gmv, mrr, novos30, novos7, pedidos7, alertas, topCidades, conversao, ticket,
+      canais, medidos: medidos.length, topIndicadores,
     }
   }, [users, requests, onGo])
 
@@ -458,6 +482,76 @@ function OverviewTab({ onGo }) {
           </p>
         </div>
       )}
+
+      <div>
+        <p className="section-title !mb-2">Divulgação</p>
+        <div className="card">
+          <p className="card-title mb-1">De onde vêm os cadastros</p>
+          <p className="text-[11px] text-gray-400 mb-3">
+            {m.medidos
+              ? `${m.medidos} conta${m.medidos === 1 ? '' : 's'} criada${m.medidos === 1 ? '' : 's'} desde que a medição começou.`
+              : 'Nenhuma conta nova desde que a medição começou.'}
+          </p>
+          {m.canais.length > 0
+            ? <HBarList data={m.canais} />
+            : <p className="text-sm text-gray-400">Divulgue com os links abaixo para o quadro começar a encher.</p>}
+
+          {m.topIndicadores.length > 0 && (
+            <>
+              <p className="card-title mt-5 mb-3">Quem mais trouxe colegas</p>
+              <HBarList data={m.topIndicadores} />
+            </>
+          )}
+        </div>
+        <GeradorDeLink />
+      </div>
+    </div>
+  )
+}
+
+const CANAIS_DE_LINK = [
+  ['instagram', 'Instagram'], ['whatsapp', 'WhatsApp'], ['faculdade', 'Faculdade'],
+  ['evento', 'Evento'], ['tiktok', 'TikTok'], ['youtube', 'YouTube'],
+]
+
+/**
+ * Monta o link marcado de cada lugar onde o AVANTE é divulgado.
+ * Sempre aponta para o domínio oficial, mesmo aberto em outro endereço:
+ * é link para publicar, não para testar.
+ */
+function GeradorDeLink() {
+  const [canal, setCanal] = useState('instagram')
+  const [meio, setMeio] = useState('bio')
+  const [campanha, setCampanha] = useState('')
+  const link = montarLink('https://avante.vet.br', { canal, meio, campanha })
+
+  return (
+    <div className="card mt-3">
+      <p className="card-title mb-1">Link para divulgar</p>
+      <p className="text-[11px] text-gray-400 mb-3">
+        Um link para cada lugar. É ele que diz ao quadro acima de onde veio cada cadastro.
+      </p>
+      <Chips value={canal} onChange={setCanal} options={CANAIS_DE_LINK} />
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-semibold text-gray-500">Onde exatamente</span>
+          <input className="input-field" value={meio} onChange={e => setMeio(e.target.value)}
+            placeholder="bio, story, vídeo" />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] font-semibold text-gray-500">Campanha (opcional)</span>
+          <input className="input-field" value={campanha} onChange={e => setCampanha(e.target.value)}
+            placeholder="recem-formados" />
+        </label>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <code className="flex-1 min-w-0 break-all rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5 text-xs text-gray-700">
+          {link}
+        </code>
+        <button onClick={() => copiar(link, 'Link')} className="btn-primary btn-sm px-4 flex-shrink-0">
+          Copiar
+        </button>
+      </div>
     </div>
   )
 }
