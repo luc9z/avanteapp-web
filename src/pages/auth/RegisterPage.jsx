@@ -40,16 +40,24 @@ export default function RegisterPage() {
 
   return (
     <div className="page-container flex flex-col px-6 py-10">
-      <div className="flex items-center gap-2 mb-6">
-        <Link to="/login" className="text-primary hover:text-primary-600" aria-label="Voltar para o login">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <h1 className="text-xl font-bold text-primary">Criar conta</h1>
-      </div>
-
       <div className="flex-1 flex flex-col max-w-sm mx-auto w-full gap-8">
+        {/* Cabeçalho DENTRO da coluna do formulário. Solto na largura
+            toda, no computador ele ficava colado na esquerda, longe dos
+            campos. A flecha é uma caixa flex: como link inline, o ícone
+            sentava na linha de base e o título ficava 6px abaixo dela.
+            O -ml-4 desconta a folga da caixa de toque e o vazio do
+            desenho: a ponta da flecha encosta na borda dos campos. */}
+        <div className="flex items-center gap-1">
+          <Link to="/login" aria-label="Voltar para o login"
+            className="-ml-4 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-primary
+                       transition-colors hover:bg-primary/5">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
+          <h1 className="text-xl font-bold leading-none text-primary">Criar conta</h1>
+        </div>
+
         <div className="flex flex-col items-center gap-2">
           <img src="/images/avante_logo.png" alt="Avante" className="w-20 h-20 object-contain" />
           <p className="text-gray-500 text-sm text-center">Leva menos de um minuto</p>

@@ -79,8 +79,8 @@ export async function registrarOrigem(uid) {
  * Avisa quem indicou que o colega ativou um plano.
  *
  * Só o indicado escreve aqui (ele é o dono da entrada). Ativação por
- * cupom de 100% fica marcada: o programa dá mês grátis por plano PAGO,
- * e sem essa marca cupom de lançamento virava crédito infinito.
+ * cupom também gera mês grátis, mas fica marcada em viaCupom: é o que
+ * permite ao admin ver quais meses vieram de cupom antes de concedê-los.
  */
 export async function avisarAtivacaoDePlano(uid, plano, cupom = null) {
   try {

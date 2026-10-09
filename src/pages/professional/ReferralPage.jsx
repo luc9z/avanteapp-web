@@ -2,7 +2,8 @@
  * ReferralPage - indicação entre veterinários.
  *
  * Cada vet tem um código único. Quando um colega indicado ativa um plano
- * PAGO, quem indicou ganha 1 mês grátis.
+ * (pago ou com cupom), quem indicou ganha 1 mês grátis. Plano Free não
+ * conta: não é assinatura.
  *
  * - O código é reservado em referralCodes/{código} -> { uid }. A regra só
  *   deixa criar, nunca sobrescrever, então dois vets nunca dividem código.
@@ -63,18 +64,17 @@ async function reservarCodigo(uid, nome, atual) {
 
 const nomePlano = p => p ? p.charAt(0).toUpperCase() + p.slice(1) : ''
 
-/** O que cada indicação rendeu. Mês grátis só por plano pago. */
+/**
+ * O que cada indicação rendeu. Ativação com cupom também conta
+ * (decisão do negócio: enquanto não há pagamento, o cupom é o único
+ * jeito de assinar). Fica escrito "com cupom" para o admin distinguir.
+ */
 function situacao(r) {
   if (!r.activatedPlan || r.activatedPlan === 'free') {
-    return { texto: 'Cadastrou, ainda sem plano pago', selo: 'Aguardando', tom: 'cinza', credita: false }
+    return { texto: 'Cadastrou, ainda sem plano', selo: 'Aguardando', tom: 'cinza', credita: false }
   }
-  if (r.viaCupom) {
-    return {
-      texto: `Ativou o ${nomePlano(r.activatedPlan)} com cupom. Cupom de lançamento não gera mês grátis.`,
-      selo: 'Cupom', tom: 'cinza', credita: false,
-    }
-  }
-  return { texto: `Assinou o ${nomePlano(r.activatedPlan)}`, selo: '+1 mês', tom: 'verde', credita: true }
+  const como = r.viaCupom ? ' com cupom' : ''
+  return { texto: `Ativou o ${nomePlano(r.activatedPlan)}${como}`, selo: '+1 mês', tom: 'verde', credita: true }
 }
 
 export default function ReferralPage() {
@@ -203,7 +203,7 @@ export default function ReferralPage() {
 
               <div className="flex flex-col gap-2">
                 <p className="text-xs text-gray-500 text-center">
-                  Cada colega que assinar um plano pago pelo seu link vale 1 mês grátis para você
+                  Cada colega que ativar um plano pelo seu link vale 1 mês grátis para você
                 </p>
                 <button onClick={shareWhatsApp}
                   className="w-full py-3 rounded-2xl bg-green-500 text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
@@ -224,8 +224,8 @@ export default function ReferralPage() {
             {[
               'Mande seu link para colegas veterinários',
               'Eles conhecem o AVANTE e se cadastram pelo link',
-              'Quando um deles assina um plano pago, você ganha 1 mês grátis',
-              'Não tem limite: cada colega que assinar vale mais um mês',
+              'Quando um deles ativa um plano, você ganha 1 mês grátis',
+              'Não tem limite: cada colega que ativar vale mais um mês',
             ].map((texto, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary">

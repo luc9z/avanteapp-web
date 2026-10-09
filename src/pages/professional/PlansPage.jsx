@@ -107,7 +107,7 @@ export default function PlansPage() {
           planCoupon: code,
           updatedAt: serverTimestamp(),
         }, { merge: true })
-        // Quem indicou fica sabendo. Marcado como cupom: não gera mês grátis.
+        // Quem indicou ganha o mês. Fica marcado que foi por cupom.
         await avisarAtivacaoDePlano(user.uid, selectedId, code)
         showToast(`Cupom ${code} aplicado, plano ativado!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
@@ -154,8 +154,8 @@ export default function PlansPage() {
 
       // Pagamento via PIX em breve - use cupom para ativar agora.
       // Quando existir: a confirmação do pagamento precisa chamar
-      // avisarAtivacaoDePlano(uid, plano) SEM cupom. É o único caminho
-      // que gera mês grátis para quem indicou.
+      // avisarAtivacaoDePlano(uid, plano), senão quem indicou não
+      // recebe o mês grátis.
       showToast('Pagamento via PIX em breve! Use o cupom BEMVINDO para ativar agora.', 'info')
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
