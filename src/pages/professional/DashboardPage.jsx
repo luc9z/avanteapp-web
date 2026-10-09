@@ -464,6 +464,53 @@ export default function DashboardPage() {
           )
         })()}
 
+        {/* ── Completar perfil ─────────────────────────────────
+             O cadastro inicial só pede o necessário para receber pedidos.
+             Foto, apresentação e localização ficam para depois, e este
+             cartão garante que o "depois" aconteça. Some quando completo. */}
+        {(() => {
+          if (!profile) return null
+          const itens = [
+            { ok: !!profile.photoURL, rotulo: 'Foto' },
+            { ok: !!profile.bio?.trim(), rotulo: 'Apresentação' },
+            { ok: profile.baseLocation?.lat != null, rotulo: 'Localização' },
+          ]
+          const feitos = itens.filter(i => i.ok).length
+          if (feitos === itens.length) return null
+          return (
+            <Link to="/edit-profile" data-coach="vet-completar-perfil"
+              className="card flex flex-col gap-3 transition-all hover:-translate-y-px hover:shadow-card-hover">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold text-gray-800">Complete seu perfil</p>
+                <span className="text-xs font-semibold text-gray-400">{feitos} de {itens.length}</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-green-500 transition-all"
+                  style={{ width: `${(feitos / itens.length) * 100}%` }} />
+              </div>
+              <p className="text-xs text-gray-500">É o que o cliente vê antes de te chamar.</p>
+              <div className="flex flex-wrap gap-2">
+                {itens.map(i => (
+                  <span key={i.rotulo} className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
+                    i.ok ? 'border-green-200 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500'
+                  }`}>
+                    {i.ok ? (
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+                      </svg>
+                    )}
+                    {i.rotulo}
+                  </span>
+                ))}
+              </div>
+            </Link>
+          )
+        })()}
+
         {/* ── Atendimento Atual ──────────────────────────────── */}
         {activeRequests.length > 0 && (
           <div>

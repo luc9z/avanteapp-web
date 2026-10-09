@@ -101,17 +101,26 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior-y: none;
+    /* clip, não hidden: hidden transforma o elemento num contêiner de
+       rolagem, e todo position: sticky dentro dele passava a grudar
+       nele (que não rola) em vez da janela. Resultado: a .topbar, os
+       filtros de pedidos e as abas do admin sumiam ao rolar. clip corta
+       o excesso lateral do mesmo jeito sem criar contêiner. O hidden
+       antes fica para navegador antigo que não conhece clip. */
     overflow-x: hidden;
+    overflow-x: clip;
   }
 
   html {
     overflow-x: hidden;
+    overflow-x: clip;
   }
 
   #root {
     min-height: 100vh;
     min-height: 100dvh;
     overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Touch targets - minimum 44px for accessibility */
@@ -267,7 +276,10 @@
     /* Mobile: coluna confortável. Desktop: ocupa a tela de verdade -
        as telas pareciam vazias porque tudo vivia numa faixa de 640px. */
     @apply w-full max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto min-h-screen min-h-dvh
-           bg-white relative overflow-x-hidden lg:px-2 transition-[max-width] duration-200;
+           bg-white relative lg:px-2 transition-[max-width] duration-200;
+    /* Mesmo motivo do body: clip deixa a .topbar sticky funcionar. */
+    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Grade utilitária que escala com a tela */

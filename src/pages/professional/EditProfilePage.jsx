@@ -18,7 +18,7 @@ export default function EditProfilePage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', cpf: '', email: '', name: '', photoURL: '' })
+  const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', cpf: '', email: '', name: '', photoURL: '', bio: '' })
   const [properties, setProperties] = useState([])
   const [isClient, setIsClient] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -57,6 +57,7 @@ export default function EditProfilePage() {
         email: d.email || user.email || '',
         name: fullName,
         photoURL: d.photoURL || '',
+        bio: d.bio || '',
       })
       setProperties(Array.isArray(priv.properties) ? priv.properties
         : Array.isArray(d.properties) ? d.properties : [])
@@ -163,6 +164,7 @@ export default function EditProfilePage() {
         lastName: form.lastName.trim(),
         ...(!isClient ? { phone: form.phone.trim() } : {}),
         ...(!isClient ? {
+          bio: form.bio.trim().slice(0, 600),
           baseLocation: baseLocation || null,
           serviceRadius: Number(serviceRadius) || 50,
           specialties,
@@ -279,6 +281,23 @@ export default function EditProfilePage() {
               className="input-field"
             />
           </div>
+
+          {/* A apresentação aparece para o cliente na página do vet, mas
+              só podia ser escrita no primeiro cadastro: depois não havia
+              onde mudar. */}
+          {!isClient && (
+            <div className="flex flex-col gap-1.5" data-coach="perfil-bio">
+              <label className="field-label">Apresentação</label>
+              <textarea
+                value={form.bio}
+                onChange={e => setForm(f => ({ ...f, bio: e.target.value.slice(0, 600) }))}
+                rows={4}
+                placeholder="Sua formação, há quanto tempo atende e o que mais gosta de fazer."
+                className="input-field resize-none"
+              />
+              <p className="text-[11px] text-gray-400 text-right">{form.bio.length}/600</p>
+            </div>
+          )}
         </div>
 
         {/* ── Área de atendimento (apenas veterinário) ────────── */}

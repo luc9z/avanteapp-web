@@ -96,14 +96,39 @@ export default function PendingRequestsPage() {
 
   return (
     <div className="page-container">
-      <div className="topbar">
-        <Link to="/dashboard" className="text-primary" aria-label="Voltar">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <h1 className="page-title">Solicitações</h1>
-        <div className="w-6" />
+      {/* Topo e filtros grudam JUNTOS. Antes o filtro usava top-[57px],
+          mas a barra tem 61-65px, e mais no iPhone com entalhe: o filtro
+          escorregava para baixo dela. */}
+      <div className="sticky top-0 z-30">
+        <div className="topbar">
+          <Link to="/dashboard" className="text-primary" aria-label="Voltar">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
+          <h1 className="page-title">Solicitações</h1>
+          <div className="w-6" />
+        </div>
+        {/* Filtros por status */}
+        <div className="flex gap-2 px-4 py-3 overflow-x-auto bg-white border-b border-gray-100">
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setTab(f.key)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap
+                          border transition-all flex-shrink-0 ${
+                tab === f.key
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-white text-gray-500 border-gray-200 hover:border-primary/40'
+              }`}
+            >
+              {f.label}
+              <span className={`text-[10px] px-1.5 py-px rounded-full ${
+                tab === f.key ? 'bg-white/20' : 'bg-gray-100 text-gray-400'
+              }`}>{f.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {mes && (
@@ -119,27 +144,6 @@ export default function PendingRequestsPage() {
           </div>
         </div>
       )}
-
-      {/* Filtros por status */}
-      <div className="flex gap-2 px-4 py-3 overflow-x-auto bg-white sticky top-[57px] z-20 border-b border-gray-100">
-        {FILTERS.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setTab(f.key)}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap
-                        border transition-all flex-shrink-0 ${
-              tab === f.key
-                ? 'bg-primary text-white border-primary shadow-sm'
-                : 'bg-white text-gray-500 border-gray-200 hover:border-primary/40'
-            }`}
-          >
-            {f.label}
-            <span className={`text-[10px] px-1.5 py-px rounded-full ${
-              tab === f.key ? 'bg-white/20' : 'bg-gray-100 text-gray-400'
-            }`}>{f.count}</span>
-          </button>
-        ))}
-      </div>
 
       <div className="px-4 py-4 pb-nav">
         {requests === null ? (

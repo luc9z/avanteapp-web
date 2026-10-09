@@ -235,27 +235,31 @@ export default function AdminPage() {
 
   return (
     <div className="page-container pb-10">
-      <div className="topbar">
-        <button onClick={() => navigate(-1)} className="text-primary" aria-label="Voltar">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="page-title">Administração</h1>
-        <div className="w-6" />
-      </div>
-
-      {/* Abas - grudam abaixo da topbar para não sumirem em listas longas */}
-      <div className="sticky top-[57px] z-20 bg-gray-100 px-4 py-3">
-        <div className="flex bg-white rounded-2xl p-1 gap-1 overflow-x-auto shadow-sm">
-          {TABS.map(([id, label]) => (
-            <button key={id} onClick={() => irPara(id)}
-              className={`flex-1 min-w-max px-3 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
-                tab === id ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'
-              }`}>
-              {label}
-            </button>
-          ))}
+      {/* Topo e filtros grudam JUNTOS. Antes o filtro usava top-[57px],
+          mas a barra tem 61-65px, e mais no iPhone com entalhe: o filtro
+          escorregava para baixo dela. */}
+      <div className="sticky top-0 z-30">
+        <div className="topbar">
+          <button onClick={() => navigate(-1)} className="text-primary" aria-label="Voltar">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="page-title">Administração</h1>
+          <div className="w-6" />
+        </div>
+        {/* Abas - grudam abaixo da topbar para não sumirem em listas longas */}
+        <div className="bg-gray-100 px-4 py-3">
+          <div className="flex bg-white rounded-2xl p-1 gap-1 overflow-x-auto shadow-sm">
+            {TABS.map(([id, label]) => (
+              <button key={id} onClick={() => irPara(id)}
+                className={`flex-1 min-w-max px-3 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
+                  tab === id ? 'bg-primary text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -130,6 +130,12 @@ export const MAPA = [
     resumo: 'O cliente vê a distância até você na busca.',
   },
   {
+    chave: 'apresentacao', papel: 'vet', titulo: 'Escrever sua apresentação (bio)',
+    aba: 'Perfil', rota: '/edit-profile', alvo: '[data-coach="perfil-bio"]',
+    passos: ['Abra a aba Perfil', 'Toque em Editar perfil', 'Escreva no campo Apresentação', 'Toque em Salvar alterações'],
+    resumo: 'Aparece para o cliente na sua página, antes de ele te chamar.',
+  },
+  {
     chave: 'horarios', papel: 'vet', titulo: 'Definir horários de atendimento',
     aba: 'Agenda', rota: '/agenda', alvo: '[data-coach="agenda-tabs"]',
     passos: ['Abra a aba Agenda', 'Toque em Disponibilidade', 'Marque os dias e as faixas de horário'],

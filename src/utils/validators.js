@@ -38,15 +38,28 @@ export function formatCPF(raw) {
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
 }
 
+/**
+ * Dígitos do telefone sem o código do país.
+ *
+ * O preenchimento automático do navegador sugere "+55 34 99931 4728".
+ * Cortando em 11 dígitos sem tirar o 55, sobrava "(55) 34999-3147": um
+ * número de outra pessoa, que ainda passava na validação. Só tira o 55
+ * quando sobram 12 ou 13 dígitos, porque 55 também é DDD (RS).
+ */
+export function digitosDoTelefone(raw) {
+  const d = (raw || '').replace(/\D/g, '')
+  return (d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d
+}
+
 /** Telefone BR: 10 ou 11 dígitos (com DDD). */
 export function isValidPhone(raw) {
-  const d = (raw || '').replace(/\D/g, '')
+  const d = digitosDoTelefone(raw)
   return d.length === 10 || d.length === 11
 }
 
 /** Formata telefone: (00) 00000-0000 */
 export function formatPhone(raw) {
-  const d = (raw || '').replace(/\D/g, '').slice(0, 11)
+  const d = digitosDoTelefone(raw).slice(0, 11)
   if (d.length <= 10) {
     return d.replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2')
   }

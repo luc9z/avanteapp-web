@@ -1,38 +1,63 @@
+/**
+ * Cadastro do veterinário: só o que é preciso para começar a receber
+ * pedidos.
+ *
+ * Antes eram dez coisas numa tela comprida (nome e sobrenome separados,
+ * e-mail repetido, CPF, nascimento, bio, 22 especialidades, botão de
+ * online). CPF e nascimento não eram usados em lugar nenhum do app. E a
+ * única coisa que de fato pesa na busca do cliente, a localização, não
+ * era pedida: vet sem base aparece por último no "Perto de mim".
+ *
+ * Fica: nome (já vem do cadastro), CRMV, telefone, espécies e, em um
+ * toque, a localização. Foto, apresentação e documentos vão para Editar
+ * Perfil, e o painel lembra o que falta (CartaoCompletarPerfil).
+ */
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { clearRoleCache } from '../../services/userRole'
-import { isValidCPF, isValidPhone, isValidCRMV, formatCPF, formatPhone, formatCRMV } from '../../utils/validators'
+import { cidadeDe } from '../../services/lugar'
+import { isValidPhone, isValidCRMV, formatPhone, formatCRMV } from '../../utils/validators'
 import { friendlyError } from '../../utils/errors'
 import Spinner from '../../components/common/Spinner'
-import { DateFields } from '../../components/common/DateTimeFields'
 import { showToast } from '../../components/common/Toast'
-import { VetBottomNav } from '../../components/common/BottomNav'
+import MapPicker from '../../components/client/MapPicker'
 import { SPECIALTY_GROUPS } from '../../utils/specialties'
 
-/* ── Section header com ícone ──────────────────────────────────── */
-function SectionTitle({ icon, children }) {
+const ESPECIES = SPECIALTY_GROUPS[0].items
+const CLINICAS = SPECIALTY_GROUPS[1].items
+
+/** Número da etapa; vira um check quando a etapa está pronta. */
+function Etapa({ n, pronta, titulo, children, id }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
-      <div className="bg-primary/10 p-1.5 rounded-lg">
-        <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-        </svg>
+    <section id={id} className="card flex flex-col gap-4 scroll-mt-24">
+      <div className="flex items-center gap-3">
+        <span className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+          pronta ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
+        }`}>
+          {pronta ? (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : n}
+        </span>
+        <h2 className="text-base font-bold text-gray-800">{titulo}</h2>
       </div>
-      <p className="font-bold text-gray-800 text-sm">{children}</p>
-    </div>
+      {children}
+    </section>
   )
 }
 
-function Field({ label, required, children }) {
+function Campo({ id, rotulo, ajuda, erro, children }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-gray-600">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
+    <div className="flex flex-col gap-1.5" id={id}>
+      <label htmlFor={`${id}-input`} className="text-xs font-semibold text-gray-600">{rotulo}</label>
       {children}
+      {erro
+        ? <p className="text-xs font-medium text-red-500" role="alert">{erro}</p>
+        : ajuda && <p className="text-xs text-gray-400">{ajuda}</p>}
     </div>
   )
 }
@@ -41,235 +66,266 @@ export default function ConfirmDataPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [form, setForm] = useState({
-    firstName: (user?.displayName || '').split(' ')[0] || '',
-    lastName: (user?.displayName || '').split(' ').slice(1).join(' ') || '',
-    email: user?.email || '',
-    phone: '',
-    cpf: '',
-    birthDate: '',
-    council: '',
-    bio: '',
-  })
-  const [selectedSpecialties, setSelectedSpecialties] = useState([])
-  const [isOnline, setIsOnline] = useState(true)
+  const [nome, setNome] = useState(user?.displayName || '')
+  const [crmv, setCrmv] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [especies, setEspecies] = useState([])
+  const [clinicas, setClinicas] = useState([])
+  const [verClinicas, setVerClinicas] = useState(false)
+
+  const [local, setLocal] = useState(null)          // { lat, lng, cidade?, uf? }
+  const [buscandoLocal, setBuscandoLocal] = useState(false)
+  const [verMapa, setVerMapa] = useState(false)
+
+  const [tentou, setTentou] = useState(false)       // erros só depois da 1ª tentativa
   const [saving, setSaving] = useState(false)
 
-  function handleChange(e) {
-    const { name, value } = e.target
-    const formatted = name === 'cpf' ? formatCPF(value)
-      : name === 'phone' ? formatPhone(value)
-      : name === 'council' ? formatCRMV(value)
-      : value
-    setForm(f => ({ ...f, [name]: formatted }))
+  const erros = {
+    nome: nome.trim().split(/\s+/).filter(Boolean).length < 2 ? 'Informe nome e sobrenome.' : null,
+    crmv: !isValidCRMV(crmv) ? 'Use a sigla do estado e o número. Ex.: MG 12345' : null,
+    telefone: !isValidPhone(telefone) ? 'Informe o telefone com DDD.' : null,
+    especies: especies.length === 0 ? 'Escolha pelo menos uma.' : null,
+  }
+  const erro = k => (tentou ? erros[k] : null)
+  const dadosOk = !erros.nome && !erros.crmv && !erros.telefone
+
+  const alternar = (lista, setLista, item) =>
+    setLista(l => l.includes(item) ? l.filter(x => x !== item) : [...l, item])
+
+  async function marcarLocal(lat, lng) {
+    setLocal({ lat, lng })
+    const lugar = await cidadeDe(lat, lng)
+    if (lugar) setLocal(l => (l && l.lat === lat && l.lng === lng ? { ...l, ...lugar } : l))
   }
 
-  function toggleSpecialty(s) {
-    setSelectedSpecialties(prev =>
-      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+  function usarGps() {
+    if (!navigator.geolocation) {
+      setVerMapa(true)
+      return showToast('Este navegador não informa a localização. Marque no mapa.', 'info')
+    }
+    setBuscandoLocal(true)
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        await marcarLocal(pos.coords.latitude, pos.coords.longitude)
+        setBuscandoLocal(false)
+      },
+      () => {
+        setBuscandoLocal(false)
+        setVerMapa(true)
+        showToast('Não deu para pegar sua localização. Marque no mapa.', 'info')
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
     )
   }
 
-  async function handleSubmit(e) {
+  async function salvar(e) {
     e.preventDefault()
-    if (!form.firstName.trim()) return showToast('Nome é obrigatório', 'error')
-    if (!form.lastName.trim()) return showToast('Sobrenome é obrigatório', 'error')
-    if (!isValidPhone(form.phone)) return showToast('Informe um telefone válido com DDD', 'error')
-    if (!isValidCPF(form.cpf)) return showToast('CPF inválido. Confira os dígitos.', 'error')
-    if (!isValidCRMV(form.council)) return showToast('CRMV inválido. Use o formato UF 12345 (ex: RS 12345).', 'error')
-    if (selectedSpecialties.length === 0) return showToast('Selecione ao menos uma especialidade', 'error')
+    setTentou(true)
+    // Leva até o primeiro problema em vez de um aviso genérico.
+    const primeiro = ['nome', 'crmv', 'telefone', 'especies'].find(k => erros[k])
+    if (primeiro) {
+      const bloco = document.getElementById(`campo-${primeiro}`)
+      bloco?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Cursor no campo: o teclado já abre onde precisa corrigir.
+      bloco?.querySelector('input, button')?.focus({ preventScroll: true })
+      return
+    }
 
     setSaving(true)
     try {
-      // Perfil público: visível para clientes na listagem.
-      // CPF e data de nascimento NÃO entram aqui - vão para a
-      // subcoleção privada, legível apenas pelo próprio usuário
-      // (reforçado pelo firestore.rules).
-      const publicProfile = {
+      const partes = nome.trim().split(/\s+/)
+      await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
-        email: form.email || user.email,
-        name: `${form.firstName.trim()} ${form.lastName.trim()}`,
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        phone: form.phone.trim(),
-        council: form.council.trim(),
-        // Marcado como não verificado até checagem manual no SisCad/CFMV
-        // (o conselho não oferece API pública de consulta).
+        email: user.email,
+        name: partes.join(' '),
+        firstName: partes[0],
+        lastName: partes.slice(1).join(' '),
+        phone: formatPhone(telefone),
+        council: crmv.trim(),
+        // Não verificado até checagem manual no SisCad/CFMV (o conselho
+        // não oferece API pública de consulta).
         crmvVerified: false,
-        bio: form.bio.trim(),
-        specialties: selectedSpecialties,
+        specialties: [...especies, ...clinicas],
         profession: 'medico_veterinario',
-        is_online: isOnline,
-        createdAt: serverTimestamp(),
+        is_online: true,
+        ...(local && { baseLocation: { lat: local.lat, lng: local.lng } }),
+        ...(local?.cidade && { city: local.cidade }),
+        ...(local?.uf && { state: local.uf }),
+        // createdAt fica o do cadastro da conta: sobrescrever aqui movia
+        // a data de entrada do usuário para o dia do perfil.
         updatedAt: serverTimestamp(),
-      }
-      const privateData = {
-        cpf: form.cpf.trim(),
-        birthDate: form.birthDate,
-        updatedAt: serverTimestamp(),
-      }
-
-      await setDoc(doc(db, 'users', user.uid), publicProfile, { merge: true })
-      await setDoc(doc(db, 'users', user.uid, 'private', 'profile'), privateData, { merge: true })
+      }, { merge: true })
 
       clearRoleCache(user.uid)
-      showToast('Perfil criado! Agora escolha seu plano.', 'success')
+      showToast('Perfil pronto! Agora escolha seu plano.', 'success')
       navigate('/plans?onboarding=1', { replace: true })
-    } catch (e) {
-      showToast(friendlyError(e, 'Não foi possível salvar seu perfil.'), 'error')
+    } catch (err) {
+      showToast(friendlyError(err, 'Não foi possível salvar seu perfil.'), 'error')
     } finally {
       setSaving(false)
     }
   }
 
-  const inputCls = 'input-field'
-
   return (
-    <div className="page-container pb-nav">
-      {/* ── Green hero ──────────────────────────────────────── */}
-      <div className="bg-primary px-5 pt-12 pb-6 relative rounded-b-3xl shadow-lg">
-        <Link to="/user-type" className="absolute top-4 left-4 text-white/80 hover:text-white">
+    <div className="page-container">
+      {/* Sem barra inferior do app: o perfil ainda não existe, e ela
+          levava para o painel no meio do cadastro. */}
+      <div className="topbar">
+        <Link to="/user-type" className="text-primary" aria-label="Voltar">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <div className="flex flex-col items-center gap-2 mt-2">
-          <div className="w-16 h-16 rounded-2xl bg-white/15 flex items-center justify-center">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h1 className="text-white text-lg font-bold">Cadastro Profissional</h1>
-          <p className="text-white/70 text-xs text-center">Preencha seus dados para começar a atender</p>
-        </div>
+        <h1 className="page-title">Seu perfil profissional</h1>
+        <div className="w-6" />
       </div>
 
-      <form onSubmit={handleSubmit} className="px-4 pt-4 flex flex-col gap-4">
-        {/* ── Dados pessoais ──────────────────────────────── */}
-        <div className="card flex flex-col gap-3.5">
-          <SectionTitle icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z">
-            Dados pessoais
-          </SectionTitle>
+      <form onSubmit={salvar} noValidate className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pt-4">
+        <p className="px-1 text-sm text-gray-500">
+          Leva um minuto. Foto, apresentação e documentos você completa depois.
+        </p>
 
+        {/* ── 1. Dados ─────────────────────────────────────── */}
+        <Etapa n={1} pronta={dadosOk} titulo="Seus dados">
+          <Campo id="campo-nome" rotulo="Nome que os clientes veem" erro={erro('nome')}>
+            <input id="campo-nome-input" value={nome} onChange={e => setNome(e.target.value)}
+              placeholder="Ex.: Dra. Maria Silva" autoComplete="name"
+              className={`input-field ${erro('nome') ? '!border-red-400' : ''}`} />
+          </Campo>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo id="campo-crmv" rotulo="CRMV" ajuda="Sigla do estado e número" erro={erro('crmv')}>
+              <input id="campo-crmv-input" value={crmv} onChange={e => setCrmv(formatCRMV(e.target.value))}
+                placeholder="MG 12345" autoCapitalize="characters" autoComplete="off"
+                className={`input-field ${erro('crmv') ? '!border-red-400' : ''}`} />
+            </Campo>
+            <Campo id="campo-telefone" rotulo="Telefone (WhatsApp)" erro={erro('telefone')}>
+              <input id="campo-telefone-input" value={telefone} onChange={e => setTelefone(formatPhone(e.target.value))}
+                placeholder="(34) 99999-9999" type="tel" inputMode="tel" autoComplete="tel-national"
+                className={`input-field ${erro('telefone') ? '!border-red-400' : ''}`} />
+            </Campo>
+          </div>
+        </Etapa>
+
+        {/* ── 2. Espécies ──────────────────────────────────── */}
+        <Etapa n={2} pronta={especies.length > 0} titulo="Quem você atende" id="campo-especies">
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Nome" required>
-              <input name="firstName" value={form.firstName} onChange={handleChange}
-                placeholder="Maria" autoComplete="given-name" className={inputCls} required />
-            </Field>
-            <Field label="Sobrenome" required>
-              <input name="lastName" value={form.lastName} onChange={handleChange}
-                placeholder="Silva" autoComplete="family-name" className={inputCls} required />
-            </Field>
+            {ESPECIES.map(s => {
+              const ativo = especies.includes(s)
+              return (
+                <button key={s} type="button" onClick={() => alternar(especies, setEspecies, s)}
+                  aria-pressed={ativo}
+                  className={`flex min-h-[48px] items-center gap-2 rounded-xl border px-3 text-left text-sm font-semibold transition-all active:scale-[0.98] ${
+                    ativo
+                      ? 'border-primary bg-primary text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-primary/60'
+                  }`}>
+                  <span className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border ${
+                    ativo ? 'border-white/60 bg-white/20' : 'border-gray-300'
+                  }`}>
+                    {ativo && (
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="leading-tight">{s}</span>
+                </button>
+              )
+            })}
           </div>
+          {erro('especies') && <p className="-mt-2 text-xs font-medium text-red-500" role="alert">{erro('especies')}</p>}
 
-          <Field label="Email">
-            <input name="email" type="email" value={form.email} onChange={handleChange}
-              className={`${inputCls} bg-gray-50 text-gray-400 cursor-not-allowed`} readOnly />
-          </Field>
+          <button type="button" onClick={() => setVerClinicas(v => !v)} aria-expanded={verClinicas}
+            className="flex min-h-[44px] items-center justify-between rounded-xl px-1 text-sm font-semibold text-primary">
+            <span>
+              Especialidades clínicas <span className="font-normal text-gray-400">(opcional{clinicas.length ? `, ${clinicas.length}` : ''})</span>
+            </span>
+            <svg className={`h-4 w-4 transition-transform ${verClinicas ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {verClinicas && (
+            <div className="-mt-2 flex flex-wrap gap-2">
+              {CLINICAS.map(s => {
+                const ativo = clinicas.includes(s)
+                return (
+                  <button key={s} type="button" onClick={() => alternar(clinicas, setClinicas, s)} aria-pressed={ativo}
+                    className={`min-h-[36px] rounded-full border px-3 text-xs font-semibold transition-all ${
+                      ativo ? 'border-primary bg-primary text-white' : 'border-gray-300 bg-white text-gray-600 hover:border-primary'
+                    }`}>
+                    {s}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </Etapa>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Telefone" required>
-              <input name="phone" value={form.phone} onChange={handleChange}
-                placeholder="(11) 99999-9999" className={inputCls} required />
-            </Field>
-            <Field label="CPF" required>
-              <input name="cpf" value={form.cpf} onChange={handleChange}
-                placeholder="000.000.000-00" className={inputCls} required />
-            </Field>
-          </div>
-
-          <Field label="Data de nascimento">
-            <DateFields
-              value={form.birthDate}
-              onChange={iso => setForm(f => ({ ...f, birthDate: iso }))}
-              fromYear={new Date().getFullYear() - 18}
-              toYear={1930}
-            />
-          </Field>
-        </div>
-
-        {/* ── Registro profissional ───────────────────────── */}
-        <div className="card flex flex-col gap-3.5">
-          <SectionTitle icon="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
-            Registro profissional
-          </SectionTitle>
-
-          <Field label="CRMV" required>
-            <input name="council" value={form.council} onChange={handleChange}
-              placeholder="SP-12345" className={inputCls} required />
-          </Field>
-
-          <Field label="Sobre você (bio)">
-            <textarea name="bio" value={form.bio} onChange={handleChange} rows={3}
-              placeholder="Conte sua experiência, formação e diferenciais..."
-              className={`${inputCls} resize-none`} />
-          </Field>
-        </div>
-
-        {/* ── Especialidades ──────────────────────────────── */}
-        <div className="card">
-          <SectionTitle icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
-            Especialidades <span className="text-red-500">*</span>
-          </SectionTitle>
-          <p className="text-xs text-gray-400 mb-3 -mt-1">Selecione todas que você atende</p>
-          <div className="flex flex-col gap-4">
-            {SPECIALTY_GROUPS.map(({ group, items }) => (
-              <div key={group}>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">{group}</p>
-                <div className="flex flex-wrap gap-2">
-                  {items.map(s => {
-                    const active = selectedSpecialties.includes(s)
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => toggleSpecialty(s)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                          active
-                            ? 'bg-primary text-white border-primary'
-                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary'
-                        }`}
-                      >
-                        {active && <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>}{s}
-                      </button>
-                    )
-                  })}
-                </div>
+        {/* ── 3. Localização ───────────────────────────────── */}
+        <Etapa n={3} pronta={!!local} titulo="Onde você atende">
+          {local ? (
+            <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+              <svg className="h-5 w-5 flex-shrink-0 text-green-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-800">
+                  {local.cidade ? `${local.cidade}${local.uf ? `, ${local.uf}` : ''}` : 'Localização marcada'}
+                </p>
+                <p className="text-xs text-gray-500">Os clientes verão a distância até você.</p>
               </div>
-            ))}
-          </div>
-        </div>
+              {!verMapa && (
+                <button type="button" onClick={() => setVerMapa(true)}
+                  className="min-h-[44px] flex-shrink-0 px-2 text-xs font-semibold text-primary">
+                  Ajustar
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="-mt-1 text-sm text-gray-500">
+                A busca do cliente mostra quem está mais perto. Sem localização, você aparece por último.
+              </p>
+              <button type="button" onClick={usarGps} disabled={buscandoLocal}
+                className="btn-outline flex min-h-[48px] w-full items-center justify-center gap-2 disabled:opacity-60">
+                {buscandoLocal ? <Spinner /> : (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v2m0 16v2M2 12h2m16 0h2" />
+                  </svg>
+                )}
+                {buscandoLocal ? 'Localizando...' : 'Usar minha localização'}
+              </button>
+              {!verMapa && (
+                <button type="button" onClick={() => setVerMapa(true)}
+                  className="-mt-2 min-h-[44px] text-xs font-semibold text-gray-500 hover:text-primary">
+                  Prefiro marcar no mapa
+                </button>
+              )}
+            </>
+          )}
 
-        {/* ── Disponibilidade ─────────────────────────────── */}
-        <div className="card flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${isOnline ? 'bg-green-100' : 'bg-gray-100'}`}>
-              <span className={`block w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+          {verMapa && (
+            <div className="overflow-hidden rounded-xl">
+              <MapPicker lat={local?.lat} lng={local?.lng} height={220}
+                onChange={({ lat, lng }) => marcarLocal(lat, lng)} />
+              <p className="mt-2 text-xs text-gray-400">Toque no mapa para marcar sua clínica ou de onde você sai.</p>
             </div>
-            <div>
-              <p className="font-bold text-sm text-gray-800">Disponível agora</p>
-              <p className="text-xs text-gray-400">Aparecer como online para clientes</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsOnline(!isOnline)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-              isOnline ? 'bg-primary' : 'bg-gray-300'
-            }`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-              isOnline ? 'translate-x-6' : 'translate-x-1'
-            }`} />
+          )}
+        </Etapa>
+
+        {/* Botão preso ao rodapé: no celular o fim do formulário fica longe
+            do polegar. É sticky DENTRO do formulário, não fixed na janela:
+            fixed centralizava pela janela e a coluna pelo contêiner do app,
+            e o botão saía torto em relação aos cartões no computador. */}
+        <div className="sticky bottom-0 z-20 -mx-4 mt-2 border-t border-gray-100 bg-white/95 px-4 pt-3
+                        pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur dark:bg-[#1a221c]/95">
+          <button type="submit" disabled={saving} className="btn-primary flex min-h-[52px] w-full items-center justify-center">
+            {saving ? <Spinner /> : 'Começar a atender'}
           </button>
         </div>
-
-        <button type="submit" disabled={saving} className="btn-primary w-full py-4 mt-1">
-          {saving ? <Spinner /> : 'Salvar e continuar'}
-        </button>
       </form>
-      <VetBottomNav />
     </div>
   )
 }
