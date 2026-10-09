@@ -36,6 +36,19 @@ service cloud.firestore {
                 .hasAny(['averageRating', 'ratingCount', 'disabled']);
     }
 
+    // CPF da conta (cpfHash): gravado uma única vez, no MESMO lote que cria
+    // a reserva em cpfs/{hash} com o uid desta conta. Depois não muda pelo
+    // app: trocar deixaria "soltar" um CPF e reservar o de outra pessoa.
+    function cpfHashIntacto() {
+      let antes = resource.data.get('cpfHash', null);
+      let depois = request.resource.data.get('cpfHash', null);
+      return antes == depois
+        || (antes == null
+            && depois is string
+            && existsAfter(/databases/$(database)/documents/cpfs/$(depois))
+            && getAfter(/databases/$(database)/documents/cpfs/$(depois)).data.uid == request.auth.uid);
+    }
+
     // Users: o próprio dono e o admin sempre leem. O perfil do
     // veterinário é público (a busca do cliente depende disso), mas o
     // documento de um CLIENTE só é visível para ele, para o admin e
@@ -52,7 +65,7 @@ service cloud.firestore {
         && (request.auth.uid == userId || isAdmin());
       allow update: if request.auth != null
         && (isAdmin()
-            || (request.auth.uid == userId && camposProtegidosIntactos()));
+            || (request.auth.uid == userId && camposProtegidosIntactos() && cpfHashIntacto()));
       allow delete: if isAdmin();
     }
 
@@ -144,6 +157,27 @@ service cloud.firestore {
         && request.auth.uid == refId
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['activatedPlan', 'activatedAt', 'viaCupom']);
+      allow delete: if isAdmin();
+    }
+
+    // Um CPF, uma conta. O id é o SHA-256 dos 11 dígitos, nunca o CPF.
+    //  - create recusa documento existente (vira update): é a trava do
+    //    segundo cadastro com o mesmo CPF;
+    //  - a conta só reserva se ainda não tinha CPF, e no mesmo lote grava o
+    //    hash no próprio users/{uid}. Sem isso, alguém reservava os CPFs de
+    //    outras pessoas e as impedia de se cadastrar.
+    //  - ninguém lista nem lê a reserva alheia (diria quem tem conta).
+    match /cpfs/{hash} {
+      allow get: if request.auth != null
+        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if request.auth != null
+        && hash.matches('^[a-f0-9]{64}$')
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'criadoEm'])
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('cpfHash', null) == null
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('cpfHash', null) == hash;
+      allow update: if false;
       allow delete: if isAdmin();
     }
 

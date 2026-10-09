@@ -14,7 +14,7 @@ import {
 import { readFileSync } from 'fs'
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs,
-  query, where,
+  query, where, writeBatch,
 } from 'firebase/firestore'
 
 const env = await initializeTestEnvironment({
@@ -166,6 +166,41 @@ await teste('admin lista os códigos', () =>
   assertSucceeds(getDocs(collection(db(ADMIN), 'referralCodes'))))
 await teste('dono NÃO apaga o código (só o admin)', () =>
   assertFails(deleteDoc(doc(db(VET), 'referralCodes', 'ANA1234'))))
+
+console.log('\n== Um CPF, uma conta ==')
+// Hashes de mentira no formato certo (64 hex). O app usa SHA-256 do CPF.
+const CPF_A = 'a'.repeat(64)
+const CPF_B = 'b'.repeat(64)
+/** O lote que o app faz: reserva + cpfHash no próprio perfil. */
+function reservar(uid, hash, { gravaNoPerfil = true, dono = uid } = {}) {
+  const d = db(uid)
+  const lote = writeBatch(d)
+  lote.set(doc(d, 'cpfs', hash), { uid: dono, criadoEm: 'agora' })
+  if (gravaNoPerfil) lote.set(doc(d, 'users', uid), { cpfHash: hash }, { merge: true })
+  return lote.commit()
+}
+await teste('vet reserva o próprio CPF', () => assertSucceeds(reservar(VET2, CPF_A)))
+await teste('outra conta NÃO cadastra o mesmo CPF', () => assertFails(reservar(CLIENTE2, CPF_A)))
+await teste('conta com CPF NÃO reserva um segundo', () => assertFails(reservar(VET2, CPF_B)))
+await teste('reserva sem gravar no próprio perfil é recusada', () =>
+  assertFails(reservar(CLIENTE2, CPF_B, { gravaNoPerfil: false })))
+await teste('ninguém reserva CPF em nome de outra conta', () =>
+  assertFails(reservar(CLIENTE2, CPF_B, { dono: VET })))
+await teste('hash fora do formato é recusado', () => assertFails(reservar(CLIENTE2, '12345678900')))
+await teste('dono NÃO troca o cpfHash depois', () =>
+  assertFails(updateDoc(doc(db(VET2), 'users', VET2), { cpfHash: CPF_B })))
+await teste('dono NÃO apaga o cpfHash para reservar outro', () =>
+  assertFails(updateDoc(doc(db(VET2), 'users', VET2), { cpfHash: null })))
+await teste('perfil com CPF continua editável (nome)', () =>
+  assertSucceeds(updateDoc(doc(db(VET2), 'users', VET2), { name: 'Dr. Bruno Lima' })))
+await teste('dono lê a própria reserva', () => assertSucceeds(getDoc(doc(db(VET2), 'cpfs', CPF_A))))
+await teste('outra conta NÃO descobre de quem é o CPF', () =>
+  assertFails(getDoc(doc(db(CLIENTE2), 'cpfs', CPF_A))))
+await teste('ninguém lista os CPFs', () => assertFails(getDocs(collection(db(VET2), 'cpfs'))))
+await teste('admin lista os CPFs', () => assertSucceeds(getDocs(collection(db(ADMIN), 'cpfs'))))
+await teste('dono NÃO apaga a reserva (liberaria o CPF)', () =>
+  assertFails(deleteDoc(doc(db(VET2), 'cpfs', CPF_A))))
+await teste('segunda conta reserva um CPF livre normalmente', () => assertSucceeds(reservar(CLIENTE2, CPF_B)))
 
 console.log('\n== Admin ==')
 await teste('admin lê a base inteira', () =>

@@ -553,3 +553,86 @@ exports.deleteExpiredChats = onSchedule(
     console.log(`Deleted ${n} expired chat(s).`)
   }
 )
+
+/* ════════════════════════════════════════════════════════════════
+   CONSULTA DE CPF (apicpf.com)
+   Preenche nome e nascimento no cadastro a partir do CPF.
+
+   A chave fica no Secret Manager (APICPF_KEY), nunca no app: com ela
+   no navegador, qualquer um consultaria nome e nascimento de qualquer
+   CPF na conta da AVANTE.
+   - Exige login.
+   - CPF que já tem conta responde { jaCadastrado } SEM gastar consulta.
+   - Teto por conta e teto diário geral, abaixo das 100/dia do plano.
+   - Devolve só nome e nascimento. Gênero não é usado e não sai daqui.
+   - O hash precisa bater com src/utils/cpf.js (SHA-256 dos 11 dígitos).
+
+   Publicar SÓ esta função (as outras deste arquivo mudariam o app):
+     firebase functions:secrets:set APICPF_KEY
+     firebase deploy --only functions:consultarCpf
+   ════════════════════════════════════════════════════════════════ */
+const { cpfValido, hashCpf } = require('./cpf')
+const APICPF_KEY = defineSecret('APICPF_KEY')
+const CPF_POR_CONTA_DIA = 3
+const CPF_TOTAL_DIA = 90
+// Só o emulador local define APICPF_URL (aponta para uma API falsa). Em
+// produção a variável não existe e vale o endereço real.
+const APICPF_URL = process.env.APICPF_URL || 'https://apicpf.com/api/consulta'
+
+async function cotaCpf(db, uid) {
+  const hoje = new Date().toISOString().slice(0, 10)
+  const conta = db.doc(`cpfUsage/${uid}`)
+  const total = db.doc('cpfUsage/_total')
+  await db.runTransaction(async (tx) => {
+    const [c, t] = await Promise.all([tx.get(conta), tx.get(total)])
+    const nConta = c.exists && c.data().dia === hoje ? Number(c.data().n || 0) : 0
+    const nTotal = t.exists && t.data().dia === hoje ? Number(t.data().n || 0) : 0
+    if (nConta >= CPF_POR_CONTA_DIA || nTotal >= CPF_TOTAL_DIA) {
+      throw new HttpsError('resource-exhausted', 'Consulta indisponível agora. Preencha os dados à mão.')
+    }
+    tx.set(conta, { dia: hoje, n: nConta + 1 })
+    tx.set(total, { dia: hoje, n: nTotal + 1 })
+  })
+}
+
+exports.consultarCpf = onCall(
+  { region: 'southamerica-east1', secrets: [APICPF_KEY], maxInstances: 3 },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Login necessário.')
+    const cpf = String(request.data?.cpf || '').replace(/\D/g, '')
+    if (!cpfValido(cpf)) throw new HttpsError('invalid-argument', 'CPF inválido.')
+
+    const db = getFirestore()
+    const hash = hashCpf(cpf)
+    const reserva = await db.doc(`cpfs/${hash}`).get()
+    if (reserva.exists && reserva.data().uid !== request.auth.uid) return { jaCadastrado: true }
+
+    await cotaCpf(db, request.auth.uid)
+
+    let r
+    try {
+      r = await fetch(`${APICPF_URL}?cpf=${cpf}`, {
+        headers: { 'X-API-KEY': APICPF_KEY.value() },
+        signal: AbortSignal.timeout(8000),
+      })
+    } catch (e) {
+      console.error('apicpf indisponível:', e?.message)
+      throw new HttpsError('unavailable', 'Consulta indisponível agora. Preencha os dados à mão.')
+    }
+    if (r.status === 404) return { encontrado: false }
+    if (r.status === 429 || r.status === 402) {
+      throw new HttpsError('resource-exhausted', 'Consulta indisponível agora. Preencha os dados à mão.')
+    }
+    if (!r.ok) {
+      // 401/403 = chave errada ou vencida (o plano grátis vence todo mês).
+      console.error('apicpf respondeu', r.status)
+      throw new HttpsError('unavailable', 'Consulta indisponível agora. Preencha os dados à mão.')
+    }
+    const d = (await r.json())?.data || {}
+    return {
+      encontrado: true,
+      nome: String(d.nome || '').slice(0, 120),
+      nascimento: /^\d{4}-\d{2}-\d{2}$/.test(d.data_nascimento || '') ? d.data_nascimento : null,
+    }
+  }
+)

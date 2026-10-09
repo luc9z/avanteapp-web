@@ -8,18 +8,22 @@
  * única coisa que de fato pesa na busca do cliente, a localização, não
  * era pedida: vet sem base aparece por último no "Perto de mim".
  *
- * Fica: nome (já vem do cadastro), CRMV, telefone, espécies e, em um
- * toque, a localização. Foto, apresentação e documentos vão para Editar
- * Perfil, e o painel lembra o que falta (CartaoCompletarPerfil).
+ * Fica: CPF, nome, CRMV, telefone, espécies e, em um toque, a
+ * localização. O CPF trava o segundo cadastro da mesma pessoa
+ * (services/cpf.js) e, quando a consulta está publicada, preenche o nome
+ * sozinho. Foto e apresentação vão para Editar Perfil, e o painel lembra
+ * o que falta.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import { clearRoleCache } from '../../services/userRole'
 import { cidadeDe } from '../../services/lugar'
-import { isValidPhone, isValidCRMV, formatPhone, formatCRMV } from '../../utils/validators'
+import { consultarCpf, reservarCpf, CpfJaCadastrado, ContaJaTemCpf } from '../../services/cpf'
+import { dataBR } from '../../utils/cpf'
+import { isValidPhone, isValidCRMV, isValidCPF, formatPhone, formatCRMV, formatCPF } from '../../utils/validators'
 import { friendlyError } from '../../utils/errors'
 import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
@@ -63,9 +67,13 @@ function Campo({ id, rotulo, ajuda, erro, children }) {
 }
 
 export default function ConfirmDataPage() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  const [cpf, setCpf] = useState('')
+  const [consulta, setConsulta] = useState(null)      // { nome, nascimento } vindos do CPF
+  const [consultando, setConsultando] = useState(false)
+  const [cpfOcupado, setCpfOcupado] = useState(false)
   const [nome, setNome] = useState(user?.displayName || '')
   const [crmv, setCrmv] = useState('')
   const [telefone, setTelefone] = useState('')
@@ -80,14 +88,39 @@ export default function ConfirmDataPage() {
   const [tentou, setTentou] = useState(false)       // erros só depois da 1ª tentativa
   const [saving, setSaving] = useState(false)
 
+  // CPF completo: pergunta à consulta. Sem a Cloud Function publicada,
+  // consultarCpf devolve null e nada muda: a pessoa digita o nome.
+  useEffect(() => {
+    setCpfOcupado(false)
+    setConsulta(null)
+    if (!isValidCPF(cpf)) return
+    let vivo = true
+    setConsultando(true)
+    consultarCpf(cpf)
+      .then(r => {
+        if (!vivo || !r) return
+        if (r.jaCadastrado) return setCpfOcupado(true)
+        setConsulta(r)
+        // Só troca o nome que veio do "Criar conta". Se a pessoa já
+        // escreveu outro, é o que ela quer mostrar aos clientes.
+        const doCadastro = (user?.displayName || '').trim()
+        setNome(n => (!n.trim() || n.trim() === doCadastro ? r.nome : n))
+      })
+      .finally(() => { if (vivo) setConsultando(false) })
+    return () => { vivo = false }
+  }, [cpf, user?.displayName])
+
   const erros = {
+    cpf: !isValidCPF(cpf) ? 'CPF inválido. Confira os números.'
+      : cpfOcupado ? 'Este CPF já tem uma conta no AVANTE.' : null,
     nome: nome.trim().split(/\s+/).filter(Boolean).length < 2 ? 'Informe nome e sobrenome.' : null,
     crmv: !isValidCRMV(crmv) ? 'Use a sigla do estado e o número. Ex.: MG 12345' : null,
     telefone: !isValidPhone(telefone) ? 'Informe o telefone com DDD.' : null,
     especies: especies.length === 0 ? 'Escolha pelo menos uma.' : null,
   }
-  const erro = k => (tentou ? erros[k] : null)
-  const dadosOk = !erros.nome && !erros.crmv && !erros.telefone
+  // CPF já cadastrado aparece na hora; os outros, depois de tentar enviar.
+  const erro = k => (tentou || (k === 'cpf' && cpfOcupado) ? erros[k] : null)
+  const dadosOk = !erros.cpf && !erros.nome && !erros.crmv && !erros.telefone
 
   const alternar = (lista, setLista, item) =>
     setLista(l => l.includes(item) ? l.filter(x => x !== item) : [...l, item])
@@ -122,7 +155,7 @@ export default function ConfirmDataPage() {
     e.preventDefault()
     setTentou(true)
     // Leva até o primeiro problema em vez de um aviso genérico.
-    const primeiro = ['nome', 'crmv', 'telefone', 'especies'].find(k => erros[k])
+    const primeiro = ['cpf', 'nome', 'crmv', 'telefone', 'especies'].find(k => erros[k])
     if (primeiro) {
       const bloco = document.getElementById(`campo-${primeiro}`)
       bloco?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -133,6 +166,19 @@ export default function ConfirmDataPage() {
 
     setSaving(true)
     try {
+      // A trava vem antes de tudo: se o CPF é de outra conta, nada é gravado.
+      try {
+        await reservarCpf(user.uid, cpf)
+      } catch (err) {
+        if (err instanceof CpfJaCadastrado) {
+          setCpfOcupado(true)
+          document.getElementById('campo-cpf')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          return
+        }
+        if (err instanceof ContaJaTemCpf) return showToast(err.message, 'error')
+        throw err
+      }
+
       const partes = nome.trim().split(/\s+/)
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
@@ -153,6 +199,13 @@ export default function ConfirmDataPage() {
         ...(local?.uf && { state: local.uf }),
         // createdAt fica o do cadastro da conta: sobrescrever aqui movia
         // a data de entrada do usuário para o dia do perfil.
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+
+      // CPF e nascimento só na área privada, legível pelo próprio usuário.
+      await setDoc(doc(db, 'users', user.uid, 'private', 'profile'), {
+        cpf: formatCPF(cpf),
+        ...(consulta?.nascimento && { birthDate: consulta.nascimento }),
         updatedAt: serverTimestamp(),
       }, { merge: true })
 
@@ -182,11 +235,42 @@ export default function ConfirmDataPage() {
 
       <form onSubmit={salvar} noValidate className="mx-auto flex w-full max-w-xl flex-col gap-4 px-4 pt-4">
         <p className="px-1 text-sm text-gray-500">
-          Leva um minuto. Foto, apresentação e documentos você completa depois.
+          Leva um minuto. Foto e apresentação você completa depois.
         </p>
 
         {/* ── 1. Dados ─────────────────────────────────────── */}
         <Etapa n={1} pronta={dadosOk} titulo="Seus dados">
+          <Campo id="campo-cpf" rotulo="CPF" ajuda="Confirma quem você é. Não aparece para os clientes."
+            erro={erro('cpf')}>
+            <input id="campo-cpf-input" value={cpf} onChange={e => setCpf(formatCPF(e.target.value))}
+              placeholder="000.000.000-00" inputMode="numeric" autoComplete="off"
+              className={`input-field ${erro('cpf') ? '!border-red-400' : ''}`} />
+          </Campo>
+
+          {cpfOcupado && (
+            <div className="-mt-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p>Cada CPF pode ter uma conta só. Se ela é sua, entre com o e-mail dela.</p>
+              <button type="button" onClick={async () => { await logout(); navigate('/login', { replace: true }) }}
+                className="mt-2 min-h-[40px] text-sm font-bold underline">
+                Sair e entrar com a outra conta
+              </button>
+            </div>
+          )}
+
+          {consultando && <p className="-mt-2 text-xs text-gray-400">Consultando o CPF...</p>}
+
+          {consulta && (
+            <div className="-mt-2 flex items-start gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2.5 text-xs text-green-800">
+              <svg className="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>
+                CPF de <b>{consulta.nome}</b>{dataBR(consulta.nascimento) ? `, nascimento em ${dataBR(consulta.nascimento)}` : ''}.
+                O nome abaixo foi preenchido com ele, ajuste se quiser.
+              </span>
+            </div>
+          )}
+
           <Campo id="campo-nome" rotulo="Nome que os clientes veem" erro={erro('nome')}>
             <input id="campo-nome-input" value={nome} onChange={e => setNome(e.target.value)}
               placeholder="Ex.: Dra. Maria Silva" autoComplete="name"

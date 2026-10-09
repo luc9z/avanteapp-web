@@ -13,6 +13,7 @@ import MapPicker from '../../components/client/MapPicker'
 import { Link } from 'react-router-dom'
 
 import { SPECIALTY_GROUPS } from '../../utils/specialties'
+import { reservarCpf, CpfJaCadastrado, ContaJaTemCpf } from '../../services/cpf'
 
 export default function EditProfilePage() {
   const { user } = useAuth()
@@ -34,6 +35,8 @@ export default function EditProfilePage() {
   const [showBaseMap, setShowBaseMap] = useState(false)
   const [gettingGPS, setGettingGPS] = useState(false)
   const [specialties, setSpecialties] = useState([])
+  // CPF já reservado não muda pelo app (só o admin troca).
+  const [cpfTravado, setCpfTravado] = useState(false)
   const [portfolio, setPortfolio] = useState([])
   const [savingPortfolio, setSavingPortfolio] = useState(false)
 
@@ -59,6 +62,7 @@ export default function EditProfilePage() {
         photoURL: d.photoURL || '',
         bio: d.bio || '',
       })
+      setCpfTravado(!!d.cpfHash)
       setProperties(Array.isArray(priv.properties) ? priv.properties
         : Array.isArray(d.properties) ? d.properties : [])
       setIsClient(d.profession === 'client' || !d.profession)
@@ -155,6 +159,20 @@ export default function EditProfilePage() {
     if (form.cpf.trim() && !isValidCPF(form.cpf)) return showToast('CPF inválido. Confira os dígitos.', 'error')
     setSaving(true)
     try {
+      // Um CPF, uma conta: reserva antes de gravar qualquer coisa.
+      if (form.cpf.trim() && !cpfTravado) {
+        try {
+          await reservarCpf(user.uid, form.cpf)
+          setCpfTravado(true)
+        } catch (err) {
+          if (err instanceof CpfJaCadastrado || err instanceof ContaJaTemCpf) {
+            showToast(err.message, 'error')
+            return
+          }
+          throw err
+        }
+      }
+
       // PRIVACIDADE: o telefone do CLIENTE vai para a subcoleção privada
       // (o vet recebe o contato dentro da própria solicitação). Para o
       // veterinário, o telefone é contato comercial e permanece público.
@@ -278,8 +296,13 @@ export default function EditProfilePage() {
               value={form.cpf}
               onChange={e => setForm(f => ({ ...f, cpf: formatCPF(e.target.value) }))}
               placeholder="000.000.000-00"
-              className="input-field"
+              inputMode="numeric"
+              readOnly={cpfTravado}
+              className={`input-field ${cpfTravado ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`}
             />
+            {cpfTravado && (
+              <p className="text-[11px] text-gray-400">Para trocar o CPF da conta, fale com o suporte.</p>
+            )}
           </div>
 
           {/* A apresentação aparece para o cliente na página do vet, mas
