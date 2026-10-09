@@ -320,180 +320,294 @@ exports.onRequestStatusChanged = onDocumentUpdated(
 )
 
 /* ════════════════════════════════════════════════════════════════
-   PLANOS + ABACATEPAY
-   - createPlanCheckout: cria a cobrança e devolve a URL de pagamento
-   - abacatepayWebhook: confirma o pagamento e ativa o plano
-   Secrets:
+   PLANOS + ABACATEPAY (API v2: PIX e cartão)
+
+   - Checkout com PIX e cartão. Mensal libera 30 dias, anual 365 (anual
+     em até 12x no cartão). PIX não renova sozinho; o plano tem data de
+     vencimento (planExpiresAt) e expirarPlanos devolve ao Free.
+   - O webhook é só um AVISO. Quem confirma o pagamento é uma consulta à
+     AbacatePay com a nossa chave, comparada com o NOSSO registro do
+     checkout (valor, plano, conta). Webhook forjado não ativa plano.
+   - Plano pago só é gravado aqui (as regras do Firestore impedem o
+     próprio usuário de se dar um plano).
+
+   Publicar (depois de ativar o plano Blaze):
      firebase functions:secrets:set ABACATEPAY_API_KEY
      firebase functions:secrets:set ABACATEPAY_WEBHOOK_SECRET
-   Webhook no painel AbacatePay:
-     https://southamerica-east1-<PROJECT>.cloudfunctions.net/abacatepayWebhook?webhookSecret=<SECRET>
+     firebase deploy --only functions:createPlanCheckout,functions:abacatepayWebhook,functions:redeemCoupon,functions:expirarPlanos
+
+   Webhook no painel AbacatePay (eventos checkout.*):
+     https://southamerica-east1-avante-pro.cloudfunctions.net/abacatepayWebhook?webhookSecret=<SECRET>
    ════════════════════════════════════════════════════════════════ */
 const { onRequest } = require('firebase-functions/v2/https')
+const pg = require('./pagamentos')
 
 const ABACATEPAY_API_KEY = defineSecret('ABACATEPAY_API_KEY')
 const ABACATEPAY_WEBHOOK_SECRET = defineSecret('ABACATEPAY_WEBHOOK_SECRET')
+// Só o emulador local define ABACATEPAY_URL (uma API falsa para teste).
+const ABACATEPAY_URL = process.env.ABACATEPAY_URL || 'https://api.abacatepay.com'
+
+/** Chamada à AbacatePay. Erro vira mensagem genérica para o app e log completo aqui. */
+async function abacate(metodo, caminho, corpo) {
+  let r
+  try {
+    r = await fetch(ABACATEPAY_URL + caminho, {
+      method: metodo,
+      headers: { Authorization: `Bearer ${ABACATEPAY_API_KEY.value()}`, 'Content-Type': 'application/json' },
+      body: corpo ? JSON.stringify(corpo) : undefined,
+      signal: AbortSignal.timeout(15000),
+    })
+  } catch (e) {
+    console.error('abacatepay fora do ar:', caminho, e?.message)
+    throw new HttpsError('unavailable', 'Não foi possível falar com o meio de pagamento. Tente de novo.')
+  }
+  const json = await r.json().catch(() => ({}))
+  if (!r.ok || json.success === false) {
+    console.error('abacatepay', caminho, r.status, JSON.stringify(json).slice(0, 400))
+    throw new HttpsError('unavailable', 'Não foi possível falar com o meio de pagamento. Tente de novo.')
+  }
+  return json.data
+}
+
+/** Produto da AbacatePay para este plano/período/preço, criado uma vez e guardado. */
+async function produtoDoPlano(db, plano, periodo, centavos) {
+  const chave = pg.chaveProduto(plano.id, periodo, centavos)
+  const cacheRef = db.doc('config/abacatepayProdutos')
+  const cache = (await cacheRef.get()).data() || {}
+  if (cache[chave]) return cache[chave]
+  const p = await abacate('POST', '/v2/products/create', {
+    // Sufixo de tempo: se o cache se perder, não colide com o externalId antigo.
+    externalId: `${chave}-${Date.now().toString(36)}`,
+    name: `AVANTE ${plano.name} (${periodo})`,
+    price: centavos,
+    currency: 'BRL',
+  })
+  await cacheRef.set({ [chave]: p.id }, { merge: true })
+  return p.id
+}
+
+/** Cliente da AbacatePay da conta, para o checkout já vir preenchido. Opcional. */
+async function clienteDaConta(db, uid, emailDoLogin) {
+  const ref = db.doc(`payments_customers/${uid}`)
+  const salvo = (await ref.get()).data()
+  if (salvo?.id) return salvo.id
+  const u = (await db.doc(`users/${uid}`).get()).data() || {}
+  const priv = (await db.doc(`users/${uid}/private/profile`).get()).data() || {}
+  const email = u.email || emailDoLogin
+  if (!email) return null
+  try {
+    const c = await abacate('POST', '/v2/customers/create', {
+      email,
+      ...(u.name && { name: u.name }),
+      ...(u.phone && { cellphone: u.phone }),
+      ...(priv.cpf && { taxId: priv.cpf }),
+    })
+    await ref.set({ id: c.id, criadoEm: FieldValue.serverTimestamp() })
+    return c.id
+  } catch {
+    return null   // sem cliente pré-cadastrado, o checkout pede os dados
+  }
+}
+
+/** Cupom ativo de config/coupons (BEMVINDO existe por padrão). */
+async function cupomValido(db, codigo) {
+  const code = String(codigo || '').trim().toUpperCase()
+  if (!code) return null
+  const todos = (await db.doc('config/coupons').get()).data() || {}
+  const c = todos[code] || (code === 'BEMVINDO' ? { discount: 100, active: true } : null)
+  if (!c || c.active === false) return null
+  return { code, discount: Number(c.discount) || 0, dias: Number(c.dias) || null }
+}
 
 exports.createPlanCheckout = onCall(
   { region: 'southamerica-east1', secrets: [ABACATEPAY_API_KEY], maxInstances: 5 },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Login necessário.')
     const uid = request.auth.uid
-    const planId = String(request.data?.planId || '')
-
     const db = getFirestore()
-    const plansSnap = await db.doc('config/plans').get()
-    const plans = plansSnap.exists ? (plansSnap.data().plans || []) : []
-    const plan = plans.find((p) => p.id === planId)
-    if (!plan) throw new HttpsError('not-found', 'Plano não encontrado.')
-    if (!plan.price || plan.price <= 0) throw new HttpsError('invalid-argument', 'Este plano não exige pagamento.')
 
-    // Período: anual = 12 meses pelo preço de 10 (validado no servidor,
-    // nunca confiando em valores vindos do cliente)
-    const period = request.data?.period === 'anual' ? 'anual' : 'mensal'
-    const amount = period === 'anual' ? plan.price * 10 : plan.price
+    const catalogo = (await db.doc('config/plans').get()).data()?.plans
+    const plano = pg.planoDoCatalogo(catalogo, String(request.data?.planId || ''))
+    if (!plano) throw new HttpsError('not-found', 'Plano não encontrado.')
+    if (!(Number(plano.price) > 0)) throw new HttpsError('invalid-argument', 'Este plano não exige pagamento.')
+    const periodo = pg.periodoValido(request.data?.period)
 
-    const userSnap = await db.doc(`users/${uid}`).get()
-    const u = userSnap.exists ? userSnap.data() : {}
+    // Cupom de desconto PARCIAL entra no preço aqui. 100% não passa pelo
+    // checkout: é o redeemCoupon que ativa.
+    let cupom = null
+    if (request.data?.coupon) {
+      const c = await cupomValido(db, request.data.coupon)
+      if (!c) throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
+      if (c.discount < 100) cupom = c
+    }
+    const centavos = pg.valorEmCentavos(plano.price, periodo, cupom?.discount || 0)
+    if (centavos < 100) throw new HttpsError('invalid-argument', 'Valor abaixo do mínimo para pagamento.')
 
-    const appUrl = request.data?.origin || 'https://avantepro-a1438.web.app'
+    const produtoId = await produtoDoPlano(db, plano, periodo, centavos)
+    const clienteId = await clienteDaConta(db, uid, request.auth.token.email)
+    const origem = pg.origemSegura(request.data?.origin)
+    const externalId = `avante:${uid}:${plano.id}:${periodo}:${Date.now().toString(36)}`
 
-    const res = await fetch('https://api.abacatepay.com/v1/billing/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${ABACATEPAY_API_KEY.value()}`,
-      },
-      body: JSON.stringify({
-        frequency: 'ONE_TIME',
-        methods: ['PIX'],
-        products: [{
-          externalId: `plan:${planId}:${uid}`,
-          name: `Avante — Plano ${plan.name} (${period})`,
-          quantity: 1,
-          price: Math.round(amount * 100), // centavos
-        }],
-        returnUrl: `${appUrl}/plans`,
-        completionUrl: `${appUrl}/plans?status=paid`,
-        customer: {
-          name: u.name || 'Profissional Avante',
-          email: u.email || request.auth.token.email || '',
-          cellphone: u.phone || '',
-        },
-      }),
+    const ck = await abacate('POST', '/v2/checkouts/create', {
+      items: [{ id: produtoId, quantity: 1 }],
+      methods: ['PIX', 'CARD'],
+      ...(clienteId && { customerId: clienteId }),
+      externalId,
+      returnUrl: `${origem}/plans`,
+      completionUrl: `${origem}/plans?status=paid`,
+      card: { maxInstallments: periodo === 'anual' ? 12 : 1 },
+      metadata: { uid, planId: plano.id, periodo },
     })
 
-    if (!res.ok) {
-      console.error('AbacatePay error', res.status, await res.text().catch(() => ''))
-      throw new HttpsError('unavailable', 'Não foi possível iniciar o pagamento. Tente novamente.')
-    }
-
-    const data = await res.json()
-    const url = data?.data?.url || data?.url
-    if (!url) throw new HttpsError('internal', 'Resposta inesperada do provedor de pagamento.')
-
-    // Registra a intenção de compra (auditoria)
-    await db.collection('payments').add({
-      uid, planId, period,
-      billingId: data?.data?.id || null,
-      amount,
-      status: 'pending',
+    // O registro que o webhook vai conferir. Valor e plano saem DAQUI.
+    await db.doc(`payments/${ck.id}`).set({
+      uid, planId: plano.id, periodo, centavos,
+      cupom: cupom?.code || null,
+      externalId, status: 'pendente', devMode: !!ck.devMode,
       createdAt: FieldValue.serverTimestamp(),
-    }).catch(() => {})
-
-    return { url }
+    })
+    return { url: ck.url }
   }
 )
 
+/** Pagamento confirmado: ativa o plano, uma vez só, e credita a indicação. */
+async function confirmarCheckout(db, checkoutId) {
+  if (!checkoutId) return 'sem-id'
+  const ref = db.doc(`payments/${checkoutId}`)
+  const reg = await ref.get()
+  if (!reg.exists) { console.warn('checkout desconhecido:', checkoutId); return 'desconhecido' }
+  const p = reg.data()
+  if (p.status === 'pago') return 'ja-aplicado'
+
+  // A verdade vem da AbacatePay, com a nossa chave, não do corpo do webhook.
+  const ck = await abacate('GET', `/v2/checkouts/get?id=${encodeURIComponent(checkoutId)}`)
+  const confere = pg.pagamentoConfere(ck, p)
+  if (!confere.ok) {
+    console.error('pagamento não confere:', checkoutId, confere.motivo)
+    await ref.set({ status: 'nao_confere', motivo: confere.motivo }, { merge: true })
+    return 'nao-confere'
+  }
+
+  return db.runTransaction(async (tx) => {
+    const atual = await tx.get(ref)
+    if (atual.data().status === 'pago') return 'ja-aplicado'   // dois webhooks ao mesmo tempo
+    const uref = db.doc(`users/${p.uid}`)
+    const u = (await tx.get(uref)).data() || {}
+    const expira = pg.novaExpiracao({
+      agora: Date.now(),
+      expiraAtual: u.planExpiresAt?.toDate?.() || null,
+      planoAtual: u.plan, planoNovo: p.planId, periodo: p.periodo,
+    })
+    tx.set(uref, {
+      plan: p.planId,
+      featured: pg.PLANOS_DESTAQUE.includes(p.planId),
+      planActivatedAt: FieldValue.serverTimestamp(),
+      planExpiresAt: expira,
+      planCheckoutId: checkoutId,
+      planPeriodo: p.periodo,
+    }, { merge: true })
+    tx.set(ref, { status: 'pago', pagoEm: FieldValue.serverTimestamp(), expiraEm: expira }, { merge: true })
+    if (u.referredByUid) {
+      tx.set(db.doc(`users/${u.referredByUid}/referrals/${p.uid}`), {
+        activatedPlan: p.planId, activatedAt: FieldValue.serverTimestamp(), viaCupom: p.cupom || null,
+      }, { merge: true })
+    }
+    return 'ativado'
+  })
+}
+
+/** Estorno ou contestação: se é o pagamento do plano em vigor, volta ao Free. */
+async function estornar(db, checkoutId, tipo) {
+  if (!checkoutId) return 'sem-id'
+  const ref = db.doc(`payments/${checkoutId}`)
+  const reg = await ref.get()
+  if (!reg.exists) return 'desconhecido'
+  const p = reg.data()
+  await ref.set({ status: tipo === 'checkout.refunded' ? 'estornado' : 'contestado' }, { merge: true })
+  const uref = db.doc(`users/${p.uid}`)
+  const u = (await uref.get()).data() || {}
+  if (u.planCheckoutId === checkoutId) {
+    await uref.set({ plan: 'free', featured: false, planExpiresAt: new Date() }, { merge: true })
+  }
+  return 'estornado'
+}
+
 exports.abacatepayWebhook = onRequest(
-  { region: 'southamerica-east1', secrets: [ABACATEPAY_WEBHOOK_SECRET], maxInstances: 3 },
+  { region: 'southamerica-east1', secrets: [ABACATEPAY_API_KEY, ABACATEPAY_WEBHOOK_SECRET], maxInstances: 3 },
   async (req, res) => {
     try {
-      // Validação do segredo (padrão AbacatePay: query param)
+      if (req.method !== 'POST') return res.status(405).send('method')
       if (req.query.webhookSecret !== ABACATEPAY_WEBHOOK_SECRET.value()) {
         return res.status(401).send('unauthorized')
       }
-
-      const event = req.body
-      const type = event?.event || event?.type || ''
-      if (!type.includes('billing.paid')) return res.status(200).send('ignored')
-
-      const products = event?.data?.billing?.products || event?.data?.products || []
-      const tag = products.map((p) => p.externalId || '').find((x) => x.startsWith('plan:'))
-      if (!tag) return res.status(200).send('no-plan-tag')
-
-      const [, planId, uid] = tag.split(':')
-      if (!planId || !uid) return res.status(200).send('bad-tag')
-
+      const ev = req.body || {}
+      const tipo = String(ev.event || '')
+      const id = ev.data?.checkout?.id
       const db = getFirestore()
-      await db.doc(`users/${uid}`).set({
-        plan: planId,
-        featured: ['premium','destaque'].includes(planId),
-        planActivatedAt: FieldValue.serverTimestamp(),
-      }, { merge: true })
 
-      // Atualiza o registro de pagamento correspondente
-      const billingId = event?.data?.billing?.id
-      if (billingId) {
-        const q = await db.collection('payments')
-          .where('billingId', '==', billingId).limit(1).get()
-        if (!q.empty) {
-          await q.docs[0].ref.set({ status: 'paid', paidAt: FieldValue.serverTimestamp() }, { merge: true })
-        }
+      let resultado = 'ignorado'
+      if (tipo === 'checkout.completed') resultado = await confirmarCheckout(db, id)
+      else if (tipo === 'checkout.refunded' || tipo === 'checkout.disputed') resultado = await estornar(db, id, tipo)
+
+      // Auditoria. A mesma notificação pode chegar até 7 vezes; o
+      // processamento acima é idempotente (status 'pago' não reaplica).
+      if (ev.id) {
+        await db.doc(`payments_events/${ev.id}`).set({
+          tipo, checkoutId: id || null, resultado, devMode: !!ev.devMode,
+          recebidoEm: FieldValue.serverTimestamp(),
+        }, { merge: true }).catch(() => {})
       }
-
-      return res.status(200).send('ok')
+      return res.status(200).send(resultado)
     } catch (e) {
+      // 500 faz a AbacatePay tentar de novo mais tarde.
       console.error('abacatepayWebhook:', e)
-      return res.status(500).send('error')
+      return res.status(500).send('erro')
     }
   }
 )
 
-
 /**
- * redeemCoupon — aplica cupom de desconto na assinatura do plano.
- * Cupons em config/coupons (ex.: { BEMVINDO: { discount: 100, active: true } }).
- * BEMVINDO (100%) existe como padrão de lançamento mesmo sem o doc.
- * Desconto de 100% ativa o plano direto, sem passar pelo AbacatePay.
+ * redeemCoupon: cupom de 100% ativa o plano direto, sem checkout.
+ * Cupons em config/coupons (ex.: { BEMVINDO: { discount: 100, active: true, dias: 30 } }).
+ * Sem "dias", o plano do cupom não vence. Desconto parcial volta para o
+ * app, que manda o cupom junto no createPlanCheckout.
  */
 exports.redeemCoupon = onCall(
   { region: 'southamerica-east1', maxInstances: 5 },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Login necessário.')
     const uid = request.auth.uid
-    const planId = String(request.data?.planId || '')
-    const code = String(request.data?.code || '').trim().toUpperCase()
-    if (!planId || !code) throw new HttpsError('invalid-argument', 'Informe o plano e o cupom.')
-
     const db = getFirestore()
-    const couponsSnap = await db.doc('config/coupons').get()
-    const coupons = couponsSnap.exists ? couponsSnap.data() : {}
-    const coupon = coupons[code] || (code === 'BEMVINDO' ? { discount: 100, active: true } : null)
+    const catalogo = (await db.doc('config/plans').get()).data()?.plans
+    const plano = pg.planoDoCatalogo(catalogo, String(request.data?.planId || ''))
+    if (!plano) throw new HttpsError('not-found', 'Plano não encontrado.')
+    const c = await cupomValido(db, request.data?.code)
+    if (!c) throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
 
-    if (!coupon || coupon.active === false) {
-      throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
+    if (c.discount < 100) return { activated: false, discount: c.discount }
+
+    const uref = db.doc(`users/${uid}`)
+    const u = (await uref.get()).data() || {}
+    await uref.set({
+      plan: plano.id,
+      featured: pg.PLANOS_DESTAQUE.includes(plano.id),
+      planActivatedAt: FieldValue.serverTimestamp(),
+      planCoupon: c.code,
+      planExpiresAt: c.dias ? new Date(Date.now() + c.dias * 864e5) : null,
+    }, { merge: true })
+    await db.collection('payments').add({
+      uid, planId: plano.id, centavos: 0, cupom: c.code, status: 'cupom',
+      createdAt: FieldValue.serverTimestamp(),
+    }).catch(() => {})
+    if (u.referredByUid) {
+      await db.doc(`users/${u.referredByUid}/referrals/${uid}`).set({
+        activatedPlan: plano.id, activatedAt: FieldValue.serverTimestamp(), viaCupom: c.code,
+      }, { merge: true }).catch(() => {})
     }
-
-    const discount = Number(coupon.discount) || 0
-    if (discount >= 100) {
-      await db.doc(`users/${uid}`).set({
-        plan: planId,
-        featured: ['premium','destaque'].includes(planId),
-        planActivatedAt: FieldValue.serverTimestamp(),
-        planCoupon: code,
-      }, { merge: true })
-      await db.collection('payments').add({
-        uid, planId, amount: 0, coupon: code, status: 'paid_coupon',
-        createdAt: FieldValue.serverTimestamp(),
-      }).catch(() => {})
-      return { activated: true, discount: 100 }
-    }
-
-    // Desconto parcial: devolve o percentual para o checkout aplicar
-    return { activated: false, discount }
+    return { activated: true, discount: 100 }
   }
 )
+
 
 /* ════════════════════════════════════════════════════════════════
    AUTO-CONFIRM após 24h
@@ -634,5 +748,25 @@ exports.consultarCpf = onCall(
       nome: String(d.nome || '').slice(0, 120),
       nascimento: /^\d{4}-\d{2}-\d{2}$/.test(d.data_nascimento || '') ? d.data_nascimento : null,
     }
+  }
+)
+
+/* ════════════════════════════════════════════════════════════════
+   VENCIMENTO DOS PLANOS
+   PIX não renova sozinho: quem pagou um mês tem 30 dias. Uma vez por
+   dia, quem passou de planExpiresAt volta ao Free (e perde o Destaque).
+   ════════════════════════════════════════════════════════════════ */
+exports.expirarPlanos = onSchedule(
+  { schedule: 'every day 03:00', region: 'southamerica-east1', timeZone: 'America/Sao_Paulo' },
+  async () => {
+    const db = getFirestore()
+    const snap = await db.collection('users').where('planExpiresAt', '<=', new Date()).get()
+    let n = 0
+    for (const d of snap.docs) {
+      if ((d.data().plan || 'free') === 'free') continue
+      await d.ref.set({ plan: 'free', featured: false, planExpiredAt: FieldValue.serverTimestamp() }, { merge: true })
+      n++
+    }
+    console.log(`${n} plano(s) vencido(s) voltaram ao Free.`)
   }
 )

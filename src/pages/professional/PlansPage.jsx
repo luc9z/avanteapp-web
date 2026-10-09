@@ -52,7 +52,11 @@ export default function PlansPage() {
   const [period, setPeriod] = useState('mensal') // mensal | anual
   const [coupon, setCoupon] = useState('')
   const [couponBusy, setCouponBusy] = useState(false)
+  // Cupom de desconto parcial já validado: vai junto no checkout.
+  const [cupomParcial, setCupomParcial] = useState(null)   // { code, discount }
   const [paying, setPaying] = useState(false)
+  // Até quando o plano pago vale. Sem data: Free ou plano de cupom.
+  const [validade, setValidade] = useState(null)
 
   useEffect(() => {
     return onSnapshot(doc(db, 'config', 'plans'),
@@ -66,6 +70,7 @@ export default function PlansPage() {
     return onSnapshot(doc(db, 'users', user.uid), snap => {
       const p = snap.data()?.plan || null
       setCurrentPlan(p)
+      setValidade(snap.data()?.planExpiresAt?.toDate?.() || null)
       if (p && !tocouNaSelecao) setSelectedId(p)
     }, () => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,63 +92,71 @@ export default function PlansPage() {
   const priceFor = p => period === 'anual' ? p.price * 10 : p.price
   const periodLabel = period === 'anual' ? '/ano' : '/mês'
 
+  /**
+   * Cupom de lançamento gravado pelo próprio app. Só funciona enquanto as
+   * regras antigas estiverem no ar: com as novas, plano pago só o servidor
+   * grava. É a reserva para quando a Cloud Function ainda não existe
+   * (plano Spark). Remover depois que redeemCoupon estiver publicada.
+   */
+  async function cupomPeloApp(code) {
+    const LAUNCH_COUPONS = { BEMVINDO: 100, AVANTE100: 100 }
+    if (LAUNCH_COUPONS[code] !== 100) return false
+    await setDoc(doc(db, 'users', user.uid), {
+      plan: selectedId,
+      featured: ['premium', 'destaque'].includes(selectedId),
+      planActivatedAt: serverTimestamp(),
+      planCoupon: code,
+      updatedAt: serverTimestamp(),
+    }, { merge: true })
+    await avisarAtivacaoDePlano(user.uid, selectedId, code)
+    return true
+  }
+
+  /** functions/internal: a função não existe ou não respondeu (ainda sem Blaze). */
+  const servidorAusente = e => e?.code === 'functions/internal' || e?.code === 'functions/unavailable'
+
   async function handleRedeemCoupon() {
     const code = coupon.trim().toUpperCase()
     if (!code) return showToast('Digite o código do cupom', 'error')
     if (!selectedId) return showToast('Selecione um plano primeiro.', 'error')
+    if (selectedId === currentPlan && !validade) return showToast('Este já é seu plano atual.', 'error')
     setCouponBusy(true)
     try {
-      // Cupons de lançamento: validados no cliente, ativam instantâneo sem Cloud Function
-      const LAUNCH_COUPONS = { BEMVINDO: 100, AVANTE100: 100 }
-      if (LAUNCH_COUPONS[code] === 100) {
-        if (selectedId === currentPlan) {
-          showToast('Este já é seu plano atual.', 'error')
-          return
-        }
-        await setDoc(doc(db, 'users', user.uid), {
-          plan: selectedId,
-          featured: ['premium', 'destaque'].includes(selectedId),
-          planActivatedAt: serverTimestamp(),
-          planCoupon: code,
-          updatedAt: serverTimestamp(),
-        }, { merge: true })
-        // Quem indicou ganha o mês. Fica marcado que foi por cupom.
-        await avisarAtivacaoDePlano(user.uid, selectedId, code)
+      // O servidor valida o cupom: a lista de cupons não é legível pelo app.
+      let data
+      try {
+        ({ data } = await redeemCoupon({ planId: selectedId, code }))
+      } catch (e) {
+        if (servidorAusente(e) && await cupomPeloApp(code)) data = { activated: true }
+        else throw e
+      }
+      if (data?.activated) {
         showToast(`Cupom ${code} aplicado, plano ativado!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
-        return
-      }
-
-      // Cupons dinâmicos via Cloud Function (requer Blaze plan)
-      const { data } = await redeemCoupon({ planId: selectedId, code })
-      if (data?.activated) {
-        await avisarAtivacaoDePlano(user.uid, selectedId, code)
-        showToast(`Cupom ${code} aplicado, plano ativado com 100% de desconto!`, 'success')
-        setTimeout(() => navigate('/dashboard', { replace: true }), 900)
       } else if (data?.discount > 0) {
+        setCupomParcial({ code, discount: data.discount })
         showToast(`Cupom válido: ${data.discount}% de desconto no pagamento.`, 'success')
       }
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
-      showToast(
-        e?.code === 'functions/not-found' ? 'Cupom inválido ou expirado.'
-          : 'Cupom inválido ou expirado.',
-        'error'
-      )
+      // Cupom inválido chega como functions/not-found.
+      showToast(e?.code === 'functions/not-found' ? 'Cupom inválido ou expirado.'
+        : 'Não foi possível validar o cupom agora. Tente de novo.', 'error')
     } finally { setCouponBusy(false) }
   }
 
   async function handlePay() {
-    if (!selected || selected.id === currentPlan) return
+    if (!selected) return
+    // Plano atual sem vencimento (Free ou cupom) não tem o que renovar.
+    if (selected.id === currentPlan && !validade) return
     setPaying(true)
     try {
       if (selected.price <= 0) {
         await setDoc(doc(db, 'users', user.uid), {
           plan: selected.id,
           // featured é consequência do plano. Sem reescrever aqui, quem
-          // saía do Premium continuava com o selo de Destaque na busca:
-          // o plano mudava e a vantagem do anterior ficava.
-          featured: ['premium', 'destaque'].includes(selected.id),
+          // saía do Premium continuava com o selo de Destaque na busca.
+          featured: false,
           planActivatedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }, { merge: true })
@@ -152,15 +165,24 @@ export default function PlansPage() {
         return
       }
 
-      // Pagamento via PIX em breve - use cupom para ativar agora.
-      // Quando existir: a confirmação do pagamento precisa chamar
-      // avisarAtivacaoDePlano(uid, plano), senão quem indicou não
-      // recebe o mês grátis.
-      showToast('Pagamento via PIX em breve! Use o cupom BEMVINDO para ativar agora.', 'info')
+      // Valor, período e vencimento são decididos no servidor. Daqui só
+      // vai a escolha; a confirmação chega pelo webhook da AbacatePay.
+      const { data } = await createCheckout({
+        planId: selected.id,
+        period,
+        origin: window.location.origin,
+        ...(cupomParcial && { coupon: cupomParcial.code }),
+      })
+      if (!data?.url) throw new Error('sem endereço de pagamento')
+      window.location.assign(data.url)
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
-      showToast('Não foi possível iniciar o pagamento.', 'error')
-    } finally { setPaying(false) }
+      showToast(servidorAusente(e)
+        ? 'O pagamento ainda não está disponível. Tente mais tarde ou use um cupom.'
+        : e?.message && !/^(internal|INTERNAL)$/.test(e.message) ? e.message
+        : 'Não foi possível iniciar o pagamento.', 'error')
+      setPaying(false)
+    }
   }
 
   return (
@@ -359,17 +381,18 @@ export default function PlansPage() {
               )}
             </p>
           </div>
-          <button onClick={handlePay} disabled={paying || !selected || selected.id === currentPlan}
+          <button onClick={handlePay} disabled={paying || !selected || (selected.id === currentPlan && !validade)}
             className="bg-white text-gray-900 font-bold rounded-full px-10 py-3.5 text-sm
                        hover:bg-gray-100 active:scale-[0.98] disabled:opacity-50 transition-all">
             {paying ? <Spinner size={16} />
-              : selected?.id === currentPlan ? 'Plano já ativo'
+              : selected?.id === currentPlan ? (validade ? 'Renovar' : 'Plano já ativo')
               : selected?.price > 0 ? 'Assinar e pagar' : 'Ativar grátis'}
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
-          Use o cupom <strong className="text-white/40">BEMVINDO</strong> para ativar qualquer plano gratuitamente.
-          Pagamento via PIX disponível em breve.
+          Pague com PIX ou cartão. O mensal vale 30 dias e o anual 365, em até 12x no cartão.
+          {validade && <> Seu plano atual vale até <strong className="text-white/50">{validade.toLocaleDateString('pt-BR')}</strong>.</>}
+          {cupomParcial && <> Cupom <strong className="text-white/50">{cupomParcial.code}</strong>: {cupomParcial.discount}% de desconto aplicado no pagamento.</>}
         </p>
       </div>
       <VetBottomNav />

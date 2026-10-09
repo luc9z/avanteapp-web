@@ -27,7 +27,9 @@ function portaAberta(porta) {
 function ambiente() {
   const env = { ...process.env }
   const jbr = 'C:/Program Files/Android/Android Studio/jbr'
-  if (!env.JAVA_HOME && fs.existsSync(jbr)) {
+  // Usa o do Android Studio mesmo com JAVA_HOME definido: nesta máquina
+  // o JAVA_HOME aponta para o Java 1.8, e o emulador morre com ele.
+  if (fs.existsSync(jbr)) {
     env.JAVA_HOME = jbr
     env.PATH = `${jbr}/bin${process.platform === 'win32' ? ';' : ':'}${env.PATH}`
   }

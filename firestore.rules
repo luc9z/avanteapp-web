@@ -36,6 +36,18 @@ service cloud.firestore {
                 .hasAny(['averageRating', 'ratingCount', 'disabled']);
     }
 
+    // Plano pago só o servidor ativa (pagamento confirmado ou cupom).
+    // Antes, o próprio usuário gravava plan: 'premium' no perfil e ganhava
+    // o Destaque sem pagar. O dono pode apenas voltar para o Free.
+    function planoIntacto() {
+      let mudou = request.resource.data.diff(resource.data).affectedKeys();
+      return !mudou.hasAny(['plan', 'featured', 'planExpiresAt', 'planActivatedAt',
+                            'planCheckoutId', 'planPeriodo', 'planCoupon'])
+        || (request.resource.data.get('plan', 'free') == 'free'
+            && request.resource.data.get('featured', false) == false
+            && !mudou.hasAny(['planExpiresAt', 'planCheckoutId', 'planPeriodo', 'planCoupon']));
+    }
+
     // CPF da conta (cpfHash): gravado uma única vez, no MESMO lote que cria
     // a reserva em cpfs/{hash} com o uid desta conta. Depois não muda pelo
     // app: trocar deixaria "soltar" um CPF e reservar o de outra pessoa.
@@ -61,11 +73,17 @@ service cloud.firestore {
             || ehVet(resource.data.get('profession', ''))
             || isVetUser());
 
+      // Conta nova nasce no Free: sem isto, bastava criar o próprio
+      // documento já com plan: 'premium'.
       allow create: if request.auth != null
-        && (request.auth.uid == userId || isAdmin());
+        && (isAdmin()
+            || (request.auth.uid == userId
+                && request.resource.data.get('plan', 'free') == 'free'
+                && request.resource.data.get('featured', false) == false));
       allow update: if request.auth != null
         && (isAdmin()
-            || (request.auth.uid == userId && camposProtegidosIntactos() && cpfHashIntacto()));
+            || (request.auth.uid == userId && camposProtegidosIntactos()
+                && cpfHashIntacto() && planoIntacto()));
       allow delete: if isAdmin();
     }
 
@@ -297,7 +315,10 @@ service cloud.firestore {
 
     // Config (plans, coupons, etc.): todos autenticados leem; só admin escreve
     match /config/{docId} {
-      allow read: if request.auth != null;
+      // Os cupons ficam de fora: lidos por qualquer conta, um cupom de 100%
+      // virava Premium de graça para quem abrisse o console do navegador.
+      // Quem valida cupom é a Cloud Function (redeemCoupon).
+      allow read: if isAdmin() || (request.auth != null && docId != 'coupons');
       allow write: if isAdmin();
     }
 

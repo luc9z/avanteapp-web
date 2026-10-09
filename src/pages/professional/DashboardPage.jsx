@@ -427,6 +427,11 @@ export default function DashboardPage() {
         {(() => {
           const ehPremium = ['premium', 'destaque'].includes(profile?.plan)
           const plano = nomeDoPlano
+          // Plano pago vence (PIX não renova sozinho). Perto do fim, o
+          // cartão vira um lembrete de renovação.
+          const vence = profile?.planExpiresAt?.toDate?.() || null
+          const dias = vence ? Math.ceil((vence.getTime() - Date.now()) / 864e5) : null
+          const renovar = dias != null && dias <= 5
           return (
             <Link to="/plans" data-coach="vet-plano"
               className={`flex items-center gap-3 rounded-2xl p-4 transition-all
@@ -443,9 +448,12 @@ export default function DashboardPage() {
                 <p className={`font-bold text-sm mt-0.5 ${ehPremium ? 'text-gray-800' : 'text-white'}`}>
                   {ehPremium ? 'Gerenciar assinatura' : 'Apareça primeiro na busca'}
                 </p>
-                <p className={`text-xs mt-0.5 ${ehPremium ? 'text-gray-500' : 'text-white/85'}`}>
-                  {ehPremium
-                    ? 'Trocar de plano ou cancelar quando quiser'
+                <p className={`text-xs mt-0.5 ${renovar ? 'font-semibold text-red-500' : ehPremium ? 'text-gray-500' : 'text-white/85'}`}>
+                  {renovar
+                    ? (dias <= 0 ? 'Vence hoje. Renove para não perder o plano.'
+                      : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}. Renove para não perder o plano.`)
+                    : vence ? `Vale até ${vence.toLocaleDateString('pt-BR')}`
+                    : ehPremium ? 'Trocar de plano quando quiser'
                     : 'Receba mais pedidos com o selo de destaque'}
                 </p>
               </div>
@@ -455,7 +463,7 @@ export default function DashboardPage() {
                   ? 'border border-primary/40 text-primary'
                   : 'bg-white text-amber-700 shadow-sm'
               }`}>
-                {ehPremium ? 'Trocar' : 'Ver planos'}
+                {renovar ? 'Renovar' : ehPremium ? 'Trocar' : 'Ver planos'}
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>

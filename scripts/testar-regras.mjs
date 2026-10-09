@@ -60,6 +60,9 @@ await env.withSecurityRulesDisabled(async ctx => {
     clientId: CLIENTE, professionalId: VET, status: 'orcamento',
     quote: { total: 500, items: [], approvedAt: null },
   })
+  await setDoc(doc(d, 'config', 'plans'), { plans: [{ id: 'premium', price: 59.9 }] })
+  await setDoc(doc(d, 'config', 'coupons'), { BEMVINDO: { discount: 100, active: true } })
+  await setDoc(doc(d, 'payments', 'bill_do_vet'), { uid: VET, planId: 'premium', centavos: 5990, status: 'pago' })
 })
 
 let ok = 0, falhou = 0
@@ -166,6 +169,34 @@ await teste('admin lista os códigos', () =>
   assertSucceeds(getDocs(collection(db(ADMIN), 'referralCodes'))))
 await teste('dono NÃO apaga o código (só o admin)', () =>
   assertFails(deleteDoc(doc(db(VET), 'referralCodes', 'ANA1234'))))
+
+console.log('\n== Plano pago só pelo servidor ==')
+await teste('vet NÃO se dá o Premium sozinho', () =>
+  assertFails(updateDoc(doc(db(VET), 'users', VET), { plan: 'premium', featured: true })))
+await teste('vet NÃO se dá o selo de Destaque sem plano', () =>
+  assertFails(updateDoc(doc(db(VET), 'users', VET), { featured: true })))
+await teste('vet NÃO estica o vencimento do plano', () =>
+  assertFails(updateDoc(doc(db(VET), 'users', VET), { planExpiresAt: new Date('2099-01-01') })))
+await teste('conta nova NÃO nasce Premium', () =>
+  assertFails(setDoc(doc(db('conta_nova_2'), 'users', 'conta_nova_2'), { uid: 'conta_nova_2', plan: 'premium' })))
+await teste('conta nova nasce normal (sem plano)', () =>
+  assertSucceeds(setDoc(doc(db('conta_nova_3'), 'users', 'conta_nova_3'), { uid: 'conta_nova_3', name: 'Nova' })))
+await teste('vet pode voltar para o Free', () =>
+  assertSucceeds(updateDoc(doc(db(VET), 'users', VET), { plan: 'free', featured: false, planActivatedAt: new Date() })))
+await teste('admin ajusta o plano de alguém', () =>
+  assertSucceeds(updateDoc(doc(db(ADMIN), 'users', VET2), { plan: 'premium', featured: true })))
+await teste('qualquer conta lê o catálogo de planos', () =>
+  assertSucceeds(getDoc(doc(db(CLIENTE), 'config', 'plans'))))
+await teste('ninguém lê a lista de cupons (100% = Premium de graça)', () =>
+  assertFails(getDoc(doc(db(VET), 'config', 'coupons'))))
+await teste('admin lê os cupons', () =>
+  assertSucceeds(getDoc(doc(db(ADMIN), 'config', 'coupons'))))
+await teste('vet lê o próprio pagamento', () =>
+  assertSucceeds(getDoc(doc(db(VET), 'payments', 'bill_do_vet'))))
+await teste('outra conta NÃO lê o pagamento alheio', () =>
+  assertFails(getDoc(doc(db(VET2), 'payments', 'bill_do_vet'))))
+await teste('ninguém marca pagamento como pago pelo app', () =>
+  assertFails(setDoc(doc(db(VET), 'payments', 'bill_falso'), { uid: VET, status: 'pago' })))
 
 console.log('\n== Um CPF, uma conta ==')
 // Hashes de mentira no formato certo (64 hex). O app usa SHA-256 do CPF.
