@@ -40,7 +40,7 @@ export default function RegisterPage() {
 
   return (
     <div className="page-container flex flex-col px-6 py-10">
-      <div className="flex-1 flex flex-col max-w-sm mx-auto w-full gap-8">
+      <div className="flex-1 flex flex-col max-w-md mx-auto w-full gap-8">
         {/* Cabeçalho DENTRO da coluna do formulário. Solto na largura
             toda, no computador ele ficava colado na esquerda, longe dos
             campos. A flecha é uma caixa flex: como link inline, o ícone

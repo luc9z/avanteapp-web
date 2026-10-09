@@ -53,6 +53,9 @@ const chamarConsulta = httpsCallable(functions, 'consultarCpf')
 // Sem a função publicada (plano Spark), a primeira tentativa falha e as
 // próximas da mesma sessão nem saem: o cadastro segue manual, sem erro.
 let consultaIndisponivel = false
+// Mesmo CPF não é consultado duas vezes na sessão. Cada conta tem 3
+// consultas por dia: apagar e redigitar um dígito gastava o limite à toa.
+const jaConsultados = new Map()
 
 /**
  * Nome e nascimento do CPF, para preencher o cadastro.
@@ -61,13 +64,15 @@ let consultaIndisponivel = false
  */
 export async function consultarCpf(cpf) {
   if (consultaIndisponivel || !isValidCPF(cpf)) return null
+  const chave = digitosCpf(cpf)
+  if (jaConsultados.has(chave)) return jaConsultados.get(chave)
   try {
-    const { data } = await chamarConsulta({ cpf: digitosCpf(cpf) })
-    if (data?.jaCadastrado) return { jaCadastrado: true }
-    if (data?.encontrado && data.nome) {
-      return { nome: nomeProprio(data.nome), nascimento: data.nascimento || null }
-    }
-    return null
+    const { data } = await chamarConsulta({ cpf: chave })
+    let r = null
+    if (data?.jaCadastrado) r = { jaCadastrado: true }
+    else if (data?.encontrado && data.nome) r = { nome: nomeProprio(data.nome), nascimento: data.nascimento || null }
+    jaConsultados.set(chave, r)
+    return r
   } catch (e) {
     // Limite atingido é passageiro; função ausente ou fora do ar, não.
     if (e?.code !== 'functions/resource-exhausted') consultaIndisponivel = true
