@@ -113,10 +113,27 @@ async function clienteDaConta(env, db, uid, emailDoLogin) {
 }
 
 /* ── Rotas do app (exigem login) ── */
+
+/**
+ * Não deixa pagar (ou ativar por cupom) o plano que a conta já tem em vigor.
+ * Renovar o mesmo plano só abre nos últimos dias antes de vencer.
+ */
+async function travaMesmoPlano(db, uid, planoId) {
+  const u = (await db.ler(`users/${uid}`))?.dados || {}
+  const r = pg.podePagar({ agora: Date.now(), planoAtual: u.plan, expiraAtual: u.planExpiresAt, planoNovo: planoId })
+  if (r.ok) return u
+  const ate = r.ate && r.ate.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+  const msg = r.motivo === 'cedo'
+    ? `Este já é o seu plano, válido até ${ate}. A renovação abre ${pg.JANELA_RENOVACAO_DIAS} dias antes de vencer.`
+    : 'Este já é o seu plano e ele não tem vencimento.'
+  throw new Falha(409, 'ja-ativo', msg)
+}
+
 async function checkout(env, db, eu, dados) {
   const plano = pg.planoDoCatalogo(await catalogo(db), String(dados.planId || ''))
   if (!plano) throw new Falha(404, 'nao-encontrado', 'Plano não encontrado.')
   if (!(Number(plano.price) > 0)) throw new Falha(400, 'invalido', 'Este plano não exige pagamento.')
+  await travaMesmoPlano(db, eu.uid, plano.id)
   const periodo = pg.periodoValido(dados.period)
 
   let cupom = null
@@ -156,11 +173,11 @@ async function checkout(env, db, eu, dados) {
 async function cupom(env, db, eu, dados) {
   const plano = pg.planoDoCatalogo(await catalogo(db), String(dados.planId || ''))
   if (!plano) throw new Falha(404, 'nao-encontrado', 'Plano não encontrado.')
+  const u = await travaMesmoPlano(db, eu.uid, plano.id)
   const c = await cupomValido(db, dados.code)
   if (!c) throw new Falha(404, 'nao-encontrado', 'Cupom inválido ou expirado.')
   if (c.discount < 100) return { activated: false, discount: c.discount }
 
-  const u = (await db.ler(`users/${eu.uid}`))?.dados || {}
   const agora = new Date()
   const escritas = [
     db.escrita(`users/${eu.uid}`, {

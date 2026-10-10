@@ -32,6 +32,9 @@ function Check({ locked }) {
   )
 }
 
+/** Igual a JANELA_RENOVACAO_DIAS em functions/pagamentos.js. */
+const JANELA_RENOVACAO = 5
+
 export default function PlansPage() {
   const { user } = useAuth()
   const { theme } = useTheme()
@@ -81,10 +84,25 @@ export default function PlansPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Voltar do checkout pelo botão do navegador restaura a página antiga da
+  // memória (bfcache): botão girando e plano desatualizado. Recarrega.
+  useEffect(() => {
+    const aoVoltar = e => { if (e.persisted) window.location.reload() }
+    window.addEventListener('pageshow', aoVoltar)
+    return () => window.removeEventListener('pageshow', aoVoltar)
+  }, [])
+
   const selected = useMemo(
     () => (plans || []).find(p => p.id === selectedId) || null,
     [plans, selectedId]
   )
+
+  // Mesmo plano em vigor não se paga de novo: a renovação só abre nos
+  // últimos JANELA_RENOVACAO dias. Plano de cupom (sem vencimento) nunca.
+  // O servidor confere igual (functions/pagamentos.js, podePagar).
+  const renovaAPartirDe = validade ? new Date(validade.getTime() - JANELA_RENOVACAO * 864e5) : null
+  const mesmoPlanoTravado = !!selected && selected.id === currentPlan
+    && (!validade || Date.now() < renovaAPartirDe.getTime())
 
   // Anual = 12 meses pelo preço de 10 (2 meses grátis)
   const priceFor = p => period === 'anual' ? p.price * 10 : p.price
@@ -117,7 +135,7 @@ export default function PlansPage() {
     const code = coupon.trim().toUpperCase()
     if (!code) return showToast('Digite o código do cupom', 'error')
     if (!selectedId) return showToast('Selecione um plano primeiro.', 'error')
-    if (selectedId === currentPlan && !validade) return showToast('Este já é seu plano atual.', 'error')
+    if (mesmoPlanoTravado) return showToast('Este já é o seu plano atual.', 'error')
     setCouponBusy(true)
     try {
       // O servidor valida o cupom: a lista de cupons não é legível pelo app.
@@ -138,14 +156,14 @@ export default function PlansPage() {
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
       showToast(e?.codigo === 'nao-encontrado' ? 'Cupom inválido ou expirado.'
+        : e?.codigo === 'ja-ativo' ? e.message
         : 'Não foi possível validar o cupom agora. Tente de novo.', 'error')
     } finally { setCouponBusy(false) }
   }
 
   async function handlePay() {
     if (!selected) return
-    // Plano atual sem vencimento (Free ou cupom) não tem o que renovar.
-    if (selected.id === currentPlan && !validade) return
+    if (mesmoPlanoTravado) return
     setPaying(true)
     try {
       if (selected.price <= 0) {
@@ -378,17 +396,19 @@ export default function PlansPage() {
               )}
             </p>
           </div>
-          <button onClick={handlePay} disabled={paying || !selected || (selected.id === currentPlan && !validade)}
+          <button onClick={handlePay} disabled={paying || !selected || mesmoPlanoTravado}
             className="bg-white text-gray-900 font-bold rounded-full px-10 py-3.5 text-sm
                        hover:bg-gray-100 active:scale-[0.98] disabled:opacity-50 transition-all">
             {paying ? <Spinner size={16} />
-              : selected?.id === currentPlan ? (validade ? 'Renovar' : 'Plano já ativo')
+              : mesmoPlanoTravado ? 'Plano já ativo'
+              : selected?.id === currentPlan ? 'Renovar'
               : selected?.price > 0 ? 'Assinar e pagar' : 'Ativar grátis'}
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
           Pague com PIX ou cartão. O mensal vale 30 dias e o anual 365, em até 12x no cartão.
-          {validade && <> Seu plano atual vale até <strong className="text-white/50">{validade.toLocaleDateString('pt-BR')}</strong>.</>}
+          {validade && <> Seu plano atual vale até <strong className="text-white/50">{validade.toLocaleDateString('pt-BR')}</strong>{
+            mesmoPlanoTravado && <>; a renovação abre em {renovaAPartirDe.toLocaleDateString('pt-BR')}</>}.</>}
           {cupomParcial && <> Cupom <strong className="text-white/50">{cupomParcial.code}</strong>: {cupomParcial.discount}% de desconto aplicado no pagamento.</>}
         </p>
       </div>

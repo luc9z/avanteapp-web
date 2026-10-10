@@ -81,7 +81,24 @@ function pagamentoConfere(checkout, registro) {
   return { ok: true }
 }
 
+/** Renovar o mesmo plano só abre a partir de tantos dias antes de vencer. */
+const JANELA_RENOVACAO_DIAS = 5
+
+/**
+ * Pode pagar este plano agora? Trocar de plano sempre pode. O MESMO plano
+ * só quando faltam até 5 dias para vencer: antes, a pessoa pagava de novo
+ * por engano o que já tinha. Plano de cupom não vence, então não renova.
+ */
+function podePagar({ agora, planoAtual, expiraAtual, planoNovo }) {
+  if ((planoAtual || 'free') !== planoNovo) return { ok: true }
+  if (!expiraAtual) return { ok: false, motivo: 'sem-vencimento' }
+  const faltam = (new Date(expiraAtual).getTime() - agora) / 864e5
+  if (faltam > JANELA_RENOVACAO_DIAS) return { ok: false, motivo: 'cedo', ate: new Date(expiraAtual) }
+  return { ok: true }
+}
+
 module.exports = {
+  JANELA_RENOVACAO_DIAS, podePagar,
   PLANOS_PADRAO, DIAS_POR_PERIODO, PLANOS_DESTAQUE, ORIGENS,
   planoDoCatalogo, periodoValido, valorEmCentavos, novaExpiracao,
   origemSegura, chaveProduto, pagamentoConfere,
