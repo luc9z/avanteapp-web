@@ -1,0 +1,19 @@
+# Servidor do AVANTE no Cloudflare Workers (plano grátis).
+# Pagamentos (AbacatePay), cupom, consulta de CPF e vencimento de planos.
+# O banco e o login continuam no Firebase (plano Spark).
+name = "avante-servidor"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+# functions/cpf.js usa o módulo crypto do Node.
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+FIREBASE_PROJECT_ID = "avante-pro"
+
+# 03:00 em Brasília = 06:00 UTC: planos vencidos voltam ao Free.
+[triggers]
+crons = ["0 6 * * *"]
+
+# Segredos (npx wrangler secret put NOME), nunca neste arquivo:
+#   ABACATEPAY_API_KEY, ABACATEPAY_WEBHOOK_SECRET, APICPF_KEY,
+#   GOOGLE_SERVICE_ACCOUNT (o JSON da conta de serviço do Google)

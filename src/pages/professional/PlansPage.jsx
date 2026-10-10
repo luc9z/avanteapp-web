@@ -6,8 +6,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../../firebase'
+import { db } from '../../firebase'
+import { chamarServidor } from '../../services/servidor'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
@@ -16,8 +16,6 @@ import { VetBottomNav } from '../../components/common/BottomNav'
 import { useTheme } from '../../contexts/ThemeContext'
 import { avisarAtivacaoDePlano } from '../../services/origem'
 
-const createCheckout = httpsCallable(functions, 'createPlanCheckout')
-const redeemCoupon = httpsCallable(functions, 'redeemCoupon')
 
 const brl = v => Number(v) <= 0 ? 'Grátis' : `R$ ${Number(v).toFixed(2).replace('.', ',')}`
 
@@ -96,7 +94,7 @@ export default function PlansPage() {
    * Cupom de lançamento gravado pelo próprio app. Só funciona enquanto as
    * regras antigas estiverem no ar: com as novas, plano pago só o servidor
    * grava. É a reserva para quando a Cloud Function ainda não existe
-   * (plano Spark). Remover depois que redeemCoupon estiver publicada.
+   * (servidor ainda não publicado). Remover quando o Worker estiver no ar.
    */
   async function cupomPeloApp(code) {
     const LAUNCH_COUPONS = { BEMVINDO: 100, AVANTE100: 100 }
@@ -112,8 +110,8 @@ export default function PlansPage() {
     return true
   }
 
-  /** functions/internal: a função não existe ou não respondeu (ainda sem Blaze). */
-  const servidorAusente = e => e?.code === 'functions/internal' || e?.code === 'functions/unavailable'
+  /** Servidor não configurado ou fora do ar (Worker ainda não publicado). */
+  const servidorAusente = e => e?.codigo === 'indisponivel'
 
   async function handleRedeemCoupon() {
     const code = coupon.trim().toUpperCase()
@@ -125,7 +123,7 @@ export default function PlansPage() {
       // O servidor valida o cupom: a lista de cupons não é legível pelo app.
       let data
       try {
-        ({ data } = await redeemCoupon({ planId: selectedId, code }))
+        data = await chamarServidor('/cupom', { planId: selectedId, code })
       } catch (e) {
         if (servidorAusente(e) && await cupomPeloApp(code)) data = { activated: true }
         else throw e
@@ -139,8 +137,7 @@ export default function PlansPage() {
       }
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
-      // Cupom inválido chega como functions/not-found.
-      showToast(e?.code === 'functions/not-found' ? 'Cupom inválido ou expirado.'
+      showToast(e?.codigo === 'nao-encontrado' ? 'Cupom inválido ou expirado.'
         : 'Não foi possível validar o cupom agora. Tente de novo.', 'error')
     } finally { setCouponBusy(false) }
   }
@@ -167,7 +164,7 @@ export default function PlansPage() {
 
       // Valor, período e vencimento são decididos no servidor. Daqui só
       // vai a escolha; a confirmação chega pelo webhook da AbacatePay.
-      const { data } = await createCheckout({
+      const data = await chamarServidor('/checkout', {
         planId: selected.id,
         period,
         origin: window.location.origin,
@@ -179,7 +176,7 @@ export default function PlansPage() {
       if (import.meta.env.DEV) console.error(e)
       showToast(servidorAusente(e)
         ? 'O pagamento ainda não está disponível. Tente mais tarde ou use um cupom.'
-        : e?.message && !/^(internal|INTERNAL)$/.test(e.message) ? e.message
+        : e?.codigo && e.message ? e.message
         : 'Não foi possível iniciar o pagamento.', 'error')
       setPaying(false)
     }

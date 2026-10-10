@@ -14,8 +14,8 @@
  * AVANTE.
  */
 import { doc, getDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase'
+import { db } from '../firebase'
+import { chamarServidor } from './servidor'
 import { hashCpf, digitosCpf, nomeProprio } from '../utils/cpf'
 import { isValidCPF } from '../utils/validators'
 
@@ -49,8 +49,7 @@ export async function reservarCpf(uid, cpf) {
   }
 }
 
-const chamarConsulta = httpsCallable(functions, 'consultarCpf')
-// Sem a função publicada (plano Spark), a primeira tentativa falha e as
+// Sem o servidor publicado, a primeira tentativa falha e as
 // próximas da mesma sessão nem saem: o cadastro segue manual, sem erro.
 let consultaIndisponivel = false
 // Mesmo CPF não é consultado duas vezes na sessão. Cada conta tem 3
@@ -67,7 +66,7 @@ export async function consultarCpf(cpf) {
   const chave = digitosCpf(cpf)
   if (jaConsultados.has(chave)) return jaConsultados.get(chave)
   try {
-    const { data } = await chamarConsulta({ cpf: chave })
+    const data = await chamarServidor('/cpf', { cpf: chave })
     let r = null
     if (data?.jaCadastrado) r = { jaCadastrado: true }
     else if (data?.encontrado && data.nome) r = { nome: nomeProprio(data.nome), nascimento: data.nascimento || null }
@@ -75,8 +74,8 @@ export async function consultarCpf(cpf) {
     return r
   } catch (e) {
     // Limite atingido é passageiro; função ausente ou fora do ar, não.
-    if (e?.code !== 'functions/resource-exhausted') consultaIndisponivel = true
-    if (import.meta.env.DEV) console.info('[cpf] consulta indisponível:', e?.code || e)
+    if (e?.codigo !== 'limite') consultaIndisponivel = true
+    if (import.meta.env.DEV) console.info('[cpf] consulta indisponível:', e?.codigo || e)
     return null
   }
 }
