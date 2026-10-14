@@ -235,6 +235,8 @@ export default function CoachTour() {
         text: d.text || '',
         cta: 'Entendi',
         avulso: true,
+        // Tela em que o destaque vale. Ver o efeito de pathname abaixo.
+        rota: window.location.pathname,
       })
     }
     window.addEventListener('coach:destacar', onDestacar)
@@ -243,7 +245,9 @@ export default function CoachTour() {
 
   // Trocar de tela cancela o destaque: ele aponta um elemento daquela
   // tela e ficaria preso procurando um alvo que não existe mais.
-  useEffect(() => { setDestaque(null) }, [pathname])
+  // Só cancela se a tela for OUTRA: quando a página nova demora a
+  // carregar, este efeito rodava depois de o destaque chegar e o apagava.
+  useEffect(() => { setDestaque(d => (d && d.rota !== pathname ? null : d)) }, [pathname])
 
   // Trocou de conta: o espelho em memória era do usuário anterior e
   // esconderia os tutoriais de quem acabou de entrar.

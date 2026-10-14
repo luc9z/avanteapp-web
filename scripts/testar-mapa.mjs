@@ -29,6 +29,31 @@ const nav = fs.readFileSync('src/components/common/BottomNav.jsx', 'utf8')
 // As abas que existem de verdade na barra inferior.
 const ABAS = new Set([...nav.matchAll(/label="([^"]+)"/g)].map(m => m[1]))
 
+/**
+ * Código da tela de uma rota: o arquivo da página e os componentes
+ * locais que ela importa (um nível). Sai de App.jsx:
+ *   <Route path="/x" element={<Guarda><Pagina /></Guarda>} />
+ *   const Pagina = lazy(() => import('./pages/.../Pagina'))
+ */
+function codigoDaRota(rota) {
+  const linha = app.split('\n').find(l => l.includes(`path="${rota}"`)) || ''
+  const nomes = [...linha.matchAll(/<([A-Z]\w+)\s*\/>/g)].map(x => x[1])
+  let codigo = ''
+  for (const nome of nomes) {
+    const imp = app.match(new RegExp(`const ${nome}\\s*=\\s*lazy\\(\\(\\) => import\\('([^']+)'\\)\\)`))
+    if (!imp) continue
+    const arq = path.join('src', imp[1]) + '.jsx'
+    if (!fs.existsSync(arq)) continue
+    const pagina = fs.readFileSync(arq, 'utf8')
+    codigo += pagina
+    for (const [, rel] of pagina.matchAll(/from '(\.{1,2}\/[^']+)'/g)) {
+      const dep = path.join(path.dirname(arq), rel) + (rel.endsWith('.jsx') ? '' : '.jsx')
+      if (fs.existsSync(dep)) codigo += fs.readFileSync(dep, 'utf8')
+    }
+  }
+  return codigo
+}
+
 let erros = 0
 const falha = msg => { console.log(`  FALHOU  ${msg}`); erros++ }
 
@@ -48,6 +73,10 @@ for (const m of MAPA) {
     if (!nome) falha(`${m.chave}: alvo mal formado (${m.alvo})`)
     else if (!src.includes(`data-coach="${nome}"`)) {
       falha(`${m.chave}: data-coach="${nome}" não existe em nenhuma tela`)
+    } else if (!codigoDaRota(m.rota).includes(`data-coach="${nome}"`)) {
+      // Existir em OUTRA tela não serve: o "Ir e mostrar" chegava em
+      // /pending-requests procurando um alvo que só existe no Painel.
+      falha(`${m.chave}: data-coach="${nome}" não está na tela de ${m.rota}`)
     }
   }
 

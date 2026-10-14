@@ -16,8 +16,23 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { destacarNoApp } from './CoachTour'
 
-/** Espera a tela nova montar antes de procurar o elemento. */
-const ESPERA_RENDER = 450
+/**
+ * Espera o elemento existir antes de pedir o destaque.
+ *
+ * Um tempo fixo não bastava: a tela é carregada sob demanda e várias
+ * seções só aparecem depois que os dados chegam. O destaque saía antes
+ * do alvo existir e não mostrava nada.
+ */
+const ESPERA_MAX = 5000
+function quandoExistir(selector, fn) {
+  const inicio = Date.now()
+  const tentar = () => {
+    if (document.querySelector(selector)) return fn()
+    if (Date.now() - inicio < ESPERA_MAX) setTimeout(tentar, 150)
+  }
+  // Um respiro para a navegação acontecer e a tela antiga sair.
+  setTimeout(tentar, 120)
+}
 
 export default function AIDestinoCard({ destino, onNavegar }) {
   const navigate = useNavigate()
@@ -31,13 +46,11 @@ export default function AIDestinoCard({ destino, onNavegar }) {
     onNavegar?.()               // fecha o chat, senão ele cobre o destaque
     if (!jaEstaAqui) navigate(destino.rota)
     if (!destino.alvo) return
-    setTimeout(() => {
-      destacarNoApp({
-        selector: destino.alvo,
-        title: destino.titulo,
-        text: destino.resumo,
-      })
-    }, jaEstaAqui ? 120 : ESPERA_RENDER)
+    quandoExistir(destino.alvo, () => destacarNoApp({
+      selector: destino.alvo,
+      title: destino.titulo,
+      text: destino.resumo,
+    }))
   }
 
   return (

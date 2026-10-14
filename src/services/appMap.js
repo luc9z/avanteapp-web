@@ -104,14 +104,14 @@ export const MAPA = [
   },
   {
     chave: 'solicitacoes', papel: 'vet', titulo: 'Aceitar ou recusar solicitações',
-    aba: 'Início', rota: '/pending-requests', alvo: '[data-coach="vet-pending"]',
+    aba: 'Início', rota: '/dashboard', alvo: '[data-coach="vet-pending"]',
     passos: ['Abra a aba Início', 'Vá em Solicitações Pendentes',
              'Toque em Ver todas para a lista completa', 'Abra o pedido e use Aceitar ou Recusar'],
     resumo: 'Os pedidos que esperam sua resposta ficam aqui.',
   },
   {
     chave: 'orcamento', papel: 'vet', titulo: 'Enviar orçamento',
-    aba: 'Início', rota: '/pending-requests', alvo: '[data-coach="vet-pending"]',
+    aba: 'Início', rota: '/dashboard', alvo: '[data-coach="vet-pending"]',
     passos: ['Abra a solicitação já aceita', 'Toque em Enviar Orçamento',
              'Use Sugerir com IA para montar os itens', 'Confira os valores e envie'],
     resumo: 'A IA monta a proposta; o valor final é sempre seu.',
