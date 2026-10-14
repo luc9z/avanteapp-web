@@ -20,11 +20,28 @@ import { readUser, writeUser, removeUser } from '../../services/userStorage'
 
 const INITIAL = {
   role: 'assistant',
-  // Curta de propósito: os assuntos já aparecem logo abaixo. O que a
-  // frase acrescenta é COMO perguntar - dizer peso e espécie muda a
-  // qualidade da resposta mais do que qualquer outra coisa.
-  content: 'Pergunte direto. Em cálculo de dose, diga a espécie e o peso: é o que muda a resposta.',
+  // Primeiro o assunto, depois as opções: com as duas listas juntas, o
+  // vet lia oito botões antes de achar o que queria.
+  content: 'Sua dúvida é sobre o app ou sobre um atendimento?',
   isInitial: true,
+}
+
+/* Os dois caminhos do primeiro passo. "Não sei" vai direto para o
+   campo de texto: quem não se encaixa em nenhum escreve a dúvida. */
+const ASSUNTOS = [
+  { id: 'app', titulo: 'Dúvidas sobre o app',
+    descricao: 'Como ficar online, aceitar pedidos, definir horários e enviar orçamento.',
+    icone: 'M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3' },
+  { id: 'clinico', titulo: 'Apoio clínico',
+    descricao: 'Cálculo de dose, diagnóstico diferencial, protocolos e texto de receita.',
+    icone: 'M11 2v2M5 2v2M5 3H4a2 2 0 00-2 2v4a6 6 0 0012 0V5a2 2 0 00-2-2h-1M8 15a6 6 0 0012 0v-3M22 10a2 2 0 11-4 0 2 2 0 014 0z' },
+]
+
+/* O exemplo do campo de texto acompanha o assunto escolhido. */
+const PLACEHOLDER = {
+  app: 'Ex: como mudo meu horário de atendimento?',
+  clinico: 'Ex: dose de meloxicam para cão de 12 kg',
+  naosei: 'Escreva sua dúvida',
 }
 
 /* Cada atalho leva um exemplo pronto no formato que gera boa resposta.
@@ -104,6 +121,8 @@ export default function VetAssistant({ open, onClose, specialties = [], todayCou
   const [messages, setMessages] = useState(() => loadMessages(uid))
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  // Primeiro passo do menu: null (escolher), 'app', 'clinico' ou 'naosei'.
+  const [assunto, setAssunto] = useState(null)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const hasUserMessage = messages.some(m => m.role === 'user')
@@ -144,7 +163,14 @@ export default function VetAssistant({ open, onClose, specialties = [], todayCou
 
   function resetChat() {
     setMessages([INITIAL])
+    setAssunto(null)
     removeUser(CHAT_KEY, uid)
+  }
+
+  function escolherAssunto(id) {
+    setAssunto(id)
+    // "Não sei": a resposta é escrever, então o cursor já vai para o campo.
+    if (id === 'naosei') setTimeout(() => inputRef.current?.focus(), 50)
   }
 
   async function send(text) {
@@ -224,7 +250,8 @@ export default function VetAssistant({ open, onClose, specialties = [], todayCou
                   ? 'bg-primary text-white chat-mine'
                   : 'bg-gray-100 text-gray-800 chat-other'
               }`}>
-                <TextoIA>{m.content}</TextoIA>
+                {/* Conversa salva antes da mudança guarda a frase antiga. */}
+                <TextoIA>{m.isInitial ? INITIAL.content : m.content}</TextoIA>
               </div>
               {(m.destinos || []).map(d => (
                 <div key={d.chave} className="w-full max-w-[85%]">
@@ -242,18 +269,66 @@ export default function VetAssistant({ open, onClose, specialties = [], todayCou
             </div>
           )}
 
-          {!hasUserMessage && (
-            <div className="flex flex-col gap-4 mt-2">
-              <AIAtalhosAjuda destinos={atalhos} onEscolher={responderAtalho} />
-              <div className="flex flex-col gap-2">
-                <p className="ia-opcao-grupo">Apoio clínico</p>
-                {QUICK.map(q => (
-                  <button key={q.label} onClick={() => send(q.exemplo)} className="ia-opcao">
-                    <span>{q.label}</span>
-                    <span className="ia-opcao-exemplo">{q.exemplo}</span>
-                  </button>
-                ))}
-              </div>
+          {!hasUserMessage && !assunto && (
+            <div className="flex flex-col gap-2 mt-2">
+              {ASSUNTOS.map(a => (
+                <button key={a.id} type="button" onClick={() => escolherAssunto(a.id)}
+                  className="ia-opcao !flex-row items-center !gap-3 !py-3.5">
+                  <span className="w-11 h-11 rounded-xl bg-primary/10 text-primary dark:bg-brand-salvia/15 dark:text-brand-salvia
+                                   flex items-center justify-center flex-shrink-0">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8}
+                      strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden>
+                      <path d={a.icone} />
+                    </svg>
+                  </span>
+                  <span className="flex flex-col gap-0.5 min-w-0">
+                    <span>{a.titulo}</span>
+                    <span className="ia-opcao-exemplo">{a.descricao}</span>
+                  </span>
+                </button>
+              ))}
+              <button type="button" onClick={() => escolherAssunto('naosei')}
+                className="self-center mt-1 px-3 min-h-[44px] text-sm font-semibold text-primary dark:text-brand-salvia
+                           rounded-xl hover:bg-primary/5">
+                Não sei, quero escrever minha dúvida
+              </button>
+            </div>
+          )}
+
+          {!hasUserMessage && assunto && (
+            <div className="flex flex-col gap-2 mt-2">
+              <button type="button" onClick={() => setAssunto(null)}
+                className="self-start -ml-2 px-2 min-h-[40px] flex items-center gap-1 text-sm font-semibold
+                           text-gray-500 hover:text-gray-800 rounded-lg">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                Voltar
+              </button>
+
+              {assunto === 'app' && <AIAtalhosAjuda destinos={atalhos} onEscolher={responderAtalho} />}
+
+              {assunto === 'clinico' && (
+                <>
+                  <p className="ia-opcao-grupo">Apoio clínico</p>
+                  <p className="text-xs text-gray-500 -mt-1 mb-1">
+                    Em cálculo de dose, diga a espécie e o peso: é o que muda a resposta.
+                  </p>
+                  {QUICK.map(q => (
+                    <button key={q.label} onClick={() => send(q.exemplo)} className="ia-opcao">
+                      <span>{q.label}</span>
+                      <span className="ia-opcao-exemplo">{q.exemplo}</span>
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {assunto === 'naosei' && (
+                <p className="text-sm text-gray-500">
+                  Escreva sua dúvida no campo abaixo, do jeito que vier. Eu entendo e respondo,
+                  seja sobre o app ou sobre um atendimento.
+                </p>
+              )}
             </div>
           )}
 
@@ -268,7 +343,7 @@ export default function VetAssistant({ open, onClose, specialties = [], todayCou
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Ex: dose de meloxicam para cão de 12 kg"
+              placeholder={PLACEHOLDER[assunto] || 'Escreva sua dúvida'}
               className="input-field flex-1"
             />
             <button type="submit" disabled={!input.trim() || loading}
