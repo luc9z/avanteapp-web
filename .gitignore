@@ -16,7 +16,7 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 
-# Claude Code (pasta local do assistente)
+# pasta local do assistente de código
 .claude/
 
 # OS
