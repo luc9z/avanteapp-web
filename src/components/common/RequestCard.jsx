@@ -63,7 +63,7 @@ function Avatar({ nome, foto, vazio }) {
  * @param {string} [p.foto]       foto da outra pessoa, quando já resolvida
  * @param {() => void} p.onClick
  */
-export default function RequestCard({ req, perspectiva, foto, onClick }) {
+export default function RequestCard({ req, perspectiva, foto, onClick, selecionado }) {
   const info = statusInfo(req.status)
   const ehCliente = perspectiva === 'client'
 
@@ -85,9 +85,11 @@ export default function RequestCard({ req, perspectiva, foto, onClick }) {
       type="button"
       data-coach="req-card"
       onClick={onClick}
-      className="card w-full h-full text-left flex flex-col gap-3 p-4
+      aria-current={selecionado ? 'true' : undefined}
+      className={`card w-full h-full text-left flex flex-col gap-3 p-4
                  transition-all duration-200 hover:shadow-card-hover
-                 hover:-translate-y-px active:translate-y-0 active:scale-[0.99]"
+                 hover:-translate-y-px active:translate-y-0 active:scale-[0.99]
+                 ${selecionado ? 'req-card-aberto' : ''}`}
     >
       <div className="flex items-start gap-3">
         <Avatar nome={outroNome} foto={foto} vazio={semAtribuicao} />

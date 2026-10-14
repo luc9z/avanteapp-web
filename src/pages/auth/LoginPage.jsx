@@ -6,6 +6,7 @@ import { isValidEmail } from '../../utils/validators'
 import Spinner from '../../components/common/Spinner'
 import Modal from '../../components/common/Modal'
 import AvanteLogo from '../../components/common/AvanteLogo'
+import TelaEntrada from '../../components/common/TelaEntrada'
 import PasswordInput from '../../components/common/PasswordInput'
 import { showToast } from '../../components/common/Toast'
 
@@ -44,10 +45,10 @@ export default function LoginPage() {
   const displayError = formError || error
 
   return (
-    <div className="page-container flex flex-col px-6 py-10">
+    <TelaEntrada className="flex flex-col px-6 py-10">
       <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full gap-8">
         <div className="flex flex-col items-center gap-3">
-          <AvanteLogo className="w-24 h-24 text-brand-verde dark:text-brand-creme" />
+          <AvanteLogo className="logo-so-celular w-24 h-24 text-brand-verde dark:text-brand-creme" />
           <h1 className="text-2xl font-bold text-primary">Bem-vindo ao AVANTE</h1>
           <p className="text-gray-500 text-sm text-center">
             Atendimento veterinário a domicílio, na cidade e no campo
@@ -144,6 +145,6 @@ export default function LoginPage() {
           className="input-field"
         />
       </Modal>
-    </div>
+    </TelaEntrada>
   )
 }

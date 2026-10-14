@@ -287,7 +287,7 @@ export default function ConfirmDataPage() {
   const brilho = destacar ? 'ring-2 ring-green-400/70 transition-shadow' : 'transition-shadow'
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-leitura">
       {/* Sem barra inferior do app: o perfil ainda não existe, e ela
           levava para o painel no meio do cadastro. */}
       <div className="topbar">

@@ -106,7 +106,7 @@ export default function RateRequestPage() {
   )
 
   return (
-    <div className="page-container pb-nav">
+    <div className="page-container largura-leitura pb-nav">
       {/* Topbar */}
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary">

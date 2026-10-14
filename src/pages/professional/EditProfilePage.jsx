@@ -209,7 +209,7 @@ export default function EditProfilePage() {
   )
 
   return (
-    <div className="page-container pb-nav">
+    <div className="page-container largura-leitura pb-nav">
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

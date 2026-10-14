@@ -269,7 +269,7 @@ export default function ReportsPage() {
   const goalFalta = Math.max(0, monthlyGoal - goalBase)
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-painel">
       <div className="topbar">
         <span className="page-title">Desempenho</span>
         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-green-600 bg-green-50 px-2.5 py-1 rounded-full">
@@ -281,7 +281,7 @@ export default function ReportsPage() {
       {loading ? (
         <div className="flex justify-center py-24"><Spinner size={32} color="#375337" /></div>
       ) : (
-        <div className="px-4 py-4 pb-nav flex flex-col gap-4">
+        <div className="px-4 py-4 pb-nav flex flex-col gap-4 painel-grade">
 
           {/* ── Filtro de período ───────────────────────────── */}
           <div data-coach="perf-period" className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">

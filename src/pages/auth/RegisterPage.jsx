@@ -5,6 +5,7 @@ import { isValidEmail, passwordIssue } from '../../utils/validators'
 import Spinner from '../../components/common/Spinner'
 import PasswordInput from '../../components/common/PasswordInput'
 import AvanteLogo from '../../components/common/AvanteLogo'
+import TelaEntrada from '../../components/common/TelaEntrada'
 import { showToast } from '../../components/common/Toast'
 import { codigoDeIndicacao } from '../../services/origem'
 
@@ -40,7 +41,7 @@ export default function RegisterPage() {
   const displayError = formError || error
 
   return (
-    <div className="page-container flex flex-col px-6 py-10">
+    <TelaEntrada className="flex flex-col px-6 py-10">
       <div className="flex-1 flex flex-col max-w-md mx-auto w-full gap-8">
         {/* Cabeçalho DENTRO da coluna do formulário. Solto na largura
             toda, no computador ele ficava colado na esquerda, longe dos
@@ -60,7 +61,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          <AvanteLogo className="w-20 h-20 text-brand-verde dark:text-brand-creme" />
+          <AvanteLogo className="logo-so-celular w-20 h-20 text-brand-verde dark:text-brand-creme" />
           <p className="text-gray-500 text-sm text-center">Leva menos de um minuto</p>
         </div>
 
@@ -145,6 +146,6 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
-    </div>
+    </TelaEntrada>
   )
 }

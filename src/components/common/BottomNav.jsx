@@ -8,6 +8,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import AIAssistant from '../client/AIAssistant'
 import VetAssistant from '../professional/VetAssistant'
 import { precisaDoCliente } from '../../utils/status'
+import NavRail from './NavRail'
 
 /* ─── Icons ──────────────────────────────────────────────────── */
 const HomeIcon = () => (
@@ -116,9 +117,20 @@ export function VetBottomNav() {
     return unsub
   }, [uid])
 
+  // Fonte única das abas. A barra de baixo e a lateral leem daqui, então
+  // aba nova aparece nas duas sem ninguém lembrar de copiar.
+  const abas = [
+    { to: '/dashboard',    label: 'Início',     icon: <HomeIcon />,     badge: unreadCount },
+    { to: '/agenda',       label: 'Agenda',     icon: <CalendarIcon /> },
+    { to: '/reports',      label: 'Desempenho', icon: <ReportsIcon /> },
+    { to: '/edit-profile', label: 'Perfil',     icon: <ProfileIcon /> },
+  ]
+
   return (
     <>
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
+      <NavRail abas={abas} onIA={() => setAiOpen(true)} />
+
+      <nav className="nav-barra lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
                     backdrop-blur-md border-t border-transparent flex items-stretch"
          style={{
            background: isDark ? 'rgba(22,32,22,0.95)' : 'rgba(255,255,255,0.92)',
@@ -184,9 +196,19 @@ export function ClientBottomNav() {
     return unsub
   }, [uid])
 
+  const abas = [
+    { to: '/home',         label: 'Buscar',    icon: <SearchIcon /> },
+    { to: notifCount > 0 ? '/my-requests?tab=acao' : '/my-requests',
+      label: 'Pedidos',    icon: <RequestsIcon />, badge: notifCount },
+    { to: '/favorites',    label: 'Favoritos', icon: <HeartIcon /> },
+    { to: '/edit-profile', label: 'Perfil',    icon: <ProfileIcon /> },
+  ]
+
   return (
     <>
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
+      <NavRail abas={abas} onIA={() => setAiOpen(true)} />
+
+      <nav className="nav-barra lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
                       backdrop-blur-md border-t border-transparent flex items-stretch"
            style={{
              background: isDark ? 'rgba(22,32,22,0.95)' : 'rgba(255,255,255,0.92)',

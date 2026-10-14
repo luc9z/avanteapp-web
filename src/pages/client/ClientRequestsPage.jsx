@@ -8,6 +8,8 @@ import { ClientBottomNav } from '../../components/common/BottomNav'
 import { normalizeStatus, precisaDoCliente } from '../../utils/status'
 import RequestCard from '../../components/common/RequestCard'
 import { carregarPerfis } from '../../services/perfis'
+import useTelaLarga from '../../hooks/useTelaLarga'
+import RequestDetailsPage from '../professional/RequestDetailsPage'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import OffersBanner from '../../components/client/OffersBanner'
@@ -27,6 +29,14 @@ export default function ClientRequestsPage() {
   // Foto de cada veterinário, por uid. A solicitação guarda só o nome,
   // e o rosto é o que faz o tutor reconhecer o atendimento na lista.
   const [fotos, setFotos] = useState({})
+  // No desktop o pedido abre ao lado; no celular continua navegando.
+  const telaLarga = useTelaLarga()
+  const [aberto, setAberto] = useState(null)
+
+  function abrir(id) {
+    if (telaLarga) setAberto(id)
+    else navigate(`/request/${id}`)
+  }
 
   const uid = user?.uid
 
@@ -99,7 +109,7 @@ export default function ClientRequestsPage() {
   })
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-lista">
       {/* Topo e filtros grudam JUNTOS. Antes o filtro usava top-[57px],
           mas a barra tem 61-65px, e mais no iPhone com entalhe: o filtro
           escorregava para baixo dela. */}
@@ -135,7 +145,8 @@ export default function ClientRequestsPage() {
         </div>
       </div>
 
-      <div className="px-4 py-4 pb-nav">
+      <div className="px-4 py-4 pb-nav lista-detalhe">
+        <div className="lista-coluna">
         <OffersBanner className="mb-4" audience="client" />
         {loading && <div className="flex justify-center py-16"><Spinner size={32} color="#375337" /></div>}
 
@@ -149,10 +160,25 @@ export default function ClientRequestsPage() {
                     req={r}
                     perspectiva="client"
                     foto={fotos[r.professionalId]}
-                    onClick={() => navigate(`/request/${r.id}`)}
+                    selecionado={telaLarga && aberto === r.id}
+                    onClick={() => abrir(r.id)}
                   />
                 ))}
               </div>
+        )}
+        </div>
+
+        {/* Painel de detalhe - só no desktop, onde a lista continua à vista */}
+        {telaLarga && (
+          <div className="detalhe-coluna">
+            {aberto ? (
+              <RequestDetailsPage idEmbutido={aberto} embutido />
+            ) : (
+              <div className="detalhe-vazio">
+                <p className="text-sm text-gray-500">Escolha um pedido para ver os detalhes aqui.</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
       <ClientBottomNav />

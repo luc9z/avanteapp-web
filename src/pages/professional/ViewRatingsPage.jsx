@@ -68,7 +68,7 @@ export default function ViewRatingsPage() {
     : '0.0'
 
   return (
-    <div className="page-container">
+    <div className="page-container largura-lista">
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
