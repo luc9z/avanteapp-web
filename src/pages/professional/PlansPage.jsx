@@ -15,6 +15,7 @@ import { DEFAULT_PLANS } from '../admin/AdminPage'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { useTheme } from '../../contexts/ThemeContext'
 import { avisarAtivacaoDePlano } from '../../services/origem'
+import AvanteLogo from '../../components/common/AvanteLogo'
 
 
 const brl = v => Number(v) <= 0 ? 'Grátis' : `R$ ${Number(v).toFixed(2).replace('.', ',')}`
@@ -222,7 +223,7 @@ export default function PlansPage() {
 
         {/* Header */}
         <div className="flex flex-col items-center text-center gap-4 pt-2 pb-7 animate-fade-up">
-          <img src="/images/avante_mark_white.png" alt="" className="w-14 h-14 opacity-95" />
+          <AvanteLogo className="w-14 h-14 text-white opacity-95" />
           <h1 className="text-white font-bold text-2xl sm:text-3xl">
             {onboarding ? 'Escolha seu plano para começar' : 'Evolua seu perfil no AVANTE'}
           </h1>

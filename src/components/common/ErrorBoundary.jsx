@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import AvanteLogo from './AvanteLogo'
 
 /**
  * ErrorBoundary - captura erros de renderização e de carregamento
@@ -48,7 +49,7 @@ export default class ErrorBoundary extends Component {
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen px-8 text-center gap-4 bg-white">
-        <img src="/images/avante_logo.png" alt="Avante" className="w-20 h-20 object-contain opacity-90" />
+        <AvanteLogo className="w-20 h-20 opacity-90 text-brand-verde dark:text-brand-creme" />
         <div>
           <p className="font-bold text-gray-900 text-lg">
             {this.state.isChunkError ? 'Nova versão disponível' : 'Algo deu errado'}

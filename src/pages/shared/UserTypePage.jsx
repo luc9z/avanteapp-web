@@ -15,6 +15,7 @@ import { clearRoleCache } from '../../services/userRole'
 import { friendlyError } from '../../utils/errors'
 import { showToast } from '../../components/common/Toast'
 import { useState } from 'react'
+import AvanteLogo from '../../components/common/AvanteLogo'
 import Spinner from '../../components/common/Spinner'
 
 /* ── Ilustrações ──────────────────────────────────────────────── */
@@ -185,7 +186,7 @@ export default function UserTypePage() {
 
         {/* Cabeçalho */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <img src="/images/avante_logo.png" alt="Avante" className="w-20 h-20 object-contain" />
+          <AvanteLogo className="w-20 h-20 text-brand-verde dark:text-brand-creme" />
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
             Como você quer usar o AVANTE?
           </h1>

@@ -17,6 +17,7 @@ import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { marcarIntencao } from '../../services/origem'
+import AvanteLogo from '../../components/common/AvanteLogo'
 
 const C = {
   fundo: 'bg-[#0c1a10]',
@@ -25,18 +26,6 @@ const C = {
   texto: 'text-[#ecf5ee]',
   suave: 'text-[#a3b8a8]',
   acento: 'text-[#86efac]',
-}
-
-function Pata({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <ellipse cx="6.2" cy="9.4" rx="2" ry="2.6" transform="rotate(-20 6.2 9.4)" />
-      <ellipse cx="10" cy="6" rx="2" ry="2.7" />
-      <ellipse cx="14" cy="6" rx="2" ry="2.7" />
-      <ellipse cx="17.8" cy="9.4" rx="2" ry="2.6" transform="rotate(20 17.8 9.4)" />
-      <path d="M12 11.2c-3.4 0-6 3.1-6 5.6 0 2 1.6 3.2 3.4 3.2 1.1 0 1.8-.5 2.6-.5s1.5.5 2.6.5c1.8 0 3.4-1.2 3.4-3.2 0-2.5-2.6-5.6-6-5.6z" />
-    </svg>
-  )
 }
 
 function Icone({ d }) {
@@ -157,10 +146,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-30 border-b border-white/5 bg-[#0c1a10]/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
           <Link to="/conheca" className="flex min-h-[44px] items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#375337]">
-              <Pata className="h-5 w-5 text-white" />
-            </span>
-            <span className="text-lg font-bold tracking-wide">AVANTE</span>
+            <AvanteLogo variant="horizontal-sem-slogan" className="h-8 text-brand-creme" />
           </Link>
           <Link to={user ? '/' : '/login'}
             className="inline-flex min-h-[44px] items-center rounded-xl px-4 text-sm font-semibold text-[#86efac] hover:bg-white/5">

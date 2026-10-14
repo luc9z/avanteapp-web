@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { isValidEmail, passwordIssue } from '../../utils/validators'
 import Spinner from '../../components/common/Spinner'
 import PasswordInput from '../../components/common/PasswordInput'
+import AvanteLogo from '../../components/common/AvanteLogo'
 import { showToast } from '../../components/common/Toast'
 import { codigoDeIndicacao } from '../../services/origem'
 
@@ -59,7 +60,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="flex flex-col items-center gap-2">
-          <img src="/images/avante_logo.png" alt="Avante" className="w-20 h-20 object-contain" />
+          <AvanteLogo className="w-20 h-20 text-brand-verde dark:text-brand-creme" />
           <p className="text-gray-500 text-sm text-center">Leva menos de um minuto</p>
         </div>
 

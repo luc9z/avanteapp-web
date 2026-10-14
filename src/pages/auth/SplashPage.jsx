@@ -11,6 +11,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { resolveHomeRoute } from '../../services/userRole'
+import AvanteLogo from '../../components/common/AvanteLogo'
 
 const KEYFRAMES = `
 @keyframes splashRing {
@@ -93,16 +94,13 @@ export default function SplashPage() {
             animation: 'splashFloat 3.2s ease-in-out infinite',
           }}
         >
-          <img src="/images/avante_mark_white.png" alt="AVANTE" style={{ width: 96 }} draggable={false} />
+          <AvanteLogo className="w-24 h-24 text-white" />
         </div>
       </div>
 
       {/* Wordmark + tagline */}
       <div className="sp-anim text-center mt-7 px-6" style={{ animation: 'splashFadeUp 0.7s ease 0.25s both' }}>
-        {/* Caixa alta pede tracking positivo - colado fica ilegível. */}
-        <p className="text-white font-bold tracking-[0.06em] text-[38px] sm:text-[44px] leading-none">
-          AVANTE
-        </p>
+        <AvanteLogo variant="nome" className="h-10 sm:h-12 mx-auto text-white" />
         <p className="text-[11px] font-semibold tracking-[0.22em] mt-3 text-white/55">
           VETERINÁRIO ONDE VOCÊ ESTIVER
         </p>

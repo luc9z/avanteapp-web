@@ -30,7 +30,7 @@ export function notify(title, body, url = '/') {
     const n = new Notification(title, {
       body,
       icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      badge: '/badge-96.png',
       tag: url, // colapsa notificações repetidas do mesmo destino
     })
     n.onclick = () => {

@@ -21,6 +21,8 @@ export default {
           800: '#1c2b1e',
           900: '#121c13',
         },
+        // Cores da marca (manual da marca AVANTE). verde = primary.
+        brand: { verde: '#375337', noite: '#162016', salvia: '#8FBC8F', creme: '#F2F5F2' },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
