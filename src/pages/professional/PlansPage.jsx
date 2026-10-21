@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, onSnapshot } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -17,6 +17,10 @@ import { useTheme } from '../../contexts/ThemeContext'
 
 const createCheckout = httpsCallable(functions, 'createPlanCheckout')
 const redeemCoupon = httpsCallable(functions, 'redeemCoupon')
+const activateFreePlan = httpsCallable(functions, 'activateFreePlan')
+
+// Erros de cupom cuja mensagem do servidor pode ir direto para o usuário
+const COUPON_USER_ERRORS = ['functions/already-exists', 'functions/failed-precondition']
 
 const brl = v => Number(v) <= 0 ? 'Grátis' : `R$ ${Number(v).toFixed(2).replace('.', ',')}`
 
@@ -85,28 +89,10 @@ export default function PlansPage() {
     const code = coupon.trim().toUpperCase()
     if (!code) return showToast('Digite o código do cupom', 'error')
     if (!selectedId) return showToast('Selecione um plano primeiro.', 'error')
+    if (selectedId === currentPlan) return showToast('Este já é seu plano atual.', 'error')
     setCouponBusy(true)
     try {
-      // Cupons de lançamento: validados no cliente, ativam instantâneo sem Cloud Function
-      const LAUNCH_COUPONS = { BEMVINDO: 100, AVANTE100: 100 }
-      if (LAUNCH_COUPONS[code] === 100) {
-        if (selectedId === currentPlan) {
-          showToast('Este já é seu plano atual.', 'error')
-          return
-        }
-        await setDoc(doc(db, 'users', user.uid), {
-          plan: selectedId,
-          featured: ['premium', 'destaque'].includes(selectedId),
-          planActivatedAt: serverTimestamp(),
-          planCoupon: code,
-          updatedAt: serverTimestamp(),
-        }, { merge: true })
-        showToast(`Cupom ${code} aplicado — plano ativado! 🎉`, 'success')
-        setTimeout(() => navigate('/dashboard', { replace: true }), 900)
-        return
-      }
-
-      // Cupons dinâmicos via Cloud Function (requer Blaze plan)
+      // Cupom validado e plano ativado no servidor (Cloud Function)
       const { data } = await redeemCoupon({ planId: selectedId, code })
       if (data?.activated) {
         showToast(`Cupom ${code} aplicado — plano ativado com 100% de desconto! 🎉`, 'success')
@@ -117,8 +103,7 @@ export default function PlansPage() {
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
       showToast(
-        e?.code === 'functions/not-found' ? 'Cupom inválido ou expirado.'
-          : 'Cupom inválido ou expirado.',
+        COUPON_USER_ERRORS.includes(e?.code) ? e.message : 'Cupom inválido ou expirado.',
         'error'
       )
     } finally { setCouponBusy(false) }
@@ -129,18 +114,13 @@ export default function PlansPage() {
     setPaying(true)
     try {
       if (selected.price <= 0) {
-        await setDoc(doc(db, 'users', user.uid), {
-          plan: selected.id,
-          planActivatedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }, { merge: true })
+        await activateFreePlan({ planId: selected.id })
         showToast(`Plano ${selected.name} ativado!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 800)
         return
       }
 
-      // Pagamento via PIX em breve — use cupom para ativar agora
-      showToast('Pagamento via PIX em breve! Use o cupom BEMVINDO para ativar agora.', 'info')
+      showToast('Pagamento via PIX em breve!', 'info')
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
       showToast('Não foi possível iniciar o pagamento.', 'error')
@@ -272,7 +252,7 @@ export default function PlansPage() {
             <input
               value={coupon}
               onChange={e => setCoupon(e.target.value.toUpperCase())}
-              placeholder="Ex.: BEMVINDO"
+              placeholder="Código do cupom"
               maxLength={20}
               className="flex-1 bg-white/[0.06] border border-white/10 rounded-xl px-4 py-2.5 text-sm
                          text-white placeholder-white/25 outline-none uppercase tracking-wider
@@ -317,7 +297,6 @@ export default function PlansPage() {
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
-          Use o cupom <strong className="text-white/40">BEMVINDO</strong> para ativar qualquer plano gratuitamente.
           Pagamento via PIX disponível em breve.
         </p>
       </div>

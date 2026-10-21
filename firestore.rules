@@ -2,19 +2,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Campos de cobrança/ranking: só o servidor (Admin SDK nas Cloud
+    // Functions) grava. Plano e destaque vêm de pagamento ou cupom
+    // validado em redeemCoupon; a média de avaliações vem de onRatingCreated.
+    function serverOnlyKeys() {
+      return ['plan', 'featured', 'planActivatedAt', 'planCoupon',
+              'planExpiresAt', 'planPeriod', 'averageRating', 'ratingCount'];
+    }
+
+    function createsNoServerKeys() {
+      return !request.resource.data.keys().hasAny(serverOnlyKeys());
+    }
+
+    function changesNoServerKeys() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(serverOnlyKeys());
+    }
+
     // Users: qualquer autenticado lê (perfil público do vet); só o
-    // próprio dono escreve no seu documento. As avaliações ficam na
-    // subcoleção ratings (não tocam este doc), então não há exceção.
+    // próprio dono escreve no seu documento, exceto os campos de servidor.
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId
+        && createsNoServerKeys();
+      allow update: if request.auth != null && request.auth.uid == userId
+        && changesNoServerKeys();
       allow delete: if false;
     }
 
-    // Professionals: authenticated users can read; only the professional can write their own document
+    // Professionals (coleção legada): mesma regra de users — o dono edita
+    // o próprio doc, mas nunca plano/destaque/avaliação.
     match /professionals/{professionalId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == professionalId;
+      allow create: if request.auth != null && request.auth.uid == professionalId
+        && createsNoServerKeys();
+      allow update: if request.auth != null && request.auth.uid == professionalId
+        && changesNoServerKeys();
+      allow delete: if request.auth != null && request.auth.uid == professionalId;
     }
 
     // Email Index: authenticated users can read; any authenticated user can write (used for lookup)
@@ -98,11 +121,26 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Config (plans, coupons, etc.): todos autenticados leem; só admin escreve
+    // Config (plans, etc.): todos autenticados leem; só admin escreve.
+    // config/coupons fica bloqueado para leitura pública (cupons ficam em /coupons).
     match /config/{docId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && docId != 'coupons';
       allow write: if request.auth != null
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Coupons: o código é o ID do doc. Só admin lê/escreve; o resgate
+    // acontece na Cloud Function redeemCoupon (Admin SDK ignora as regras).
+    match /coupons/{code} {
+      allow read, write: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+
+      // Um resgate por usuário (gravado só pela função)
+      match /redemptions/{uid} {
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+        allow write: if false;
+      }
     }
 
     // Payments: usuário lê os próprios; só Cloud Functions escrevem (via admin SDK)

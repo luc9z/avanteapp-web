@@ -80,6 +80,28 @@ firebase deploy --only firestore:rules     # regras de seguranca
 firebase deploy --only functions           # funcoes (requer plano Blaze)
 ```
 
+### Planos e cupons
+
+`plan`, `featured`, `planActivatedAt`, `planCoupon`, `averageRating` e `ratingCount`
+em `users/{uid}` são **só do servidor**: o `firestore.rules` recusa qualquer escrita
+do cliente nesses campos. Eles são gravados pelas Cloud Functions
+(`abacatepayWebhook`, `redeemCoupon`, `activateFreePlan`, `onRatingCreated`).
+
+Cupons ficam em `coupons/{CODIGO}` (legível só por admin) e são resgatados pela
+função `redeemCoupon` — um resgate por usuário. Para criar um cupom:
+
+```bash
+cd functions
+GOOGLE_APPLICATION_CREDENTIALS=sa.json node scripts/seed-coupons.js --project avante-pro CODIGO --max 100
+```
+
+### Testes no emulador
+
+```bash
+(cd functions && npm install)
+npm run test:emulator   # regras + funções de cupom (Firestore/Auth/Functions emulator, requer Java)
+```
+
 ---
 
 ## 📁 Estrutura

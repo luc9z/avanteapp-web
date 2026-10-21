@@ -230,6 +230,31 @@ const { onRequest } = require('firebase-functions/v2/https')
 const ABACATEPAY_API_KEY = defineSecret('ABACATEPAY_API_KEY')
 const ABACATEPAY_WEBHOOK_SECRET = defineSecret('ABACATEPAY_WEBHOOK_SECRET')
 
+// Espelha DEFAULT_PLANS (src/pages/admin/AdminPage.jsx) para quando
+// config/plans ainda não foi salvo pelo admin.
+const FALLBACK_PLANS = [
+  { id: 'free', price: 0 },
+  { id: 'essencial', price: 29.9 },
+  { id: 'premium', price: 59.9 },
+]
+
+async function loadPlans(db) {
+  const snap = await db.doc('config/plans').get()
+  const plans = snap.exists ? snap.data().plans : null
+  return Array.isArray(plans) && plans.length > 0 ? plans : FALLBACK_PLANS
+}
+
+/** Campos de plano gravados em users/{uid} — server-only no firestore.rules. */
+function planFields(planId, extra = {}) {
+  return {
+    plan: planId,
+    featured: ['premium', 'destaque'].includes(planId),
+    planActivatedAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    ...extra,
+  }
+}
+
 exports.createPlanCheckout = onCall(
   { region: 'southamerica-east1', secrets: [ABACATEPAY_API_KEY], maxInstances: 5 },
   async (request) => {
@@ -322,11 +347,7 @@ exports.abacatepayWebhook = onRequest(
       if (!planId || !uid) return res.status(200).send('bad-tag')
 
       const db = getFirestore()
-      await db.doc(`users/${uid}`).set({
-        plan: planId,
-        featured: ['premium','destaque'].includes(planId),
-        planActivatedAt: FieldValue.serverTimestamp(),
-      }, { merge: true })
+      await db.doc(`users/${uid}`).set(planFields(planId), { merge: true })
 
       // Atualiza o registro de pagamento correspondente
       const billingId = event?.data?.billing?.id
@@ -349,10 +370,14 @@ exports.abacatepayWebhook = onRequest(
 
 /**
  * redeemCoupon — aplica cupom de desconto na assinatura do plano.
- * Cupons em config/coupons (ex.: { BEMVINDO: { discount: 100, active: true } }).
- * BEMVINDO (100%) existe como padrão de lançamento mesmo sem o doc.
+ * Cupons em coupons/{CODIGO} (legível só por admin):
+ *   { discount: 100, active: true,
+ *     plans?: ['premium'], maxRedemptions?: 500, expiresAt?: Timestamp }
+ * Cada usuário resgata um cupom uma única vez (coupons/{CODIGO}/redemptions/{uid}).
  * Desconto de 100% ativa o plano direto, sem passar pelo AbacatePay.
  */
+const COUPON_CODE_RE = /^[A-Z0-9_-]{3,32}$/
+
 exports.redeemCoupon = onCall(
   { region: 'southamerica-east1', maxInstances: 5 },
   async (request) => {
@@ -361,33 +386,73 @@ exports.redeemCoupon = onCall(
     const planId = String(request.data?.planId || '')
     const code = String(request.data?.code || '').trim().toUpperCase()
     if (!planId || !code) throw new HttpsError('invalid-argument', 'Informe o plano e o cupom.')
+    // O código vira ID de documento: nada de "/" ou caracteres estranhos
+    if (!COUPON_CODE_RE.test(code)) throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
 
     const db = getFirestore()
-    const couponsSnap = await db.doc('config/coupons').get()
-    const coupons = couponsSnap.exists ? couponsSnap.data() : {}
-    const coupon = coupons[code] || (code === 'BEMVINDO' ? { discount: 100, active: true } : null)
+    const plan = (await loadPlans(db)).find((p) => p.id === planId)
+    if (!plan) throw new HttpsError('not-found', 'Plano não encontrado.')
+    if (!(Number(plan.price) > 0)) throw new HttpsError('invalid-argument', 'Este plano não exige pagamento.')
 
-    if (!coupon || coupon.active === false) {
-      throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
-    }
+    const couponRef = db.doc(`coupons/${code}`)
+    const redemptionRef = couponRef.collection('redemptions').doc(uid)
+    const userRef = db.doc(`users/${uid}`)
 
-    const discount = Number(coupon.discount) || 0
-    if (discount >= 100) {
-      await db.doc(`users/${uid}`).set({
-        plan: planId,
-        featured: ['premium','destaque'].includes(planId),
-        planActivatedAt: FieldValue.serverTimestamp(),
-        planCoupon: code,
-      }, { merge: true })
-      await db.collection('payments').add({
+    return db.runTransaction(async (tx) => {
+      const [couponSnap, redemptionSnap, userSnap] = await Promise.all([
+        tx.get(couponRef), tx.get(redemptionRef), tx.get(userRef),
+      ])
+      const c = couponSnap.exists ? couponSnap.data() : null
+      const expired = c?.expiresAt?.toMillis && c.expiresAt.toMillis() <= Date.now()
+      const soldOut = Number(c?.maxRedemptions) > 0
+        && Number(c.redemptions || 0) >= Number(c.maxRedemptions)
+      if (!c || c.active !== true || expired || soldOut) {
+        throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
+      }
+      if (Array.isArray(c.plans) && c.plans.length > 0 && !c.plans.includes(planId)) {
+        throw new HttpsError('failed-precondition', 'Este cupom não vale para o plano selecionado.')
+      }
+
+      const discount = Math.min(100, Math.max(0, Number(c.discount) || 0))
+      // Desconto parcial: devolve o percentual para o checkout aplicar
+      if (discount < 100) return { activated: false, discount }
+
+      if (redemptionSnap.exists) {
+        throw new HttpsError('already-exists', 'Você já usou este cupom.')
+      }
+      if (userSnap.exists && userSnap.data().plan === planId) {
+        throw new HttpsError('already-exists', 'Este já é seu plano atual.')
+      }
+
+      tx.set(userRef, planFields(planId, { planCoupon: code }), { merge: true })
+      tx.set(redemptionRef, { uid, planId, redeemedAt: FieldValue.serverTimestamp() })
+      tx.update(couponRef, { redemptions: FieldValue.increment(1) })
+      tx.set(db.collection('payments').doc(), {
         uid, planId, amount: 0, coupon: code, status: 'paid_coupon',
         createdAt: FieldValue.serverTimestamp(),
-      }).catch(() => {})
+      })
       return { activated: true, discount: 100 }
-    }
+    })
+  }
+)
 
-    // Desconto parcial: devolve o percentual para o checkout aplicar
-    return { activated: false, discount }
+/**
+ * activateFreePlan — troca para um plano gratuito (preço 0 em config/plans).
+ * O cliente não pode gravar `plan` direto (firestore.rules).
+ */
+exports.activateFreePlan = onCall(
+  { region: 'southamerica-east1', maxInstances: 5 },
+  async (request) => {
+    if (!request.auth) throw new HttpsError('unauthenticated', 'Login necessário.')
+    const planId = String(request.data?.planId || '')
+
+    const db = getFirestore()
+    const plan = (await loadPlans(db)).find((p) => p.id === planId)
+    if (!plan) throw new HttpsError('not-found', 'Plano não encontrado.')
+    if (Number(plan.price) > 0) throw new HttpsError('permission-denied', 'Este plano exige pagamento.')
+
+    await db.doc(`users/${request.auth.uid}`).set(planFields(planId), { merge: true })
+    return { activated: true }
   }
 )
 
