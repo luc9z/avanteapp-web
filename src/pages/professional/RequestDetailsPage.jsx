@@ -740,6 +740,22 @@ export default function RequestDetailsPage() {
                 onRate={() => navigate(`/rate/${id}`)}
               />
             )}
+
+            {/* Vet marca o pagamento recebido: conta como atendimento pago pelo app */}
+            {isFinished && isProf && (
+              <PaymentReceivedCard
+                received={req.paymentReceived === true}
+                onConfirm={async () => {
+                  try {
+                    await updateDoc(doc(db, 'requests', id), {
+                      paymentReceived: true,
+                      paymentReceivedAt: serverTimestamp(),
+                    })
+                    showToast('Pagamento registrado.', 'success')
+                  } catch (e) { showToast(friendlyError(e), 'error') }
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -831,6 +847,38 @@ function GreenBtn({ onClick, disabled, loading, iconPath, iconFill, label, flex1
    B) client confirmed, NOT rated → green "concluído" + (client) rate CTA
    C) rated → "avaliado" note
 ──────────────────────────────────────────────────────────────── */
+/* ── Pagamento recebido (só o veterinário vê) ───────────────────
+   O valor da consulta é combinado e pago direto ao vet; este registro
+   só serve para contar os atendimentos pagos que vieram pelo app.
+──────────────────────────────────────────────────────────────── */
+function PaymentReceivedCard({ received, onConfirm }) {
+  const [saving, setSaving] = useState(false)
+
+  if (received) {
+    return (
+      <p className="text-center text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+        ✓ Pagamento da consulta registrado
+      </p>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 flex items-center gap-3">
+      <p className="flex-1 text-xs text-gray-600 leading-relaxed">
+        O cliente já pagou a consulta? Registrar ajuda a medir os atendimentos que vieram pelo app.
+      </p>
+      <button
+        onClick={async () => { setSaving(true); try { await onConfirm() } finally { setSaving(false) } }}
+        disabled={saving}
+        className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold whitespace-nowrap
+                   hover:bg-primary-600 disabled:opacity-50 transition-colors"
+      >
+        {saving ? <Spinner size={14} color="white" /> : 'Recebi o pagamento'}
+      </button>
+    </div>
+  )
+}
+
 function FinalizadoCard({ req, isClient, isProf, onClientConfirm, onRate }) {
   const [confirming, setConfirming] = useState(false)
 

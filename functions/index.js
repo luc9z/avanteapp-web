@@ -349,10 +349,18 @@ exports.abacatepayWebhook = onRequest(
 
 /**
  * redeemCoupon — aplica cupom de desconto na assinatura do plano.
- * Cupons em config/coupons (ex.: { BEMVINDO: { discount: 100, active: true } }).
- * BEMVINDO (100%) existe como padrão de lançamento mesmo sem o doc.
- * Desconto de 100% ativa o plano direto, sem passar pelo AbacatePay.
+ * Cupons só existem em config/coupons (editado pelo admin), ex.:
+ *   { FUNDADOR: { discount: 100, active: true, maxUses: 30, used: 0,
+ *                 plans: ['premium'], fundador: true } }
+ * - maxUses/used: limite de usos (as 30 vagas de Vet Fundador).
+ * - plans: planos em que o cupom vale (opcional).
+ * - fundador: Premium grátis até 3 atendimentos pagos pelo app; depois
+ *   preço travado (fundador.price) por 12 meses — ver onRequestPaidVisit.
+ * Cada usuário usa cada cupom uma vez. Desconto de 100% ativa o plano direto.
  */
+const FUNDADOR_TRIAL_VISITS = 3
+const FUNDADOR_PRICE = 29.9
+
 exports.redeemCoupon = onCall(
   { region: 'southamerica-east1', maxInstances: 5 },
   async (request) => {
@@ -363,31 +371,94 @@ exports.redeemCoupon = onCall(
     if (!planId || !code) throw new HttpsError('invalid-argument', 'Informe o plano e o cupom.')
 
     const db = getFirestore()
-    const couponsSnap = await db.doc('config/coupons').get()
-    const coupons = couponsSnap.exists ? couponsSnap.data() : {}
-    const coupon = coupons[code] || (code === 'BEMVINDO' ? { discount: 100, active: true } : null)
+    const couponsRef = db.doc('config/coupons')
+    const redemptionRef = db.doc(`coupon_redemptions/${code}_${uid}`)
 
-    if (!coupon || coupon.active === false) {
-      throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
-    }
+    return db.runTransaction(async (tx) => {
+      const [couponsSnap, redemptionSnap] = await Promise.all([tx.get(couponsRef), tx.get(redemptionRef)])
+      const coupon = couponsSnap.exists ? couponsSnap.data()[code] : null
 
-    const discount = Number(coupon.discount) || 0
-    if (discount >= 100) {
-      await db.doc(`users/${uid}`).set({
-        plan: planId,
-        featured: ['premium','destaque'].includes(planId),
-        planActivatedAt: FieldValue.serverTimestamp(),
-        planCoupon: code,
-      }, { merge: true })
-      await db.collection('payments').add({
-        uid, planId, amount: 0, coupon: code, status: 'paid_coupon',
-        createdAt: FieldValue.serverTimestamp(),
-      }).catch(() => {})
-      return { activated: true, discount: 100 }
-    }
+      if (!coupon || coupon.active === false) {
+        throw new HttpsError('not-found', 'Cupom inválido ou expirado.')
+      }
+      if (Array.isArray(coupon.plans) && !coupon.plans.includes(planId)) {
+        throw new HttpsError('failed-precondition', 'Este cupom não vale para este plano.')
+      }
+      if (redemptionSnap.exists) {
+        throw new HttpsError('already-exists', 'Você já usou este cupom.')
+      }
+      const used = Number(coupon.used) || 0
+      if (coupon.maxUses != null && used >= Number(coupon.maxUses)) {
+        throw new HttpsError('resource-exhausted', 'As vagas deste cupom acabaram.')
+      }
 
-    // Desconto parcial: devolve o percentual para o checkout aplicar
-    return { activated: false, discount }
+      const discount = Number(coupon.discount) || 0
+      tx.set(couponsRef, { [code]: { ...coupon, used: used + 1 } }, { merge: true })
+      tx.set(redemptionRef, { uid, code, planId, discount, createdAt: FieldValue.serverTimestamp() })
+
+      if (discount >= 100) {
+        const userUpdate = {
+          plan: planId,
+          featured: ['premium', 'destaque'].includes(planId),
+          planActivatedAt: FieldValue.serverTimestamp(),
+          planCoupon: code,
+        }
+        if (coupon.fundador) {
+          userUpdate.fundador = {
+            since: FieldValue.serverTimestamp(),
+            trialVisits: FUNDADOR_TRIAL_VISITS,
+            price: Number(coupon.fundadorPrice) || FUNDADOR_PRICE,
+            lockedMonths: 12,
+          }
+        }
+        tx.set(db.doc(`users/${uid}`), userUpdate, { merge: true })
+        tx.set(db.collection('payments').doc(), {
+          uid, planId, amount: 0, coupon: code, status: 'paid_coupon',
+          createdAt: FieldValue.serverTimestamp(),
+        })
+        return { activated: true, discount: 100 }
+      }
+
+      // Desconto parcial: devolve o percentual para o checkout aplicar
+      return { activated: false, discount }
+    })
+  }
+)
+
+/**
+ * onRequestPaidVisit — conta atendimentos realizados e pagos que vieram
+ * pelo app (users/{vet}.paidVisits). Conta uma vez por solicitação, quando:
+ * status finalizado + cliente confirmou + vet marcou o pagamento recebido.
+ * Para o Vet Fundador, marca o fim do período grátis no 3º atendimento pago.
+ */
+exports.onRequestPaidVisit = onDocumentUpdated(
+  { region: 'southamerica-east1', document: 'requests/{requestId}' },
+  async (event) => {
+    const after = event.data?.after?.data()
+    if (!after?.professionalId) return
+    const done = (after.status || '').toLowerCase() === 'finalizado'
+      && after.confirmFinish_client === true
+      && after.paymentReceived === true
+    if (!done || after.paidVisitCounted === true) return
+
+    const db = getFirestore()
+    const reqRef = event.data.after.ref
+    const vetRef = db.doc(`users/${after.professionalId}`)
+
+    await db.runTransaction(async (tx) => {
+      const [reqSnap, vetSnap] = await Promise.all([tx.get(reqRef), tx.get(vetRef)])
+      if (reqSnap.data()?.paidVisitCounted === true) return
+      const vet = vetSnap.exists ? vetSnap.data() : {}
+      const paidVisits = Number(vet.paidVisits || 0) + 1
+
+      const vetUpdate = { paidVisits, updatedAt: FieldValue.serverTimestamp() }
+      if (vet.fundador && !vet.fundadorTrialEndedAt
+          && paidVisits >= Number(vet.fundador.trialVisits || FUNDADOR_TRIAL_VISITS)) {
+        vetUpdate.fundadorTrialEndedAt = FieldValue.serverTimestamp()
+      }
+      tx.set(vetRef, vetUpdate, { merge: true })
+      tx.set(reqRef, { paidVisitCounted: true }, { merge: true })
+    })
   }
 )
 

@@ -63,6 +63,12 @@ export default function TermsPage() {
           atualizados. Pagamentos, quando aplicáveis, são processados por provedores
           terceiros; o Avante não armazena dados de cartão.
         </p>
+        <p className="mt-2">
+          Veterinários do plano Premium aparecem no topo da busca com a marcação
+          <strong> "Patrocinado"</strong>, que indica um anúncio pago, não uma avaliação
+          de qualidade feita pelo Avante. A sugestão do assistente de triagem não leva o
+          plano em conta.
+        </p>
       </LegalSection>
 
       <LegalSection n="6" title="Conduta do usuário">

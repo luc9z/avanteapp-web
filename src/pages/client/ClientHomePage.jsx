@@ -191,7 +191,7 @@ export default function ClientHomePage() {
     }
   }
 
-  // Destaque (plano pago) primeiro, depois quem está online
+  // Patrocinado (plano pago) primeiro, depois quem está online
   function profDistance(p) {
     if (!myPos || p.baseLocation?.lat == null) return null
     return distanceKm(myPos.lat, myPos.lng, p.baseLocation.lat, p.baseLocation.lng)
@@ -208,7 +208,7 @@ export default function ClientHomePage() {
     )
   }
 
-  // Ordem: Favoritos do usuário → Destaque → perto → online → nota
+  // Ordem: Favoritos do usuário → Patrocinado → perto → online → nota
   const sorted = [...professionals].sort((a, b) => {
     const va = favorites.includes(a.uid) ? 1 : 0, vb = favorites.includes(b.uid) ? 1 : 0
     if (va !== vb) return vb - va

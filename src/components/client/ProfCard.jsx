@@ -1,6 +1,6 @@
 /**
  * ProfCard — cartão de veterinário em formato de grade (2 colunas).
- * - Selo "Destaque" para profissionais com plano destacado (monetização)
+ * - Selo "Patrocinado" para profissionais do plano Premium (anúncio pago, identificado como tal)
  * - Coração de favoritar (salvo no perfil do cliente)
  * - Botão de mensagem: conversa direta ANTES de enviar solicitação
  * - Avaliação real (média + contagem) ou selo "Novo"
@@ -43,14 +43,14 @@ export default function ProfCard({ prof, isFavorite, onToggleFavorite, onView, o
           : 'border border-gray-100 shadow-card'
       }`}
     >
-      {/* Selo destaque */}
+      {/* Selo patrocinado (plano pago: precisa ser identificado como anúncio) */}
       {featured && (
         <span className="absolute -top-2.5 left-3 flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-500
                          text-white text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full shadow-sm">
           <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
-          Destaque
+          Patrocinado
         </span>
       )}
 

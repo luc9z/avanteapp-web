@@ -87,26 +87,11 @@ export default function PlansPage() {
     if (!selectedId) return showToast('Selecione um plano primeiro.', 'error')
     setCouponBusy(true)
     try {
-      // Cupons de lançamento: validados no cliente, ativam instantâneo sem Cloud Function
-      const LAUNCH_COUPONS = { BEMVINDO: 100, AVANTE100: 100 }
-      if (LAUNCH_COUPONS[code] === 100) {
-        if (selectedId === currentPlan) {
-          showToast('Este já é seu plano atual.', 'error')
-          return
-        }
-        await setDoc(doc(db, 'users', user.uid), {
-          plan: selectedId,
-          featured: ['premium', 'destaque'].includes(selectedId),
-          planActivatedAt: serverTimestamp(),
-          planCoupon: code,
-          updatedAt: serverTimestamp(),
-        }, { merge: true })
-        showToast(`Cupom ${code} aplicado — plano ativado! 🎉`, 'success')
-        setTimeout(() => navigate('/dashboard', { replace: true }), 900)
+      if (selectedId === currentPlan) {
+        showToast('Este já é seu plano atual.', 'error')
         return
       }
-
-      // Cupons dinâmicos via Cloud Function (requer Blaze plan)
+      // Cupom validado só no servidor (o plano não pode ser gravado pelo cliente)
       const { data } = await redeemCoupon({ planId: selectedId, code })
       if (data?.activated) {
         showToast(`Cupom ${code} aplicado — plano ativado com 100% de desconto! 🎉`, 'success')
@@ -131,6 +116,7 @@ export default function PlansPage() {
       if (selected.price <= 0) {
         await setDoc(doc(db, 'users', user.uid), {
           plan: selected.id,
+          featured: false,
           planActivatedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }, { merge: true })
@@ -139,8 +125,8 @@ export default function PlansPage() {
         return
       }
 
-      // Pagamento via PIX em breve — use cupom para ativar agora
-      showToast('Pagamento via PIX em breve! Use o cupom BEMVINDO para ativar agora.', 'info')
+      // Pagamento via PIX em breve
+      showToast('Pagamento via PIX em breve! Se você recebeu um cupom, aplique-o acima.', 'info')
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
       showToast('Não foi possível iniciar o pagamento.', 'error')
@@ -272,7 +258,7 @@ export default function PlansPage() {
             <input
               value={coupon}
               onChange={e => setCoupon(e.target.value.toUpperCase())}
-              placeholder="Ex.: BEMVINDO"
+              placeholder="Código do cupom"
               maxLength={20}
               className="flex-1 bg-white/[0.06] border border-white/10 rounded-xl px-4 py-2.5 text-sm
                          text-white placeholder-white/25 outline-none uppercase tracking-wider
@@ -317,7 +303,7 @@ export default function PlansPage() {
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
-          Use o cupom <strong className="text-white/40">BEMVINDO</strong> para ativar qualquer plano gratuitamente.
+          No Premium, seu perfil aparece no topo da busca marcado como "Patrocinado".
           Pagamento via PIX disponível em breve.
         </p>
       </div>

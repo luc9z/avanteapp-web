@@ -36,10 +36,9 @@ function vetMatchesSpecialties(vet, specs) {
 
 function rankVets(vets, userText) {
   const specs = matchSpecialties(userText)
-  // Não descarta ninguém: match de espécie só dá boost. Premium sempre no topo.
+  // Não descarta ninguém: match de espécie só dá boost. A triagem escolhe pelo
+  // caso (espécie, online, nota); o plano pago não muda a recomendação.
   return [...vets].sort((a, b) => {
-    const fa = isFeatured(a) ? 1 : 0, fb = isFeatured(b) ? 1 : 0
-    if (fa !== fb) return fb - fa
     const ma = vetMatchesSpecialties(a, specs) ? 1 : 0
     const mb = vetMatchesSpecialties(b, specs) ? 1 : 0
     if (ma !== mb) return mb - ma
@@ -54,9 +53,8 @@ function buildPrompt(vets) {
   const vetList = vets.length > 0
     ? `\n\nVeterinários disponíveis:\n${vets.map(v => {
         const specs = Array.isArray(v.specialties) ? v.specialties.join(', ') : (v.specialty || 'Clínico geral')
-        const badge = isFeatured(v) ? ' ⭐ Destaque' : ''
         const online = v.is_online ? ' 🟢' : ''
-        return `- ${v.name}${badge}${online} — ${specs}`
+        return `- ${v.name}${online} — ${specs}`
       }).join('\n')}`
     : ''
 
@@ -67,7 +65,7 @@ REGRAS:
 - Dúvidas gerais (vacinas, alimentação, comportamento, rotina): responda direto, SEM sugerir agendamento.
 - Sintomas físicos agudos, dor, ferida, emergência, piora repentina, ou pedido de agendamento: oriente e inclua [SUGGEST_BOOKING] no fim.
 - Se incluir [SUGGEST_BOOKING]: mencione UM veterinário pelo nome.
-- Ao escolher o nome, dê PREFERÊNCIA ao que tem ⭐ Destaque (ele aparece primeiro na lista). Só escolha outro se o Destaque claramente não atender a espécie/caso.
+- Ao escolher o nome, escolha quem melhor atende a espécie e o caso; em empate, prefira quem está online 🟢.
 - PROIBIDO: "é fundamental que", "é importante que", discursos longos.
 - Exemplos:
   Pergunta "quando vacinar meu cavalo?" → responda o calendário vacinal, sem [SUGGEST_BOOKING].
@@ -419,18 +417,18 @@ function VetSuggestionCard({ vet, onBook }) {
   const rating = vet.averageRating ? Number(vet.averageRating).toFixed(1) : null
   const initial = (vet.name || '?')[0].toUpperCase()
 
-  // Card Destaque: moldura dourada (gradiente) envolvendo o conteúdo
+  // Card Patrocinado (plano pago): moldura dourada envolvendo o conteúdo
   if (featured) {
     return (
       <div className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500
                       shadow-[0_4px_18px_rgba(245,158,11,0.35)]">
-        {/* Faixa Destaque */}
+        {/* Faixa Patrocinado */}
         <span className="absolute -top-2 left-3 z-10 flex items-center gap-1 bg-gradient-to-r from-amber-400 to-orange-500
                          text-white text-[9px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-full shadow">
           <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
-          Destaque
+          Patrocinado
         </span>
 
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50">

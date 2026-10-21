@@ -313,6 +313,25 @@ export default function DashboardPage() {
               )
             }
           </div>
+
+          {/* Vet Fundador: Premium grátis até N atendimentos pagos pelo app */}
+          {profile?.fundador && (() => {
+            const goal = Number(profile.fundador.trialVisits || 3)
+            const done = Math.min(Number(profile.paidVisits || 0), goal)
+            const price = Number(profile.fundador.price || 29.9).toFixed(2).replace('.', ',')
+            return (
+              <div className="relative mt-3 bg-black/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
+                <p className="text-xs font-bold text-white/90">
+                  Vet Fundador · {done} de {goal} atendimentos pagos pelo app
+                </p>
+                <p className="text-[11px] text-white/70 mt-0.5">
+                  {profile.fundadorTrialEndedAt
+                    ? `Período grátis concluído. Seu preço travado: R$ ${price}/mês por 12 meses.`
+                    : `Premium grátis até completar ${goal}. Depois, R$ ${price}/mês travado por 12 meses.`}
+                </p>
+              </div>
+            )
+          })()}
         </div>
 
         {/* ── Área de atuação ────────────────────────────────── */}
