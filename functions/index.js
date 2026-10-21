@@ -355,7 +355,8 @@ exports.abacatepayWebhook = onRequest(
  * - maxUses/used: limite de usos (as 30 vagas de Vet Fundador).
  * - plans: planos em que o cupom vale (opcional).
  * - fundador: Premium grátis até 3 atendimentos pagos pelo app; depois
- *   preço travado (fundador.price) por 12 meses — ver onRequestPaidVisit.
+ *   preço travado (fundador.price) por 12 meses (contagem em src/utils/paidVisits.js).
+ * Só vale com o plano Blaze; no plano gratuito o admin ativa em /admin.
  * Cada usuário usa cada cupom uma vez. Desconto de 100% ativa o plano direto.
  */
 const FUNDADOR_TRIAL_VISITS = 3
@@ -421,43 +422,6 @@ exports.redeemCoupon = onCall(
 
       // Desconto parcial: devolve o percentual para o checkout aplicar
       return { activated: false, discount }
-    })
-  }
-)
-
-/**
- * onRequestPaidVisit — conta atendimentos realizados e pagos que vieram
- * pelo app (users/{vet}.paidVisits). Conta uma vez por solicitação, quando:
- * status finalizado + cliente confirmou + vet marcou o pagamento recebido.
- * Para o Vet Fundador, marca o fim do período grátis no 3º atendimento pago.
- */
-exports.onRequestPaidVisit = onDocumentUpdated(
-  { region: 'southamerica-east1', document: 'requests/{requestId}' },
-  async (event) => {
-    const after = event.data?.after?.data()
-    if (!after?.professionalId) return
-    const done = (after.status || '').toLowerCase() === 'finalizado'
-      && after.confirmFinish_client === true
-      && after.paymentReceived === true
-    if (!done || after.paidVisitCounted === true) return
-
-    const db = getFirestore()
-    const reqRef = event.data.after.ref
-    const vetRef = db.doc(`users/${after.professionalId}`)
-
-    await db.runTransaction(async (tx) => {
-      const [reqSnap, vetSnap] = await Promise.all([tx.get(reqRef), tx.get(vetRef)])
-      if (reqSnap.data()?.paidVisitCounted === true) return
-      const vet = vetSnap.exists ? vetSnap.data() : {}
-      const paidVisits = Number(vet.paidVisits || 0) + 1
-
-      const vetUpdate = { paidVisits, updatedAt: FieldValue.serverTimestamp() }
-      if (vet.fundador && !vet.fundadorTrialEndedAt
-          && paidVisits >= Number(vet.fundador.trialVisits || FUNDADOR_TRIAL_VISITS)) {
-        vetUpdate.fundadorTrialEndedAt = FieldValue.serverTimestamp()
-      }
-      tx.set(vetRef, vetUpdate, { merge: true })
-      tx.set(reqRef, { paidVisitCounted: true }, { merge: true })
     })
   }
 )

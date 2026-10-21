@@ -2,31 +2,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Campos que só o servidor (Cloud Functions / console) grava: plano pago,
-    // destaque patrocinado, média de avaliações e contagem de atendimentos pagos.
-    // O dono pode apenas voltar para o plano Free (sem destaque) e marcar
-    // crmvVerified como false; nunca se promover.
-    function serverOnlyUserKeys() {
-      return ['planCoupon', 'averageRating', 'ratingCount',
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // Campos de cobrança e reputação: só o admin (painel /admin) grava.
+    // O projeto roda sem Cloud Functions, então o admin ativa planos à mão
+    // depois do PIX. O dono pode apenas voltar para o plano Free (sem
+    // destaque) e marcar crmvVerified como false; nunca se promover.
+    function adminOnlyUserKeys() {
+      return ['planCoupon', 'planPaidUntil', 'averageRating', 'ratingCount',
               'paidVisits', 'fundador', 'fundadorTrialEndedAt'];
     }
     function userWriteIsSafe(data, changed) {
-      return !changed.hasAny(serverOnlyUserKeys())
+      return !changed.hasAny(adminOnlyUserKeys())
         && (!changed.hasAny(['plan', 'featured', 'planActivatedAt'])
             || (data.get('plan', 'free') == 'free' && data.get('featured', false) == false))
         && (!changed.hasAny(['crmvVerified']) || data.crmvVerified == false);
     }
 
-    // Users: qualquer autenticado lê (perfil público do vet); só o
-    // próprio dono escreve no seu documento, sem tocar nos campos acima.
+    // Users: qualquer autenticado lê (perfil público do vet); o dono
+    // escreve no seu documento sem tocar nos campos acima; o admin pode
+    // atualizar qualquer um (ativar plano, Vet Fundador, mensalidade paga).
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId
         && userWriteIsSafe(request.resource.data, request.resource.data.keys());
-      allow update: if request.auth != null && request.auth.uid == userId
-        && userWriteIsSafe(request.resource.data,
-                           request.resource.data.diff(resource.data).affectedKeys());
+      allow update: if isAdmin()
+        || (request.auth != null && request.auth.uid == userId
+            && userWriteIsSafe(request.resource.data,
+                               request.resource.data.diff(resource.data).affectedKeys()));
       allow delete: if false;
+    }
+
+    // Pedidos de plano (Vet Fundador ou assinatura): o vet cria e acompanha
+    // o próprio; o admin lê todos e marca como atendido.
+    match /plan_requests/{userId} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == userId);
+      allow create, update: if request.auth != null && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.status == 'pendente';
+      allow update, delete: if isAdmin();
     }
 
     // Professionals: authenticated users can read; only the professional can write their own document
@@ -72,6 +90,8 @@ service cloud.firestore {
       allow read, update: if request.auth != null
         && (resource.data.clientId == request.auth.uid
             || resource.data.professionalId == request.auth.uid);
+      // Admin lê para contar atendimentos pagos dos Vets Fundadores
+      allow read: if isAdmin();
       allow delete: if false;
     }
 

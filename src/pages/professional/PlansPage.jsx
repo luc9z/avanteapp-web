@@ -1,22 +1,23 @@
 /**
  * PlansPage — planos do veterinário, estilo "premium" (referência: X/Twitter).
  * Cards escuros lado a lado, toggle Mensal/Anual (anual = 2 meses grátis),
- * selo "Melhor valor", cupom e barra fixa de pagamento via AbacatePay.
+ * selo "Melhor valor" e barra fixa de assinatura.
+ *
+ * Sem Cloud Functions (plano gratuito do Firebase): o vet não ativa plano
+ * pago sozinho. Ele envia um pedido (plan_requests/{uid}) — Vet Fundador ou
+ * assinatura — e o admin ativa no painel /admin depois do PIX.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../../firebase'
+import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
 import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
 import { DEFAULT_PLANS } from '../admin/AdminPage'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { useTheme } from '../../contexts/ThemeContext'
-
-const createCheckout = httpsCallable(functions, 'createPlanCheckout')
-const redeemCoupon = httpsCallable(functions, 'redeemCoupon')
+import { FUNDADOR_PRICE, FUNDADOR_TRIAL_VISITS } from '../../utils/paidVisits'
 
 const brl = v => Number(v) <= 0 ? 'Grátis' : `R$ ${Number(v).toFixed(2).replace('.', ',')}`
 
@@ -47,8 +48,9 @@ export default function PlansPage() {
   const [currentPlan, setCurrentPlan] = useState(null)
   const [selectedId, setSelectedId] = useState('premium')
   const [period, setPeriod] = useState('mensal') // mensal | anual
-  const [coupon, setCoupon] = useState('')
-  const [couponBusy, setCouponBusy] = useState(false)
+  const [me, setMe] = useState(null)
+  const [planRequest, setPlanRequest] = useState(null)
+  const [requesting, setRequesting] = useState(false)
   const [paying, setPaying] = useState(false)
 
   useEffect(() => {
@@ -61,8 +63,15 @@ export default function PlansPage() {
   useEffect(() => {
     if (!user?.uid) return
     return onSnapshot(doc(db, 'users', user.uid), snap => {
+      setMe(snap.data() || null)
       setCurrentPlan(snap.data()?.plan || null)
     }, () => {})
+  }, [user?.uid])
+
+  useEffect(() => {
+    if (!user?.uid) return
+    return onSnapshot(doc(db, 'plan_requests', user.uid),
+      snap => setPlanRequest(snap.exists() ? snap.data() : null), () => {})
   }, [user?.uid])
 
   useEffect(() => {
@@ -81,32 +90,29 @@ export default function PlansPage() {
   const priceFor = p => period === 'anual' ? p.price * 10 : p.price
   const periodLabel = period === 'anual' ? '/ano' : '/mês'
 
-  async function handleRedeemCoupon() {
-    const code = coupon.trim().toUpperCase()
-    if (!code) return showToast('Digite o código do cupom', 'error')
-    if (!selectedId) return showToast('Selecione um plano primeiro.', 'error')
-    setCouponBusy(true)
+  // Pedido de plano: o admin recebe no painel e ativa depois do PIX
+  async function sendPlanRequest(type, planId) {
+    setRequesting(true)
     try {
-      if (selectedId === currentPlan) {
-        showToast('Este já é seu plano atual.', 'error')
-        return
-      }
-      // Cupom validado só no servidor (o plano não pode ser gravado pelo cliente)
-      const { data } = await redeemCoupon({ planId: selectedId, code })
-      if (data?.activated) {
-        showToast(`Cupom ${code} aplicado — plano ativado com 100% de desconto! 🎉`, 'success')
-        setTimeout(() => navigate('/dashboard', { replace: true }), 900)
-      } else if (data?.discount > 0) {
-        showToast(`Cupom válido: ${data.discount}% de desconto no pagamento.`, 'success')
-      }
+      await setDoc(doc(db, 'plan_requests', user.uid), {
+        uid: user.uid,
+        type,
+        planId,
+        period: type === 'fundador' ? 'mensal' : period,
+        name: me?.name || user.displayName || '',
+        email: me?.email || user.email || '',
+        phone: me?.phone || '',
+        council: me?.council || '',
+        status: 'pendente',
+        createdAt: serverTimestamp(),
+      })
+      showToast(type === 'fundador'
+        ? 'Pedido enviado! A equipe AVANTE vai falar com você para ativar o Vet Fundador.'
+        : 'Pedido enviado! A equipe AVANTE vai falar com você para o pagamento via PIX.', 'success')
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
-      showToast(
-        e?.code === 'functions/not-found' ? 'Cupom inválido ou expirado.'
-          : 'Cupom inválido ou expirado.',
-        'error'
-      )
-    } finally { setCouponBusy(false) }
+      showToast('Não foi possível enviar o pedido.', 'error')
+    } finally { setRequesting(false) }
   }
 
   async function handlePay() {
@@ -125,8 +131,7 @@ export default function PlansPage() {
         return
       }
 
-      // Pagamento via PIX em breve
-      showToast('Pagamento via PIX em breve! Se você recebeu um cupom, aplique-o acima.', 'info')
+      await sendPlanRequest('assinatura', selected.id)
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
       showToast('Não foi possível iniciar o pagamento.', 'error')
@@ -251,29 +256,25 @@ export default function PlansPage() {
           </div>
         )}
 
-        {/* Cupom */}
-        <div className="mt-5 rounded-2xl bg-white/[0.04] border border-white/10 p-4 flex flex-col gap-2.5">
-          <p className="text-white/80 text-xs font-bold">Tem um cupom?</p>
-          <div className="flex gap-2">
-            <input
-              value={coupon}
-              onChange={e => setCoupon(e.target.value.toUpperCase())}
-              placeholder="Código do cupom"
-              maxLength={20}
-              className="flex-1 bg-white/[0.06] border border-white/10 rounded-xl px-4 py-2.5 text-sm
-                         text-white placeholder-white/25 outline-none uppercase tracking-wider
-                         focus:border-amber-400/60 transition-colors"
-            />
-            <button onClick={handleRedeemCoupon} disabled={couponBusy || !coupon.trim()}
-              className="px-5 rounded-xl border border-white/20 text-white/80 text-sm font-bold
-                         hover:bg-white/10 disabled:opacity-40 transition-all">
-              {couponBusy ? <Spinner size={14} color="white" /> : 'Aplicar'}
-            </button>
+        {/* Vet Fundador */}
+        {!me?.fundador && (
+          <div className="mt-5 rounded-2xl bg-white/[0.04] border border-amber-400/40 p-4 flex flex-col gap-2.5">
+            <p className="text-white font-bold text-sm">Vet Fundador · vagas limitadas</p>
+            <p className="text-white/60 text-xs leading-relaxed">
+              Premium grátis até você fechar {FUNDADOR_TRIAL_VISITS} atendimentos pagos que vieram pelo app.
+              Depois, R$ {FUNDADOR_PRICE.toFixed(2).replace('.', ',')}/mês travado por 12 meses. Cancela quando quiser.
+            </p>
+            {planRequest?.type === 'fundador' && planRequest.status === 'pendente' ? (
+              <p className="text-amber-300 text-xs font-bold">Pedido enviado. A equipe AVANTE vai falar com você.</p>
+            ) : (
+              <button onClick={() => sendPlanRequest('fundador', 'premium')} disabled={requesting}
+                className="self-start px-5 py-2.5 rounded-xl bg-amber-400 text-gray-900 text-sm font-bold
+                           hover:bg-amber-300 disabled:opacity-50 transition-all">
+                {requesting ? <Spinner size={14} /> : 'Quero ser Vet Fundador'}
+              </button>
+            )}
           </div>
-          <p className="text-white/30 text-[10px]">
-            Aplicado ao plano selecionado ({selected?.name || '—'}).
-          </p>
-        </div>
+        )}
       </div>
 
       {/* ── Barra fixa: assinar e pagar ───────────────────────────── */}
@@ -299,12 +300,15 @@ export default function PlansPage() {
                        hover:bg-gray-100 active:scale-[0.98] disabled:opacity-50 transition-all">
             {paying ? <Spinner size={16} />
               : selected?.id === currentPlan ? '✓ Plano já ativo'
-              : selected?.price > 0 ? 'Assinar e pagar' : 'Ativar grátis'}
+              : selected?.price > 0
+                ? (planRequest?.type === 'assinatura' && planRequest.planId === selected.id && planRequest.status === 'pendente'
+                  ? 'Pedido enviado' : 'Pedir assinatura')
+                : 'Ativar grátis'}
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
           No Premium, seu perfil aparece no topo da busca marcado como "Patrocinado".
-          Pagamento via PIX disponível em breve.
+          Pagamento por PIX: depois do pedido, a equipe AVANTE envia a chave e ativa o plano.
         </p>
       </div>
       <VetBottomNav />

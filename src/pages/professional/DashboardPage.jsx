@@ -15,6 +15,7 @@ import AdBanner from '../../components/common/AdBanner'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { directChatId } from '../../services/directChat'
 import { isPending, isActive, normalizeStatus } from '../../utils/status'
+import { countPaidVisits, FUNDADOR_TRIAL_VISITS, FUNDADOR_PRICE } from '../../utils/paidVisits'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -316,16 +317,16 @@ export default function DashboardPage() {
 
           {/* Vet Fundador: Premium grátis até N atendimentos pagos pelo app */}
           {profile?.fundador && (() => {
-            const goal = Number(profile.fundador.trialVisits || 3)
-            const done = Math.min(Number(profile.paidVisits || 0), goal)
-            const price = Number(profile.fundador.price || 29.9).toFixed(2).replace('.', ',')
+            const goal = Number(profile.fundador.trialVisits || FUNDADOR_TRIAL_VISITS)
+            const paid = countPaidVisits(requests)
+            const price = Number(profile.fundador.price || FUNDADOR_PRICE).toFixed(2).replace('.', ',')
             return (
               <div className="relative mt-3 bg-black/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
                 <p className="text-xs font-bold text-white/90">
-                  Vet Fundador · {done} de {goal} atendimentos pagos pelo app
+                  Vet Fundador · {Math.min(paid, goal)} de {goal} atendimentos pagos pelo app
                 </p>
                 <p className="text-[11px] text-white/70 mt-0.5">
-                  {profile.fundadorTrialEndedAt
+                  {paid >= goal
                     ? `Período grátis concluído. Seu preço travado: R$ ${price}/mês por 12 meses.`
                     : `Premium grátis até completar ${goal}. Depois, R$ ${price}/mês travado por 12 meses.`}
                 </p>

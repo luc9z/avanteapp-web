@@ -10,13 +10,16 @@
  *  - Ofertas: anúncios exibidos no app (coleção offers), com botão
  *    que insere 3 modelos pré-moldados para ajustar depois.
  *  - Planos: valores e benefícios (config/plans) usados na página
- *    de planos do veterinário e no checkout AbacatePay.
+ *    de planos do veterinário.
+ *  - Vets: pedidos de plano (plan_requests), ativação do Vet Fundador,
+ *    troca de plano e registro da mensalidade paga por PIX. O projeto
+ *    roda sem Cloud Functions, então a ativação é feita aqui, à mão.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   doc, getDoc, setDoc, collection, onSnapshot, addDoc, updateDoc,
-  deleteDoc, serverTimestamp,
+  deleteDoc, serverTimestamp, query, where, Timestamp,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -24,6 +27,9 @@ import Spinner from '../../components/common/Spinner'
 import Modal from '../../components/common/Modal'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
+import {
+  isPaidVisit, FUNDADOR_TRIAL_VISITS, FUNDADOR_PRICE, FUNDADOR_SLOTS,
+} from '../../utils/paidVisits'
 
 /* ── Ofertas pré-moldadas (edite à vontade depois de inserir) ──── */
 const OFFER_TEMPLATES = [
@@ -175,7 +181,7 @@ export default function AdminPage() {
       {/* Abas */}
       <div className="px-4 pt-3">
         <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
-          {[['ofertas', 'Ofertas'], ['planos', 'Planos']].map(([id, label]) => (
+          {[['ofertas', 'Ofertas'], ['planos', 'Planos'], ['vets', 'Vets']].map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)}
               className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
                 tab === id ? 'bg-white text-primary shadow-sm' : 'text-gray-400'
@@ -186,7 +192,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {tab === 'ofertas' ? <OffersTab /> : <PlansTab />}
+      {tab === 'ofertas' ? <OffersTab /> : tab === 'planos' ? <PlansTab /> : <VetsTab />}
     </div>
   )
 }
@@ -429,8 +435,8 @@ function PlansTab() {
   return (
     <div className="px-4 py-4 flex flex-col gap-4">
       <p className="text-xs text-gray-400">
-        Os valores abaixo são <b>fictícios</b> — ajuste preço e benefícios e salve.
-        O checkout AbacatePay usa exatamente o que estiver aqui.
+        Ajuste preço e benefícios e salve. A página de planos do veterinário
+        usa exatamente o que estiver aqui.
       </p>
 
       {plans.map((p, i) => (
@@ -472,6 +478,169 @@ function PlansTab() {
           {saving ? <Spinner /> : 'Salvar planos'}
         </button>
       </div>
+    </div>
+  )
+}
+
+/* ════════════════ ABA VETS ════════════════ */
+const PLAN_LABEL = { free: 'Free', essencial: 'Essencial', premium: 'Premium', destaque: 'Premium' }
+
+function fmtDate(ts) {
+  const d = ts?.toDate ? ts.toDate() : null
+  return d ? d.toLocaleDateString('pt-BR') : '—'
+}
+
+function VetsTab() {
+  const [vets, setVets] = useState(null)
+  const [planRequests, setPlanRequests] = useState({})
+  const [paidByVet, setPaidByVet] = useState({})
+  const [busy, setBusy] = useState(null)
+
+  useEffect(() => onSnapshot(
+    query(collection(db, 'users'), where('profession', '==', 'medico_veterinario')),
+    snap => setVets(snap.docs.map(d => ({ uid: d.id, ...d.data() }))),
+    () => setVets([])
+  ), [])
+
+  useEffect(() => onSnapshot(collection(db, 'plan_requests'), snap => {
+    const byUid = {}
+    snap.docs.forEach(d => { byUid[d.id] = d.data() })
+    setPlanRequests(byUid)
+  }, () => {}), [])
+
+  useEffect(() => onSnapshot(
+    query(collection(db, 'requests'), where('status', '==', 'finalizado')),
+    snap => {
+      const counts = {}
+      snap.docs.forEach(d => {
+        const r = d.data()
+        if (r.professionalId && isPaidVisit(r)) counts[r.professionalId] = (counts[r.professionalId] || 0) + 1
+      })
+      setPaidByVet(counts)
+    }, () => {}
+  ), [])
+
+  async function run(uid, fn, okMsg) {
+    setBusy(uid)
+    try { await fn(); showToast(okMsg, 'success') }
+    catch (e) { showToast(friendlyError(e), 'error') }
+    finally { setBusy(null) }
+  }
+
+  async function closeRequest(uid) {
+    if (planRequests[uid]?.status === 'pendente') {
+      await updateDoc(doc(db, 'plan_requests', uid), { status: 'atendido', handledAt: serverTimestamp() })
+    }
+  }
+
+  const activateFundador = vet => run(vet.uid, async () => {
+    await updateDoc(doc(db, 'users', vet.uid), {
+      plan: 'premium',
+      featured: true,
+      planActivatedAt: serverTimestamp(),
+      fundador: { since: serverTimestamp(), trialVisits: FUNDADOR_TRIAL_VISITS, price: FUNDADOR_PRICE, lockedMonths: 12 },
+    })
+    await closeRequest(vet.uid)
+  }, 'Vet Fundador ativado.')
+
+  const setPlan = (vet, planId) => run(vet.uid, async () => {
+    await updateDoc(doc(db, 'users', vet.uid), {
+      plan: planId,
+      featured: planId === 'premium',
+      planActivatedAt: serverTimestamp(),
+    })
+    await closeRequest(vet.uid)
+  }, `Plano ${PLAN_LABEL[planId]} ativado.`)
+
+  const registerPix = vet => run(vet.uid, async () => {
+    const current = vet.planPaidUntil?.toDate ? vet.planPaidUntil.toDate() : null
+    const base = current && current > new Date() ? current : new Date()
+    const next = new Date(base)
+    next.setMonth(next.getMonth() + 1)
+    await updateDoc(doc(db, 'users', vet.uid), { planPaidUntil: Timestamp.fromDate(next) })
+  }, 'Mensalidade registrada (+1 mês).')
+
+  if (vets === null) return <div className="flex justify-center py-20"><Spinner size={28} color="#375337" /></div>
+
+  const fundadores = vets.filter(v => v.fundador).length
+  const pending = Object.values(planRequests).filter(r => r.status === 'pendente').length
+  const sorted = [...vets].sort((a, b) =>
+    (planRequests[b.uid]?.status === 'pendente') - (planRequests[a.uid]?.status === 'pendente'))
+
+  return (
+    <div className="px-4 py-4 flex flex-col gap-3">
+      <div className="grid grid-cols-3 gap-2">
+        <div className="card text-center"><p className="text-xl font-bold text-primary">{vets.length}</p><p className="text-[11px] text-gray-400">vets</p></div>
+        <div className="card text-center"><p className="text-xl font-bold text-primary">{fundadores}/{FUNDADOR_SLOTS}</p><p className="text-[11px] text-gray-400">fundadores</p></div>
+        <div className="card text-center"><p className="text-xl font-bold text-amber-600">{pending}</p><p className="text-[11px] text-gray-400">pedidos</p></div>
+      </div>
+      <p className="text-xs text-gray-400">
+        Atendimento pago = finalizado, com "Recebi o pagamento" marcado pelo vet e confirmado pelo cliente
+        (ou sem resposta em 48h). Mensalidade: receba o PIX e toque em "PIX recebido".
+      </p>
+
+      {sorted.map(vet => {
+        const req = planRequests[vet.uid]
+        const paid = paidByVet[vet.uid] || 0
+        const plan = vet.plan || 'free'
+        const trialDone = vet.fundador && paid >= Number(vet.fundador.trialVisits || FUNDADOR_TRIAL_VISITS)
+        const isBusy = busy === vet.uid
+        return (
+          <div key={vet.uid} className={`card flex flex-col gap-2 ${req?.status === 'pendente' ? 'border-2 border-amber-300' : ''}`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-bold text-gray-800 truncate">{vet.name || vet.email || vet.uid}</p>
+                <p className="text-[11px] text-gray-400">CRMV {vet.council || '—'} · {vet.phone || 'sem telefone'}</p>
+              </div>
+              <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap">
+                {PLAN_LABEL[plan] || plan}{vet.fundador ? ' · Fundador' : ''}
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-500">
+              {paid} atendimento{paid === 1 ? '' : 's'} pago{paid === 1 ? '' : 's'} pelo app
+              {plan !== 'free' && <> · mensalidade paga até <b>{fmtDate(vet.planPaidUntil)}</b></>}
+            </p>
+            {vet.fundador && (
+              <p className={`text-xs font-semibold ${trialDone ? 'text-amber-700' : 'text-gray-500'}`}>
+                {trialDone
+                  ? `Período grátis concluído: cobrar R$ ${Number(vet.fundador.price || FUNDADOR_PRICE).toFixed(2).replace('.', ',')}/mês por 12 meses.`
+                  : `Fundador: ${paid} de ${vet.fundador.trialVisits || FUNDADOR_TRIAL_VISITS} atendimentos para acabar o período grátis.`}
+              </p>
+            )}
+            {req?.status === 'pendente' && (
+              <p className="text-xs font-bold text-amber-700">
+                Pedido: {req.type === 'fundador' ? 'Vet Fundador' : `assinatura ${PLAN_LABEL[req.planId] || req.planId} (${req.period})`} em {fmtDate(req.createdAt)}
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {!vet.fundador && (
+                <button disabled={isBusy} onClick={() => activateFundador(vet)} className="btn-primary px-3 py-1.5 text-xs">
+                  Ativar Vet Fundador
+                </button>
+              )}
+              <select value={plan} disabled={isBusy} onChange={e => setPlan(vet, e.target.value)} className="select-field text-xs py-1.5 w-auto">
+                <option value="free">Free</option>
+                <option value="essencial">Essencial</option>
+                <option value="premium">Premium</option>
+              </select>
+              {plan !== 'free' && (
+                <button disabled={isBusy} onClick={() => registerPix(vet)} className="btn-outline px-3 py-1.5 text-xs">
+                  PIX recebido (+1 mês)
+                </button>
+              )}
+              {req?.status === 'pendente' && (
+                <button disabled={isBusy} onClick={() => run(vet.uid, () => closeRequest(vet.uid), 'Pedido marcado como atendido.')}
+                  className="text-xs text-gray-400 underline px-1">
+                  Dispensar pedido
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })}
+      {vets.length === 0 && <p className="text-sm text-gray-400 text-center py-10">Nenhum veterinário cadastrado ainda.</p>}
     </div>
   )
 }
