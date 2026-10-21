@@ -1,0 +1,68 @@
+# Buyer panel: AVANTE (app de veterinária a domicílio e na propriedade), Santiago RS
+
+**4 buy · 16 pass** (20% buy) out of 20 simulated buyers. Seed 7, so the same cards can be dealt again.
+
+These are simulated buyers, not customers. Use this to find objections and weak spots, then confirm the big ones with real people before you spend.
+
+## By segment
+
+| group | buyers | buy rate |
+| --- | ---: | ---: |
+| Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo) | 5 | 60%  (thin) |
+| Recém-formado autônomo (até 3 anos de formado), ainda montando carteira | 7 | 14%  (thin) |
+| Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região | 6 | 0%  (thin) |
+| Vet empregado em agropecuária ou cooperativa que faz atendimentos por fora | 2 | 0%  (thin) |
+
+## By buying behaviour
+
+| group | buyers | buy rate |
+| --- | ---: | ---: |
+| Testa ferramentas novas | 2 | 100%  (thin) |
+| Precisa de cliente novo | 4 | 50%  (thin) |
+| Desconfiado de tecnologia | 3 | 0%  (thin) |
+| Vive do boca a boca e do WhatsApp | 5 | 0%  (thin) |
+| Agenda cheia na temporada | 3 | 0%  (thin) |
+| Calcula custo-benefício de tudo | 3 | 0%  (thin) |
+
+## By income
+
+| group | buyers | buy rate |
+| --- | ---: | ---: |
+| $60,000 to $111,000 | 7 | 29%  (thin) |
+| under $60,000 | 6 | 17%  (thin) |
+| $111,000 and up | 7 | 14%  (thin) |
+
+## Why they pass
+
+| reason | buyers | in their words |
+| --- | ---: | --- |
+| need | 8 | "Minha agenda já está cheia com os produtores que me conhecem há anos e me chamam no WhatsApp. Produtor rural daqui não vai procurar veterinário de gado em app, e com quase nenhum cliente cadastrado não vejo por que pagar pra aparecer no topo de uma busca que ninguém faz." (P003) · "Minha agenda já está cheia com os produtores que me chamam por indicação no WhatsApp, e passo a semana na estrada. Até posso criar o perfil grátis para ver se aparece alguma coisa, mas pagar mensalidade para ficar no topo de um app que ainda quase não tem cliente não faz sentido para mim." (P005) |
+| trust | 5 | "Eu crio o perfil grátis porque não custa nada, mas não conto em pagar mensalidade de app que ainda não tem cliente. Meus atendimentos vêm do boca a boca e do grupo de WhatsApp dos produtores, e não vejo produtor daqui pedindo vet por aplicativo tão cedo." (P001) · "Eu faço visita por fora do meu emprego e na temporada não tenho tempo nem pra responder mensagem; o plano Free já me dá perfil, pedidos e chat, então não vejo por que pagar pra aparecer como 'Patrocinado' num app que ainda tem poucos clientes. Crio a conta grátis e vejo se chega pedido." (P007) |
+| habit | 3 | "Aqui em Santiago o pessoal me acha pelo WhatsApp e pela indicação da agropecuária, e o app ainda quase não tem cliente. Até crio o perfil grátis, mas não conto em pagar mensalidade por um app que não sei se vai me trazer atendimento." (P004) · "Aqui em Santiago meus clientes me acham pelo WhatsApp e pela indicação do vizinho, e eu passo a semana na estrada sem tempo de ficar mexendo em app. Até posso deixar o perfil grátis lá, mas pagar mensalidade por um app que ainda quase ninguém usa eu não vou." (P008) |
+
+## Why they buy
+
+| reason | buyers | in their words |
+| --- | ---: | --- |
+| need | 2 | "Tenho tarde livre e preciso de cliente novo; o boca a boca e o WhatsApp não estão enchendo minha agenda. Como só pago depois de 3 atendimentos que vieram pelo app, ativo, e se ele me trouxer 3 clientes pagos, R$ 29,90 é menos que uma consulta, então continuo." (P006) · "Tenho horário sobrando e preciso de cliente, e só pago depois de 3 atendimentos pagos que vieram do app, então não tenho nada a perder ativando. Se o app me trouxer 3 consultas, R$ 29,90 por mês é menos que uma visita, aí continuo pagando sem problema." (P009) |
+| price | 1 | "Eu gosto de testar app novo e aqui não arrisco nada: só pago depois de 3 atendimentos pagos que vieram do app, e R$ 29,90 é menos que um terço de uma visita de fim de semana. Se o app me trouxer 3 clientes que pagaram, sigo pagando sem drama." (P002) |
+| convenience | 1 | "Eu gosto de testar app novo e passo a semana na estrada, então ter pedido com o local no mapa e agenda no celular me ajuda de verdade. Só pago depois de 3 atendimentos pagos que vieram pelo app, e R$ 29,90 é menos que uma visita; se chegou até aí, se pagou." (P013) |
+
+## What would flip a no
+
+- Ver pedidos de verdade chegando no app aqui em Santiago, tipo um mês com vários produtores e tutores pedindo atendimento na minha região antes de eu ter que pagar.
+- Ver que pedidos de propriedades novas, que eu não atendia, estão chegando de verdade pelo app de forma regular, tipo vários por mês, antes de eu ter que pagar qualquer coisa.
+- Ver o app trazendo de fato pedidos de gente que não me conhecia, de propriedade rural da região, nos primeiros meses. Se pingar atendimento novo todo mês, R$ 29,90 se paga com uma visita.
+- Ver que o app realmente traz produtores novos de gado e ovelha da região, com algum tipo de garantia contra visita perdida, como um sinal ou pagamento adiantado pelo app.
+- Uma confirmação por escrito do CRMV-RS de que o destaque pago no app está dentro do código de ética, e ver que os pedidos estão chegando de verdade em Santiago.
+- Ver que os pedidos estão chegando de verdade: se pelo plano grátis aparecerem clientes novos, que não me conheciam, todo mês, aí R$ 29,90 se paga com uma visita e eu assino.
+- Ver, depois das 3 visitas, que o Premium me trouxe pelo menos um atendimento a mais por mês do que eu teria no Free; aí a consulta paga a mensalidade e eu continuo.
+- Ver que produtores grandes da região realmente estão pedindo atendimento de bovino e ovino pelo app, com chamados que eu não pegaria de outro jeito, e sem ranking de preço público entre os vets.
+- Ver o app me trazendo de fato pelo menos um atendimento pago por mês na região, de forma constante; aí os R$ 29,90 se pagam e eu mantenho.
+- Ver que o app realmente me mandou pedidos de fazendas novas, que eu não conhecia, de forma constante, todo mês, aí os R$ 29,90 se pagam com uma visita só.
+- Ver pedidos reais chegando de produtores e tutores de Santiago que eu ainda não atendo, que paguem a consulta, antes de ter que pagar qualquer coisa.
+- Ver pedidos pagos chegando de fato pelo app nos primeiros meses, de gente que não me acharia pelo boca a boca, e o pedido chegar como notificação simples sem eu ter que ficar abrindo o app.
+
+Buyers say they would buy **1.0 times** in the first month on average.
+
+20 buyers gave all four price answers. Run founder-pricing's van_westendorp.py on the answers folder.

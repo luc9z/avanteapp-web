@@ -1,0 +1,13 @@
+{
+  "id": "P005",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda já está cheia com os produtores que me chamam por indicação no WhatsApp, e passo a semana na estrada. Até posso criar o perfil grátis para ver se aparece alguma coisa, mas pagar mensalidade para ficar no topo de um app que ainda quase não tem cliente não faz sentido para mim.",
+  "objection": "Produtor rural daqui não larga o WhatsApp e a indicação do vizinho para chamar vet por app. E pedido de gente que eu não conheço é justamente o que me dá medo: marca, eu rodo 80 km de estrada de chão e o cliente não aparece ou não paga, e o app não garante nada disso.",
+  "would_change_my_mind": "Ver que o app realmente traz produtores novos de gado e ovelha da região, com algum tipo de garantia contra visita perdida, como um sinal ou pagamento adiantado pelo app.",
+  "price_too_cheap": 10,
+  "price_cheap": 20,
+  "price_expensive": 50,
+  "price_too_expensive": 90
+}

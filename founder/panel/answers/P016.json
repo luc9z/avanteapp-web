@@ -1,0 +1,13 @@
+{
+  "id": "P016",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "habit",
+  "reason": "Meus clientes chegam por indicação e me chamam direto no WhatsApp, e entre clínica de manhã e visita de tarde não tenho tempo pra ficar cuidando de mais um app. Até crio o perfil grátis pra ver no que dá, mas não me vejo pagando mensalidade num app que hoje quase não tem cliente.",
+  "objection": "O app tá começando e tem pouco cliente cadastrado; não sei se vai chegar pedido de verdade ou se vou ficar pagando pra aparecer numa busca que ninguém usa, e ainda ter que responder chat fora do WhatsApp.",
+  "would_change_my_mind": "Ver pedidos pagos chegando de fato pelo app nos primeiros meses, de gente que não me acharia pelo boca a boca, e o pedido chegar como notificação simples sem eu ter que ficar abrindo o app.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 39.9,
+  "price_too_expensive": 60
+}

@@ -1,0 +1,13 @@
+{
+  "id": "P014",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda já está cheia com as fazendas que me chamam direto no WhatsApp ou por telefone, e produtor rural daqui não vai baixar app pra chamar veterinário de boi. Com poucos clientes cadastrados, não vejo de onde viriam esses 3 atendimentos, e não tenho tempo pra ficar respondendo mais um app.",
+  "objection": "O produtor da região resolve tudo no WhatsApp e no boca a boca; duvido que o app traga atendimento de grande animal que eu já não pegaria de qualquer jeito.",
+  "would_change_my_mind": "Ver que o app realmente me mandou pedidos de fazendas novas, que eu não conhecia, de forma constante, todo mês, aí os R$ 29,90 se pagam com uma visita só.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 49.9,
+  "price_too_expensive": 90
+}

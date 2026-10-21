@@ -1,0 +1,13 @@
+{
+  "id": "P020",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda já está cheia com indicação e WhatsApp; produtor daqui me liga direto, não vai abrir app pra chamar vet de boi. Posso até deixar um perfil grátis, mas pagar Premium pra aparecer no topo de um app com poucos clientes não faz sentido pra mim.",
+  "objection": "Produtor rural da região não usa app pra isso e o app ainda está vazio; não vejo de onde viriam pedidos novos que eu já não receba, e ainda corro risco de visita marcada por desconhecido que não aparece ou não paga.",
+  "would_change_my_mind": "Ver pedidos reais de fazendas novas, fora da minha carteira, chegando pelo app com pagamento garantido ou sinal antecipado.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 40,
+  "price_too_expensive": 70
+}

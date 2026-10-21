@@ -1,0 +1,13 @@
+{
+  "id": "P015",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "App novo sem cliente nenhum não serve pra nada. Meus clientes já me acham pelo WhatsApp e pela indicação; posso até criar o perfil grátis, mas pagar pra aparecer no topo de uma busca que ninguém faz não faz sentido.",
+  "objection": "Não tem tutor nem produtor usando ainda. Pagar destaque e prioridade numa vitrine vazia é jogar dinheiro fora, e na temporada eu nem tenho tempo de abrir mais um app.",
+  "would_change_my_mind": "Ver no plano grátis, durante uns dois ou três meses, pedidos de verdade chegando de clientes novos que eu não teria de outro jeito. Se o Free me trouxer serviço, aí pago o Premium.",
+  "price_too_cheap": 10,
+  "price_cheap": 25,
+  "price_expensive": 50,
+  "price_too_expensive": 90
+}

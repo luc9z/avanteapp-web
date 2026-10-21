@@ -1,0 +1,13 @@
+{
+  "id": "P017",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "Até crio o perfil grátis, porque estou montando carteira e não custa nada, mas não me comprometo a pagar mensalidade num app que ainda quase não tem cliente em Santiago. Meus clientes chegam por indicação e me chamam no WhatsApp, e passo a semana na estrada; não vou ficar pagando para aparecer numa lista ao lado dos colegas da cidade.",
+  "objection": "Não quero virar mais um numa vitrine onde o produtor compara meu preço com o do colega da mesma cidade, e com poucos clientes no app duvido que eu feche 3 atendimentos pagos tão cedo.",
+  "would_change_my_mind": "Ver que o app de fato me trouxe atendimentos pagos de gente nova, de fora da minha rede de indicação, várias vezes por mês.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 35,
+  "price_too_expensive": 60
+}

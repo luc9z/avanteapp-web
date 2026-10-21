@@ -1,0 +1,13 @@
+{
+  "id": "P010",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Eu crio a conta grátis, sim, porque o Free já me dá perfil, pedidos, chat e agenda, e isso é o que eu preciso pra atender no fim de semana. Pagar R$ 29,90 todo mês pra aparecer em cima com 'Patrocinado' num app que ainda quase não tem cliente não se paga pra mim hoje.",
+  "objection": "Mais uma mensalidade pra pagar. Não sei se o topo da busca vai me trazer cliente a mais do que o plano grátis já traria, ainda mais se os outros vets fundadores também estiverem pagando pra aparecer em cima.",
+  "would_change_my_mind": "Ver, depois das 3 visitas, que o Premium me trouxe pelo menos um atendimento a mais por mês do que eu teria no Free; aí a consulta paga a mensalidade e eu continuo.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 29.9,
+  "price_too_expensive": 45
+}

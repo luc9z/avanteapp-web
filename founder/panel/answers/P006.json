@@ -1,0 +1,13 @@
+{
+  "id": "P006",
+  "buys": true,
+  "purchases_first_month": 1,
+  "reason_code": "need",
+  "reason": "Tenho tarde livre e preciso de cliente novo; o boca a boca e o WhatsApp não estão enchendo minha agenda. Como só pago depois de 3 atendimentos que vieram pelo app, ativo, e se ele me trouxer 3 clientes pagos, R$ 29,90 é menos que uma consulta, então continuo.",
+  "objection": "O app está começando e quase não tem cliente cadastrado. Tenho medo de criar o perfil e não chegar pedido nenhum, ou chegar só curioso pedindo preço pelo chat.",
+  "would_change_my_mind": "Se em dois ou três meses não aparecer nenhum pedido de verdade pelo app, eu largo e fico no WhatsApp.",
+  "price_too_cheap": 9.9,
+  "price_cheap": 19.9,
+  "price_expensive": 39.9,
+  "price_too_expensive": 59.9
+}

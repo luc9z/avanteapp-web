@@ -1,0 +1,13 @@
+{
+  "id": "P009",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "timing",
+  "reason": "Eu preciso de cliente novo, então crio o perfil grátis na hora. Mas pagar pra aparecer no topo de um app que ainda quase não tem cliente é pagar por destaque numa vitrine vazia. Primeiro quero ver pedido chegando pelo Free.",
+  "objection": "Produtor rural daqui não vai pedir veterinário por aplicativo. Ele manda mensagem no grupo de WhatsApp ou liga pra quem já conhece. Talvez tutor de pet na cidade use, mas com poucos clientes cadastrados não sei se vem pedido nenhum.",
+  "would_change_my_mind": "Receber uns 3 ou 4 pedidos reais pelo Free num mês, ou ver que já tem bastante gente de Santiago pedindo atendimento no app. Aí o Premium pra ficar no topo se paga com uma consulta.",
+  "price_too_cheap": 10,
+  "price_cheap": 29.9,
+  "price_expensive": 59.9,
+  "price_too_expensive": 99
+}

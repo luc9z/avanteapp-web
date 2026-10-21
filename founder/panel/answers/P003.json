@@ -1,0 +1,13 @@
+{
+  "id": "P003",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda já está cheia com os produtores que me conhecem há anos e me chamam no WhatsApp. Produtor rural daqui não vai procurar veterinário de gado em app, e com quase nenhum cliente cadastrado não vejo por que pagar pra aparecer no topo de uma busca que ninguém faz.",
+  "objection": "Não tenho tempo pra ficar mexendo em mais um app, e duvido que os fazendeiros da região vão usar isso em vez de ligar ou mandar mensagem pra quem já conhecem.",
+  "would_change_my_mind": "Ver que pedidos de propriedades novas, que eu não atendia, estão chegando de verdade pelo app de forma regular, tipo vários por mês, antes de eu ter que pagar qualquer coisa.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 40,
+  "price_too_expensive": 70
+}

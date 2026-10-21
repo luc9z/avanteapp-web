@@ -1,0 +1,222 @@
+[
+ {
+  "id": "P001",
+  "name": "Omar",
+  "age": 24,
+  "segment": "Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo)",
+  "income": 104000,
+  "behaviour": "Precisa de cliente novo",
+  "behaviour_how": "Tem horário livre na agenda e procura jeitos de conseguir mais atendimentos.",
+  "objection": "App novo sem cliente nenhum não serve pra nada",
+  "habit": "você participa do grupo de WhatsApp dos produtores da região"
+ },
+ {
+  "id": "P002",
+  "name": "Raj",
+  "age": 42,
+  "segment": "Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo)",
+  "income": 60000,
+  "behaviour": "Testa ferramentas novas",
+  "behaviour_how": "Gosta de experimentar app e sistema novo se for fácil.",
+  "objection": "Medo de visita perdida: o cliente marca e não aparece ou não paga",
+  "habit": "você atende pets na cidade nos fins de semana para completar a renda"
+ },
+ {
+  "id": "P003",
+  "name": "Emil",
+  "age": 47,
+  "segment": "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+  "income": 181000,
+  "behaviour": "Desconfiado de tecnologia",
+  "behaviour_how": "Usa o celular para WhatsApp e banco, e acha que app é coisa de cidade grande.",
+  "objection": "Não tenho tempo pra ficar mexendo em mais um app",
+  "habit": "você atende na clínica de manhã e faz visitas à tarde"
+ },
+ {
+  "id": "P004",
+  "name": "Owen",
+  "age": 56,
+  "segment": "Vet empregado em agropecuária ou cooperativa que faz atendimentos por fora",
+  "income": 94000,
+  "behaviour": "Precisa de cliente novo",
+  "behaviour_how": "Tem horário livre na agenda e procura jeitos de conseguir mais atendimentos.",
+  "objection": "Aqui em Santiago todo mundo já me conhece, cliente me acha pelo WhatsApp",
+  "habit": "você indica e é indicado pela agropecuária onde compra insumos"
+ },
+ {
+  "id": "P005",
+  "name": "Sana",
+  "age": 49,
+  "segment": "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+  "income": 150000,
+  "behaviour": "Vive do boca a boca e do WhatsApp",
+  "behaviour_how": "Os clientes chegam por indicação e mandam mensagem direto no seu celular.",
+  "objection": "Medo de visita perdida: o cliente marca e não aparece ou não paga",
+  "habit": "você passa a maior parte da semana na estrada entre as fazendas"
+ },
+ {
+  "id": "P006",
+  "name": "Maya",
+  "age": 54,
+  "segment": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+  "income": 59000,
+  "behaviour": "Precisa de cliente novo",
+  "behaviour_how": "Tem horário livre na agenda e procura jeitos de conseguir mais atendimentos.",
+  "objection": "Aqui em Santiago todo mundo já me conhece, cliente me acha pelo WhatsApp",
+  "habit": "você atende na clínica de manhã e faz visitas à tarde"
+ },
+ {
+  "id": "P007",
+  "name": "Selin",
+  "age": 28,
+  "segment": "Vet empregado em agropecuária ou cooperativa que faz atendimentos por fora",
+  "income": 95000,
+  "behaviour": "Agenda cheia na temporada",
+  "behaviour_how": "Na época de vacinação, parição e reprodução não tem tempo nem para responder mensagem.",
+  "objection": "O CRMV pode implicar com anúncio pago",
+  "habit": "você atende na clínica de manhã e faz visitas à tarde"
+ },
+ {
+  "id": "P008",
+  "name": "Ruby",
+  "age": 31,
+  "segment": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+  "income": 48000,
+  "behaviour": "Desconfiado de tecnologia",
+  "behaviour_how": "Usa o celular para WhatsApp e banco, e acha que app é coisa de cidade grande.",
+  "objection": "Aqui em Santiago todo mundo já me conhece, cliente me acha pelo WhatsApp",
+  "habit": "você passa a maior parte da semana na estrada entre as fazendas"
+ },
+ {
+  "id": "P009",
+  "name": "Nora",
+  "age": 24,
+  "segment": "Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo)",
+  "income": 111000,
+  "behaviour": "Precisa de cliente novo",
+  "behaviour_how": "Tem horário livre na agenda e procura jeitos de conseguir mais atendimentos.",
+  "objection": "Produtor rural não vai pedir veterinário por aplicativo",
+  "habit": "você participa do grupo de WhatsApp dos produtores da região"
+ },
+ {
+  "id": "P010",
+  "name": "Fatima",
+  "age": 25,
+  "segment": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+  "income": 39000,
+  "behaviour": "Calcula custo-benefício de tudo",
+  "behaviour_how": "Só paga uma mensalidade se ela se pagar no mês.",
+  "objection": "Mais uma mensalidade pra pagar",
+  "habit": "você atende pets na cidade nos fins de semana para completar a renda"
+ },
+ {
+  "id": "P011",
+  "name": "Tariq",
+  "age": 48,
+  "segment": "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+  "income": 112000,
+  "behaviour": "Vive do boca a boca e do WhatsApp",
+  "behaviour_how": "Os clientes chegam por indicação e mandam mensagem direto no seu celular.",
+  "objection": "Não quero ser comparado por nota e preço com colega da mesma cidade",
+  "habit": "você participa do grupo de WhatsApp dos produtores da região"
+ },
+ {
+  "id": "P012",
+  "name": "Felix",
+  "age": 47,
+  "segment": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+  "income": 53000,
+  "behaviour": "Calcula custo-benefício de tudo",
+  "behaviour_how": "Só paga uma mensalidade se ela se pagar no mês.",
+  "objection": "Produtor rural não vai pedir veterinário por aplicativo",
+  "habit": "você indica e é indicado pela agropecuária onde compra insumos"
+ },
+ {
+  "id": "P013",
+  "name": "Zoe",
+  "age": 53,
+  "segment": "Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo)",
+  "income": 103000,
+  "behaviour": "Testa ferramentas novas",
+  "behaviour_how": "Gosta de experimentar app e sistema novo se for fácil.",
+  "objection": "Não quero ser comparado por nota e preço com colega da mesma cidade",
+  "habit": "você passa a maior parte da semana na estrada entre as fazendas"
+ },
+ {
+  "id": "P014",
+  "name": "Dev",
+  "age": 33,
+  "segment": "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+  "income": 105000,
+  "behaviour": "Calcula custo-benefício de tudo",
+  "behaviour_how": "Só paga uma mensalidade se ela se pagar no mês.",
+  "objection": "Não tenho tempo pra ficar mexendo em mais um app",
+  "habit": "você participa do grupo de WhatsApp dos produtores da região"
+ },
+ {
+  "id": "P015",
+  "name": "Yusuf",
+  "age": 54,
+  "segment": "Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo)",
+  "income": 135000,
+  "behaviour": "Agenda cheia na temporada",
+  "behaviour_how": "Na época de vacinação, parição e reprodução não tem tempo nem para responder mensagem.",
+  "objection": "App novo sem cliente nenhum não serve pra nada",
+  "habit": "você atende pets na cidade nos fins de semana para completar a renda"
+ },
+ {
+  "id": "P016",
+  "name": "Theo",
+  "age": 25,
+  "segment": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+  "income": 43000,
+  "behaviour": "Vive do boca a boca e do WhatsApp",
+  "behaviour_how": "Os clientes chegam por indicação e mandam mensagem direto no seu celular.",
+  "objection": "Não tenho tempo pra ficar mexendo em mais um app",
+  "habit": "você atende na clínica de manhã e faz visitas à tarde"
+ },
+ {
+  "id": "P017",
+  "name": "Alma",
+  "age": 58,
+  "segment": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+  "income": 69000,
+  "behaviour": "Vive do boca a boca e do WhatsApp",
+  "behaviour_how": "Os clientes chegam por indicação e mandam mensagem direto no seu celular.",
+  "objection": "Não quero ser comparado por nota e preço com colega da mesma cidade",
+  "habit": "você passa a maior parte da semana na estrada entre as fazendas"
+ },
+ {
+  "id": "P018",
+  "name": "Freya",
+  "age": 40,
+  "segment": "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+  "income": 168000,
+  "behaviour": "Desconfiado de tecnologia",
+  "behaviour_how": "Usa o celular para WhatsApp e banco, e acha que app é coisa de cidade grande.",
+  "objection": "App novo sem cliente nenhum não serve pra nada",
+  "habit": "você participa do grupo de WhatsApp dos produtores da região"
+ },
+ {
+  "id": "P019",
+  "name": "Harper",
+  "age": 38,
+  "segment": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+  "income": 55000,
+  "behaviour": "Agenda cheia na temporada",
+  "behaviour_how": "Na época de vacinação, parição e reprodução não tem tempo nem para responder mensagem.",
+  "objection": "Não tenho tempo pra ficar mexendo em mais um app",
+  "habit": "você atende na clínica de manhã e faz visitas à tarde"
+ },
+ {
+  "id": "P020",
+  "name": "Emma",
+  "age": 36,
+  "segment": "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+  "income": 211000,
+  "behaviour": "Vive do boca a boca e do WhatsApp",
+  "behaviour_how": "Os clientes chegam por indicação e mandam mensagem direto no seu celular.",
+  "objection": "Medo de visita perdida: o cliente marca e não aparece ou não paga",
+  "habit": "você atende na clínica de manhã e faz visitas à tarde"
+ }
+]

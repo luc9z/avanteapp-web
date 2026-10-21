@@ -1,0 +1,13 @@
+{
+  "id": "P008",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "habit",
+  "reason": "Aqui em Santiago meus clientes me acham pelo WhatsApp e pela indicação do vizinho, e eu passo a semana na estrada sem tempo de ficar mexendo em app. Até posso deixar o perfil grátis lá, mas pagar mensalidade por um app que ainda quase ninguém usa eu não vou.",
+  "objection": "O próprio app diz que tem poucos clientes cadastrados. Produtor rural daqui não vai baixar app pra chamar veterinário, vai mandar mensagem no zap como sempre fez. Duvido que eu feche 3 atendimentos por ali, e se fechar, foi porque o cliente ia me achar de qualquer jeito.",
+  "would_change_my_mind": "Ver que os pedidos estão chegando de verdade: se pelo plano grátis aparecerem clientes novos, que não me conheciam, todo mês, aí R$ 29,90 se paga com uma visita e eu assino.",
+  "price_too_cheap": 5,
+  "price_cheap": 10,
+  "price_expensive": 25,
+  "price_too_expensive": 40
+}

@@ -1,0 +1,13 @@
+{
+  "id": "P002",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "timing",
+  "reason": "Eu crio a conta grátis na hora, gosto de testar app novo, mas pagar R$ 59,90 pra ficar no topo de uma busca que quase ninguém usa ainda não faz sentido. Primeiro quero ver pedido chegando no Free.",
+  "objection": "Com poucos clientes cadastrados, vou pagar destaque pra quem? E sem comissão e sem pagamento pelo app, se o cliente marca e não aparece ou não paga, o prejuízo continua sendo meu.",
+  "would_change_my_mind": "Receber pelo menos uns 3 ou 4 pedidos reais por mês pelo Free, de gente que apareceu e pagou; aí o Premium se paga com uma consulta.",
+  "price_too_cheap": 9.9,
+  "price_cheap": 19.9,
+  "price_expensive": 49.9,
+  "price_too_expensive": 89.9
+}

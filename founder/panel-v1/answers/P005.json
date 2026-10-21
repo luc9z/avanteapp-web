@@ -1,0 +1,13 @@
+{
+  "id": "P005",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda já está cheia com produtor que me conhece por indicação e me chama no WhatsApp; não preciso de app pra achar cliente. Com poucos clientes cadastrados ainda, pagar pra aparecer no topo de uma busca que quase ninguém usa não faz sentido pra mim.",
+  "objection": "Produtor rural daqui não vai baixar app pra chamar veterinário, ele liga ou manda mensagem pra quem já conhece. E o app não resolve meu medo real: cliente que marca, eu rodo 80 km e ele não está ou não paga, porque o pagamento continua sendo direto comigo.",
+  "would_change_my_mind": "Ver que tem produtor de verdade da região pedindo atendimento de bovino pelo app toda semana, com algum sinal ou garantia de pagamento antes da visita.",
+  "price_too_cheap": 10,
+  "price_cheap": 25,
+  "price_expensive": 60,
+  "price_too_expensive": 100
+}

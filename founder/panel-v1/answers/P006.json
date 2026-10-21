@@ -1,0 +1,13 @@
+{
+  "id": "P006",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "timing",
+  "reason": "Eu preciso de cliente novo, sim, então crio o perfil no Free na hora, porque não custa nada e já recebo pedido. Mas pagar Premium para ficar no topo de uma busca que quase ninguém usa ainda é jogar dinheiro fora; primeiro quero ver se aparece algum pedido.",
+  "objection": "O app está começando e tem pouco cliente cadastrado. Aqui em Santiago o pessoal me chama pelo WhatsApp ou por indicação, e eu não sei se tutor ou produtor rural vai baixar um app para achar veterinário.",
+  "would_change_my_mind": "Ver que pelo Free já estão chegando pedidos de verdade na minha região e que tem outros vets disputando, aí o topo da busca e a prioridade passam a valer os R$ 59,90.",
+  "price_too_cheap": 9,
+  "price_cheap": 19.9,
+  "price_expensive": 49.9,
+  "price_too_expensive": 89.9
+}

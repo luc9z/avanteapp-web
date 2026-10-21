@@ -1,0 +1,97 @@
+{
+ "n": 20,
+ "seed": 7,
+ "customer": {
+  "business": "AVANTE (app de veterinária a domicílio e na propriedade), Santiago RS",
+  "target": "Médicos-veterinários que atendem em Santiago (RS) e cidades vizinhas, autônomos ou com clínica pequena, que fazem ou poderiam fazer visitas a domicílio ou na propriedade rural. A renda abaixo está em reais por ano.",
+  "where": "Santiago (RS) e região: 49 mil habitantes, 174 mil bovinos, 61 mil ovinos, 5 mil equinos",
+  "age": [
+   24,
+   58
+  ],
+  "segments": [
+   {
+    "name": "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+    "share": 0.35,
+    "income": [
+     36000,
+     72000
+    ]
+   },
+   {
+    "name": "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+    "share": 0.3,
+    "income": [
+     90000,
+     240000
+    ]
+   },
+   {
+    "name": "Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo)",
+    "share": 0.25,
+    "income": [
+     60000,
+     150000
+    ]
+   },
+   {
+    "name": "Vet empregado em agropecuária ou cooperativa que faz atendimentos por fora",
+    "share": 0.1,
+    "income": [
+     48000,
+     96000
+    ]
+   }
+  ],
+  "behaviours": [
+   {
+    "name": "Vive do boca a boca e do WhatsApp",
+    "share": 0.25,
+    "how": "Os clientes chegam por indicação e mandam mensagem direto no seu celular."
+   },
+   {
+    "name": "Precisa de cliente novo",
+    "share": 0.2,
+    "how": "Tem horário livre na agenda e procura jeitos de conseguir mais atendimentos."
+   },
+   {
+    "name": "Calcula custo-benefício de tudo",
+    "share": 0.15,
+    "how": "Só paga uma mensalidade se ela se pagar no mês."
+   },
+   {
+    "name": "Desconfiado de tecnologia",
+    "share": 0.15,
+    "how": "Usa o celular para WhatsApp e banco, e acha que app é coisa de cidade grande."
+   },
+   {
+    "name": "Agenda cheia na temporada",
+    "share": 0.15,
+    "how": "Na época de vacinação, parição e reprodução não tem tempo nem para responder mensagem."
+   },
+   {
+    "name": "Testa ferramentas novas",
+    "share": 0.1,
+    "how": "Gosta de experimentar app e sistema novo se for fácil."
+   }
+  ],
+  "objections": [
+   "Aqui em Santiago todo mundo já me conhece, cliente me acha pelo WhatsApp",
+   "Produtor rural não vai pedir veterinário por aplicativo",
+   "App novo sem cliente nenhum não serve pra nada",
+   "Mais uma mensalidade pra pagar",
+   "Não quero ser comparado por nota e preço com colega da mesma cidade",
+   "Não tenho tempo pra ficar mexendo em mais um app",
+   "Medo de visita perdida: o cliente marca e não aparece ou não paga",
+   "O CRMV pode implicar com anúncio pago"
+  ],
+  "habits": [
+   "você passa a maior parte da semana na estrada entre as fazendas",
+   "você atende na clínica de manhã e faz visitas à tarde",
+   "você participa do grupo de WhatsApp dos produtores da região",
+   "você indica e é indicado pela agropecuária onde compra insumos",
+   "você atende pets na cidade nos fins de semana para completar a renda"
+  ]
+ },
+ "pitch": "AVANTE é um app que conecta tutores de pets e produtores rurais de Santiago (RS) e região a veterinários que atendem em casa ou na propriedade (cães e gatos, bovinos, ovinos, equinos). O app está começando em Santiago agora: hoje ainda há poucos clientes cadastrados. Nos próximos meses o AVANTE vai divulgar o app para produtores e tutores da cidade (agropecuárias, rádio local, grupos de WhatsApp).\nComo funciona para o vet: você cria o perfil (áreas de atuação e raio de atendimento), recebe pedidos com o local no mapa, conversa por chat e organiza a agenda. Sem comissão: o valor da consulta você combina e recebe direto do cliente.\nOferta \"Vet Fundador\", 30 vagas para Santiago e região: plano Premium grátis até você fechar 3 atendimentos pagos que vieram pelo app. Depois disso, R$ 29,90 por mês, travado por 12 meses (preço normal do Premium: R$ 49,90). Cancela quando quiser, sem multa.\nO Premium inclui: aparecer no topo da busca da sua região com a marcação \"Patrocinado\", chat com o cliente antes de ele fazer o pedido, relatório do mês e histórico de atendimentos.\nSe preferir não assinar, o plano Free continua grátis para sempre: perfil na busca, receber pedidos, chat e agenda.\n(Para o painel: \"comprar\" aqui significa ativar a oferta Vet Fundador E esperar continuar pagando os R$ 29,90/mês depois das 3 visitas. Só criar a conta grátis não conta como compra. As quatro respostas de preço são para a mensalidade do Premium.)"
+}
