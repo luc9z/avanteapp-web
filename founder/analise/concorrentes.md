@@ -1,6 +1,6 @@
 # Concorrentes: AVANTE (Santiago-RS)
 
-Pesquisa feita em 21/10/2026, só com fontes públicas. Dados completos em `competitors.csv`. O comprador que paga é o **veterinário**. Tutores e produtores usam o app de graça.
+Pesquisa feita em 21/10/2026, só com fontes públicas. Dados completos em `concorrentes.csv`. O comprador que paga é o **veterinário**. Tutores e produtores usam o app de graça.
 
 ## 1. Quem está lá (do mais direto ao menos direto)
 

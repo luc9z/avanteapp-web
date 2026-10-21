@@ -18,7 +18,7 @@
 | Startup money earned back | not in year 1 |
 | Buyer panel | 4 buy · 16 pass |
 
-_Valores em reais (a ferramenta imprime "$"). Unidade: 1 vet pagante por 1 mês; onde está "a day", leia "por mês". Firebase no plano gratuito (sem Blaze), mensalidade por PIX direto. Painel: oferta Vet Fundador; os mesmos 20 vets deram 0 de 20 com os planos antigos (panel-v1/)._
+_Valores em reais (a ferramenta imprime "$"). Unidade: 1 vet pagante por 1 mês; onde está "a day", leia "por mês". Firebase no plano gratuito (sem Blaze), mensalidade por PIX direto. Painel: oferta Vet Fundador; os mesmos 20 vets deram 0 de 20 com os planos antigos (painel-planos-antigos/)._
 
 ## The idea
 
@@ -32,7 +32,7 @@ Nota: os 11 passos foram rodados de novo nesta pasta, já com Santiago como pra�
 
 ## Summary
 
-**Veredito: ainda não (Not yet).** Duas verificações falham: o ano 1 dá prejuízo (-R$ 6.692) e só 20% dos vets simulados compram (a régua é 25%). O que precisa mudar não é preço nem oferta: é **provar que tutores pedem atendimento pelo app**, com o teste de novembro de launch.md.
+**Veredito: ainda não (Not yet).** Duas verificações falham: o ano 1 dá prejuízo (-R$ 6.692) e só 20% dos vets simulados compram (a régua é 25%). O que precisa mudar não é preço nem oferta: é **provar que tutores pedem atendimento pelo app**, com o teste de novembro de lancamento.md.
 
 **O negócio.** O AVANTE leva um veterinário registrado no CRMV até a casa do tutor (e, numa fase 2, até a propriedade rural). O vet paga uma mensalidade sem comissão e o cliente usa de graça. A cidade de lançamento é Santiago (RS): 49 mil habitantes, 174 mil bovinos.
 
@@ -55,13 +55,13 @@ Nota: os 11 passos foram rodados de novo nesta pasta, já com Santiago como pra�
 
 **Para começar o fundador precisa de** R$ 500 em novembro, 10 a 12 horas por semana e, só se o teste passar, cerca de R$ 1.100 de abertura mais o contador.
 
-**A coisa a fazer esta semana**: publicar as regras e o app no Firebase, no plano gratuito (comandos em ops.md), virar admin e montar a lista de vets de Santiago (CRMV-RS, clínicas, URI) para as visitas a partir de 02/11.
+**A coisa a fazer esta semana**: publicar as regras e o app no Firebase, no plano gratuito (comandos em operacao.md), virar admin e montar a lista de vets de Santiago (CRMV-RS, clínicas, URI) para as visitas a partir de 02/11.
 
 _O painel é de compradores simulados e os números são projeções; clientes reais e orçamentos reais confirmam. Não é assessoria financeira, jurídica nem fiscal._
 
 ## What the board said
 
-**Voto: 3 FUND IF · nota média 4,3/10** (Ofertas 4, Monopólio 4, Produto 5). Memos completos em `board/`.
+**Voto: 3 FUND IF · nota média 4,3/10** (Ofertas 4, Monopólio 4, Produto 5). Memos completos em `conselho/`.
 
 ### Riscos que mais de um membro levantou (primeiro)
 1. **Marketplace vazio.** Sem tutores e produtores pedindo atendimento, a assinatura não tem o que vender, e o primeiro uso do cliente volta vazio (Ofertas, Monopólio, Produto).
@@ -77,12 +77,12 @@ _O painel é de compradores simulados e os números são projeções; clientes r
 ### Condições (checklist para o resto do pack)
 - [x] Escolher uma cidade: Santiago (RS).
 - [ ] Escolher **um** público e cortar do lançamento o que não serve a ele; pitch em uma frase (marketing.md).
-- [ ] Contar os vets que atendem fora da clínica em Santiago e definir a meta de ativos antes de gastar com divulgação (launch.md).
-- [ ] Prova de demanda: solicitações reais por vet em 60 a 90 dias (launch.md).
-- [ ] Oferta vendendo atendimento, não selo, com garantia (offer.md: Vet Fundador só paga depois de 3 atendimentos pagos).
+- [ ] Contar os vets que atendem fora da clínica em Santiago e definir a meta de ativos antes de gastar com divulgação (lancamento.md).
+- [ ] Prova de demanda: solicitações reais por vet em 60 a 90 dias (lancamento.md).
+- [ ] Oferta vendendo atendimento, não selo, com garantia (oferta.md: Vet Fundador só paga depois de 3 atendimentos pagos).
 - [x] Selo "Destaque" trocado por "Patrocinado" e a triagem por IA não favorece mais quem paga (feito no app).
-- [ ] Parecer do CRMV-RS ou de advogado sobre o destaque pago **antes de vender o Premium** (ops.md).
-- [ ] CNPJ e cobrança ativos **antes de cobrar**, não necessariamente antes do teste (ponto de atrito: Ofertas pede antes de pagar divulgação; ver launch.md).
+- [ ] Parecer do CRMV-RS ou de advogado sobre o destaque pago **antes de vender o Premium** (operacao.md).
+- [ ] CNPJ e cobrança ativos **antes de cobrar**, não necessariamente antes do teste (ponto de atrito: Ofertas pede antes de pagar divulgação; ver lancamento.md).
 - [ ] Um motivo para voltar ao app em vez do WhatsApp: histórico do animal ou do rebanho, lembrete de vacina e retorno (Monopólio, Produto).
 - [ ] Medir o custo para trazer cada usuário com os R$ 500 antes de abrir outra cidade.
 - [ ] Observar 5 tutores e 5 vets reais no primeiro uso.
@@ -92,7 +92,7 @@ Não é "um marketplace de vets com planos". É **o caderno de saúde do animal 
 
 ## The competition
 
-Pesquisa feita em 21/10/2026, só com fontes públicas. Dados completos em `competitors.csv`. O comprador que paga é o **veterinário**. Tutores e produtores usam o app de graça.
+Pesquisa feita em 21/10/2026, só com fontes públicas. Dados completos em `concorrentes.csv`. O comprador que paga é o **veterinário**. Tutores e produtores usam o app de graça.
 
 ### 1. Quem está lá (do mais direto ao menos direto)
 
@@ -238,7 +238,7 @@ Buyers say they would buy **1.0 times** in the first month on average.
 ## Pricing
 
 ### 1. O que os vets disseram
-40 respostas de preço (os mesmos 20 vets simulados de Santiago, nos dois pitches; curva em `pricing-curve.md`):
+40 respostas de preço (os mesmos 20 vets simulados de Santiago, nos dois pitches; curva em `curva-de-preco.md`):
 
 | ponto | preço/mês | o que significa |
 | --- | ---: | --- |
@@ -251,7 +251,7 @@ Buyers say they would buy **1.0 times** in the first month on average.
 O Premium a R$ 59,90 (o preço atual no código antigo) fica **acima** da faixa. R$ 49,90 fica no limite de cima; R$ 29,90 fica no meio.
 
 ### 2. O que os concorrentes cobram
-Ver `competitors.md`. Os apps de vet a domicílio ganham por comissão ou por contato, não por mensalidade fixa, então a comparação direta é fraca: o que o vet compara de verdade é "R$ X por mês contra o valor de uma consulta". Os próprios vets do painel repetem: **uma visita paga a mensalidade**.
+Ver `concorrentes.md`. Os apps de vet a domicílio ganham por comissão ou por contato, não por mensalidade fixa, então a comparação direta é fraca: o que o vet compara de verdade é "R$ X por mês contra o valor de uma consulta". Os próprios vets do painel repetem: **uma visita paga a mensalidade**.
 
 ### 3. O que o negócio precisa (ferramenta do CFO, imposto de 15,5% recalculado em cada preço, Firebase grátis e PIX direto)
 | preço | sobra por vet/mês | vets para empatar | ano 1 |
@@ -266,7 +266,7 @@ O preço mexe pouco no ano 1, porque quase não há vets pagando no começo. **O
 - **Free**: R$ 0, para sempre. É o que enche o mapa de vets, e o mapa cheio é o que o tutor precisa ver.
 - **Essencial**: R$ 29,90. Hoje vende "sem anúncios" e relatórios, que nenhum vet do painel citou como motivo para pagar. Manter, mas não empurrar.
 - **Premium**: **R$ 49,90** (já atualizado no padrão do app; o admin pode ter outro valor salvo em `config/plans`).
-- **Oferta de lançamento**: **Vet Fundador** (ver offer.md): grátis até 3 atendimentos pagos pelo app, depois **R$ 29,90 travado por 12 meses**, 30 vagas. A data de fim é real: as vagas acabam ou o lançamento termina em 13/12/2026, o que vier primeiro. Não treina o vet a esperar desconto, porque o preço normal é cobrado de quem entrar depois.
+- **Oferta de lançamento**: **Vet Fundador** (ver oferta.md): grátis até 3 atendimentos pagos pelo app, depois **R$ 29,90 travado por 12 meses**, 30 vagas. A data de fim é real: as vagas acabam ou o lançamento termina em 13/12/2026, o que vier primeiro. Não treina o vet a esperar desconto, porque o preço normal é cobrado de quem entrar depois.
 - Nada de "de R$ 59,90 por R$ 29,90" como âncora: o preço que vale daqui para frente é R$ 49,90.
 
 ### 5. O que testar com vets reais
@@ -293,7 +293,7 @@ Depois: "e se o cliente marca e não aparece ou não paga?"; "como sei que o Pre
 - **Garantia embutida**: Premium grátis até o vet fechar 3 atendimentos pagos vindos do app. Ele só paga depois que o app já se pagou.
 - **Preço travado**: R$ 29,90/mês por 12 meses (preço normal do Premium: R$ 49,90). Cancela sem multa.
 - **Escassez real**: 30 vagas para Santiago e região. O limite é verdadeiro e serve para não lotar o topo da busca.
-- **Transparência**: o destaque aparece marcado como "Patrocinado" (ver o risco do CFMV e do CDC em ops.md).
+- **Transparência**: o destaque aparece marcado como "Patrocinado" (ver o risco do CFMV e do CDC em operacao.md).
 
 ### Escores da equação de valor (1 a 10, antes → depois)
 | elemento | antes (selo + relatório, R$ 59,90) | depois (Vet Fundador) | o que move |
@@ -306,8 +306,8 @@ Depois: "e se o cliente marca e não aparece ou não paga?"; "como sei que o Pre
 ### Reteste com os mesmos 20 vets simulados de Santiago (seed 7, mesmas cartas)
 | pitch | compram | taxa |
 | --- | ---: | ---: |
-| v1: planos Free / Essencial R$ 29,90 / Premium R$ 59,90 com selo de Destaque (`panel-v1/`) | 0 de 20 | 0% |
-| v2: oferta Vet Fundador (`panel/`) | **4 de 20** | **20%** |
+| v1: planos Free / Essencial R$ 29,90 / Premium R$ 59,90 com selo de Destaque (`painel-planos-antigos/`) | 0 de 20 | 0% |
+| v2: oferta Vet Fundador (`painel-vet-fundador/`) | **4 de 20** | **20%** |
 
 Mesmos vets, mesma semente: a diferença é só a oferta. As objeções que caíram: "pagar para ficar no topo de uma lista vazia" (o vet só paga depois de 3 atendimentos) e "mais uma mensalidade sem garantia" (a garantia está embutida). As que ficaram: falta de clientes no app, hábito do WhatsApp e agenda cheia dos vets de gado. Nenhuma oferta para o vet resolve essas três.
 
@@ -316,7 +316,7 @@ Mesmos vets, mesma semente: a diferença é só a oferta. As objeções que caí
 - Por que recusam: falta de necessidade (8), desconfiança de que o app traga clientes (5), hábito do WhatsApp (3). **Ninguém recusou por preço.**
 - O que faria mudar de ideia: ver pedidos reais chegando antes de pagar (quase todos), sinal ou pagamento antecipado contra visita perdida (3), confirmação do CRMV-RS sobre o destaque pago (1), nada de ranking público de preço (1), pedido como notificação simples (1).
 
-**Conclusão**: a oferta ajudou, mas o gargalo é o mesmo de antes: demanda. Nenhum ajuste de oferta para o vet resolve isso. O próximo passo é provar que tutores e produtores pedem atendimento (ver launch.md).
+**Conclusão**: a oferta ajudou, mas o gargalo é o mesmo de antes: demanda. Nenhum ajuste de oferta para o vet resolve isso. O próximo passo é provar que tutores e produtores pedem atendimento (ver lancamento.md).
 
 ### Um furo que o reteste mostrou
 Se os 30 Fundadores ficarem todos no Premium, "topo da busca" deixa de significar alguma coisa (objeção do P010). Antes de passar de uns 10 vets ativos na cidade, decidir uma de duas: **(a)** o Fundador recebe pedidos, e o "Patrocinado" vira só um extra pequeno; ou **(b)** limitar a 3 patrocinados por bairro ou raio, em rodízio. A recomendação é **(a)**: vender atendimento, não posição (é o que o conselho pediu).
@@ -341,11 +341,11 @@ Se os 30 Fundadores ficarem todos no Premium, "topo da busca" deixa de significa
 2. Confirmar com o contador o Anexo III (6%) em vez do Anexo V (15,5%): junto com o item 1, equilíbrio em 14 vets, ano 1 com -R$ 2.936.
 3. Premium a R$ 49,90 depois dos 12 meses travados: equilíbrio em 16 vets (aparece no ano 2).
 
-**O custo escondido do plano grátis**: a cobrança e a ativação são manuais. Para 30 vets, é perto de 1 hora por mês conferindo PIX e tocando em "PIX recebido" no admin. Sem Cloud Functions também não há notificação push quando o app está fechado (o vet só é avisado com o app aberto), o que pesa no concierge por WhatsApp (ops.md).
+**O custo escondido do plano grátis**: a cobrança e a ativação são manuais. Para 30 vets, é perto de 1 hora por mês conferindo PIX e tocando em "PIX recebido" no admin. Sem Cloud Functions também não há notificação push quando o app está fechado (o vet só é avisado com o app aberto), o que pesa no concierge por WhatsApp (operacao.md).
 
 **Condições do conselho sobre dinheiro**: não atendidas. O ano 1 não se paga, e a demanda ainda não foi provada. A lente Ofertas pede CNPJ e cobrança antes de pagar divulgação; o plano deixa o CNPJ para depois do teste de novembro porque no teste ninguém paga (o Fundador só paga depois de 3 atendimentos), e assim os R$ 1.100 de abertura só saem se houver demanda. Este relatório já conta contador e imposto desde o mês 1, então é conservador.
 
-Estimativas que precisam de orçamento real (ver cfo-sources.md): imposto, contador, Groq, abertura do CNPJ, gráfica e advogado. Não é assessoria contábil nem fiscal: o contador confirma o enquadramento, o CNAE e o pró-labore antes de abrir a empresa.
+Estimativas que precisam de orçamento real (ver financeiro-fontes.md): imposto, contador, Groq, abertura do CNPJ, gráfica e advogado. Não é assessoria contábil nem fiscal: o contador confirma o enquadramento, o CNAE e o pró-labore antes de abrir a empresa.
 
 ---
 
@@ -442,14 +442,14 @@ Para os vets (recrutamento corpo a corpo, não por anúncio): "Clientes novos de
 | **Perfil no Google** (Google Business Profile) e grupos de Facebook da cidade | Busca "veterinário em domicílio Santiago" | R$ 0 | visualizações e cliques |
 | **URI Santiago** (curso de Medicina Veterinária e Centro Veterinário) | Forma vets na cidade; os recém-formados são quem tem horário livre e compra (painel). Conversa com a coordenação e um cartaz no curso | R$ 0 | vets recém-formados cadastrados |
 
-**Com as agropecuárias e o Sindicato Rural, parceria, não disputa** (competitors.md): elas já são onde a indicação de vet acontece e poderiam copiar o AVANTE em um dia com uma lista no WhatsApp. A proposta é o contrário: o cartaz do AVANTE no balcão com o nome da loja ("indicação Colpo Agropecuária", se ela topar), e a loja ganha um jeito de indicar sem se comprometer com um vet só. Isso vale já para pet shops na fase 1 e é a porta de entrada da fase 2 no campo.
+**Com as agropecuárias e o Sindicato Rural, parceria, não disputa** (concorrentes.md): elas já são onde a indicação de vet acontece e poderiam copiar o AVANTE em um dia com uma lista no WhatsApp. A proposta é o contrário: o cartaz do AVANTE no balcão com o nome da loja ("indicação Colpo Agropecuária", se ela topar), e a loja ganha um jeito de indicar sem se comprometer com um vet só. Isso vale já para pet shops na fase 1 e é a porta de entrada da fase 2 no campo.
 
 **O que não vamos fazer agora**: Google Ads (pouca busca numa cidade de 49 mil), influenciador pago, outdoor, e o produtor rural (fica para a fase 2).
 
 ### Os 30 dias (D0 = segunda, 16/11/2026, abertura para tutores)
 | data | canal | o que sai |
 | --- | --- | --- |
-| 02/11 a 06/11 (D-14 a D-10) | visita pessoal | Visitar 15 vets (lista em ops.md) e cadastrar os 10 primeiros como Vet Fundador. Foto de perfil e raio de atendimento preenchidos na hora. |
+| 02/11 a 06/11 (D-14 a D-10) | visita pessoal | Visitar 15 vets (lista em operacao.md) e cadastrar os 10 primeiros como Vet Fundador. Foto de perfil e raio de atendimento preenchidos na hora. |
 | 05/11 (D-11) | pet shops | Pedir espaço no balcão de 4 pet shops e 2 agropecuárias da cidade. |
 | 09/11 (D-7) | Instagram orgânico | Post 1: "Santiago vai ter veterinário em casa pelo app. Lista de espera no link." |
 | 10/11 (D-6) | rádio | Pauta enviada: a regra nova do CFMV para atendimento em casa e um app daqui. |
@@ -483,7 +483,7 @@ Quando não houver novidade: rotina de um vet fundador (com autorização), perg
 **Regras**: nada de preço ou tabela de consulta ou procedimento no anúncio (o vet não pode divulgar isso, Res. CFMV 1.649/2025, art. 6º, V); nada de "o melhor veterinário"; os depoimentos do painel são simulados e **nunca** viram depoimento em anúncio; post com vet só com autorização por escrito, e ele responde eticamente pelo que compartilhar (art. 5º).
 
 ### Orçamento e números
-- **Novembro (R$ 500)**: Meta R$ 300, impressão R$ 100, reserva R$ 100 (spot de rádio ou mais anúncio no que funcionar). A partir de janeiro: **R$ 200/mês** (ver cfo.md: é o que mais reduz o prejuízo).
+- **Novembro (R$ 500)**: Meta R$ 300, impressão R$ 100, reserva R$ 100 (spot de rádio ou mais anúncio no que funcionar). A partir de janeiro: **R$ 200/mês** (ver financeiro.md: é o que mais reduz o prejuízo).
 - **O máximo para ganhar um vet pagante**: ele deixa R$ 25,27/mês × 12 meses travados = **R$ 303**. Como ele só paga depois de 3 atendimentos e precisa de pelo menos 1 por mês para continuar, o custo de marketing por **atendimento fechado** precisa ficar abaixo de cerca de **R$ 60**.
 - **Os três números semanais**:
   1. **Pedidos de tutores por semana**. Meta: 8 ou mais a partir da semana 2. Abaixo de 3, trocar o gancho e o canal.
@@ -576,7 +576,7 @@ Limite conhecido: cliente e vet podem editar a solicitação inteira (regra anti
 3. 12h e 18h: repetir o passo 2.
 4. Depois de cada atendimento: perguntar ao tutor se correu bem (2 linhas, por WhatsApp). **(o cliente vê)**
 5. 20h: anotar na planilha os pedidos, aceites, atendimentos realizados e pagos e os vets ativos.
-6. Sexta: rodar a revisão semanal (ver launch.md).
+6. Sexta: rodar a revisão semanal (ver lancamento.md).
 
 ### Fornecedores
 | item | opções | custo | observação |
@@ -589,7 +589,7 @@ Limite conhecido: cliente e vet podem editar a solicitação inteira (regra anti
 | Anúncios | Meta Ads | R$ 300 em novembro | cartão do fundador até ter CNPJ |
 
 ### Pessoas
-Só o fundador. Estimativa de **10 a 12 horas por semana** no primeiro mês (visitas aos vets, concierge dos pedidos, conteúdo), caindo para 5 a 6 depois. Sem salário no plano (ver cfo.md). Pró-labore e INSS: o contador define junto com o enquadramento.
+Só o fundador. Estimativa de **10 a 12 horas por semana** no primeiro mês (visitas aos vets, concierge dos pedidos, conteúdo), caindo para 5 a 6 depois. Sem salário no plano (ver financeiro.md). Pró-labore e INSS: o contador define junto com o enquadramento.
 
 ### Rotinas (uma página cada)
 **Recrutar um vet (presencial, 15 minutos)**
@@ -641,7 +641,7 @@ O app (já pronto, com a aba Vets do /admin para planos e mensalidades), uma pla
 | Custo do Firebase ou da IA dispara | baixa | médio | Alertas de orçamento |
 | Fundador sem tempo (é uma pessoa só) | média | alto | Limitar o concierge a 3 horários por dia |
 | Vet leva o cliente para o WhatsApp e some do app | alta | médio | Aceitar: o app cobra mensalidade, não comissão; o valor é trazer o **primeiro** contato |
-| Mercado pequeno demais (49 mil habitantes) | alta | alto | Ver cfo.md: depois de provar, a fase 2 é região (cidades vizinhas) ou o campo |
+| Mercado pequeno demais (49 mil habitantes) | alta | alto | Ver financeiro.md: depois de provar, a fase 2 é região (cidades vizinhas) ou o campo |
 
 ## Launch plan
 
@@ -659,14 +659,14 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 ### 2. Contagem regressiva
 | semana | o que | prazo | caminho crítico |
 | --- | --- | --- | --- |
-| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de ops.md~~ (feito no código) → **publicar** regras e hosting (sem Blaze; comandos em ops.md), virar admin e revisar quem usou o BEMVINDO | 25/10 | **sim** |
+| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de operacao.md~~ (feito no código) → **publicar** regras e hosting (sem Blaze; comandos em operacao.md), virar admin e revisar quem usou o BEMVINDO | 25/10 | **sim** |
 | 22/10 a 25/10 | Montar a lista de vets de Santiago: consulta pública de inscritos no site do CRMV-RS, Google Maps, perguntar nos pet shops | 25/10 | **sim** |
 | 26/10 a 01/11 | Definir a meta de vets ativos (condição do conselho): contar quantos atendem fora da clínica na lista e mirar pelo menos metade deles, com no mínimo 10 | 01/11 | **sim** |
 | 26/10 a 01/11 | Lembrete de vacina a partir do "caderno do pet" (o motivo para voltar ao app) | 13/11 | não |
 | 26/10 a 01/11 | Pedir 3 orçamentos de contador (só contratar se o teste passar) | 01/11 | não |
 | 26/10 a 01/11 | Registrar `avantevet.com.br`; criar @avantevet; perfil no Google | 01/11 | não |
 | 26/10 a 01/11 | Enviar pedido de parecer ao CRMV-RS sobre o "Patrocinado" | 01/11 | não (resposta pode demorar) |
-| 02/11 a 06/11 | Visitar 15 vets e fechar 10 fundadores (rotina em ops.md) | 06/11 | **sim** |
+| 02/11 a 06/11 | Visitar 15 vets e fechar 10 fundadores (rotina em operacao.md) | 06/11 | **sim** |
 | 05/11 a 11/11 | Cartazes nos pet shops e agropecuárias; pauta na rádio | 11/11 | não |
 | 09/11 a 13/11 | Lista de espera e posts D-7 a D-3 (marketing.md) | 13/11 | não |
 | **14/11 (sábado)** | **Abertura de teste**: 5 tutores conhecidos fazem pedidos de verdade, com vets fundadores. Observar cada um do começo ao fim (condição do conselho) e anotar onde travam; repetir com 5 vets aceitando o pedido | 14/11 | **sim** |
@@ -683,7 +683,7 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 | 14h a 18h | Concierge. Visitar 2 pet shops para ver se os cartazes estão no lugar. |
 | 20h | Planilha: pedidos, aceites, atendimentos. |
 
-Se algo quebrar: o app cair (avisar nos grupos, desligar o anúncio, corrigir); nenhum vet aceitar (concierge, e se não der, avisar o tutor e indicar clínica); reclamação (rotina em ops.md).
+Se algo quebrar: o app cair (avisar nos grupos, desligar o anúncio, corrigir); nenhum vet aceitar (concierge, e se não der, avisar o tutor e indicar clínica); reclamação (rotina em operacao.md).
 
 ### 4. Os primeiros 30 dias
 **Toda semana**: pedidos de tutores, % aceitos em até 2 horas, atendimentos realizados e pagos, vets ativos e custo por pedido no anúncio.

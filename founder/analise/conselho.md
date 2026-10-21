@@ -1,6 +1,6 @@
 # Conselho: resumo da presidência
 
-**Voto: 3 FUND IF · nota média 4,3/10** (Ofertas 4, Monopólio 4, Produto 5). Memos completos em `board/`.
+**Voto: 3 FUND IF · nota média 4,3/10** (Ofertas 4, Monopólio 4, Produto 5). Memos completos em `conselho/`.
 
 ## Riscos que mais de um membro levantou (primeiro)
 1. **Marketplace vazio.** Sem tutores e produtores pedindo atendimento, a assinatura não tem o que vender, e o primeiro uso do cliente volta vazio (Ofertas, Monopólio, Produto).
@@ -16,12 +16,12 @@
 ## Condições (checklist para o resto do pack)
 - [x] Escolher uma cidade: Santiago (RS).
 - [ ] Escolher **um** público e cortar do lançamento o que não serve a ele; pitch em uma frase (marketing.md).
-- [ ] Contar os vets que atendem fora da clínica em Santiago e definir a meta de ativos antes de gastar com divulgação (launch.md).
-- [ ] Prova de demanda: solicitações reais por vet em 60 a 90 dias (launch.md).
-- [ ] Oferta vendendo atendimento, não selo, com garantia (offer.md: Vet Fundador só paga depois de 3 atendimentos pagos).
+- [ ] Contar os vets que atendem fora da clínica em Santiago e definir a meta de ativos antes de gastar com divulgação (lancamento.md).
+- [ ] Prova de demanda: solicitações reais por vet em 60 a 90 dias (lancamento.md).
+- [ ] Oferta vendendo atendimento, não selo, com garantia (oferta.md: Vet Fundador só paga depois de 3 atendimentos pagos).
 - [x] Selo "Destaque" trocado por "Patrocinado" e a triagem por IA não favorece mais quem paga (feito no app).
-- [ ] Parecer do CRMV-RS ou de advogado sobre o destaque pago **antes de vender o Premium** (ops.md).
-- [ ] CNPJ e cobrança ativos **antes de cobrar**, não necessariamente antes do teste (ponto de atrito: Ofertas pede antes de pagar divulgação; ver launch.md).
+- [ ] Parecer do CRMV-RS ou de advogado sobre o destaque pago **antes de vender o Premium** (operacao.md).
+- [ ] CNPJ e cobrança ativos **antes de cobrar**, não necessariamente antes do teste (ponto de atrito: Ofertas pede antes de pagar divulgação; ver lancamento.md).
 - [ ] Um motivo para voltar ao app em vez do WhatsApp: histórico do animal ou do rebanho, lembrete de vacina e retorno (Monopólio, Produto).
 - [ ] Medir o custo para trazer cada usuário com os R$ 500 antes de abrir outra cidade.
 - [ ] Observar 5 tutores e 5 vets reais no primeiro uso.

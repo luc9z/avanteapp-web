@@ -37,7 +37,7 @@ Limite conhecido: cliente e vet podem editar a solicitação inteira (regra anti
 3. 12h e 18h: repetir o passo 2.
 4. Depois de cada atendimento: perguntar ao tutor se correu bem (2 linhas, por WhatsApp). **(o cliente vê)**
 5. 20h: anotar na planilha os pedidos, aceites, atendimentos realizados e pagos e os vets ativos.
-6. Sexta: rodar a revisão semanal (ver launch.md).
+6. Sexta: rodar a revisão semanal (ver lancamento.md).
 
 ## Fornecedores
 | item | opções | custo | observação |
@@ -50,7 +50,7 @@ Limite conhecido: cliente e vet podem editar a solicitação inteira (regra anti
 | Anúncios | Meta Ads | R$ 300 em novembro | cartão do fundador até ter CNPJ |
 
 ## Pessoas
-Só o fundador. Estimativa de **10 a 12 horas por semana** no primeiro mês (visitas aos vets, concierge dos pedidos, conteúdo), caindo para 5 a 6 depois. Sem salário no plano (ver cfo.md). Pró-labore e INSS: o contador define junto com o enquadramento.
+Só o fundador. Estimativa de **10 a 12 horas por semana** no primeiro mês (visitas aos vets, concierge dos pedidos, conteúdo), caindo para 5 a 6 depois. Sem salário no plano (ver financeiro.md). Pró-labore e INSS: o contador define junto com o enquadramento.
 
 ## Rotinas (uma página cada)
 **Recrutar um vet (presencial, 15 minutos)**
@@ -102,4 +102,4 @@ O app (já pronto, com a aba Vets do /admin para planos e mensalidades), uma pla
 | Custo do Firebase ou da IA dispara | baixa | médio | Alertas de orçamento |
 | Fundador sem tempo (é uma pessoa só) | média | alto | Limitar o concierge a 3 horários por dia |
 | Vet leva o cliente para o WhatsApp e some do app | alta | médio | Aceitar: o app cobra mensalidade, não comissão; o valor é trazer o **primeiro** contato |
-| Mercado pequeno demais (49 mil habitantes) | alta | alto | Ver cfo.md: depois de provar, a fase 2 é região (cidades vizinhas) ou o campo |
+| Mercado pequeno demais (49 mil habitantes) | alta | alto | Ver financeiro.md: depois de provar, a fase 2 é região (cidades vizinhas) ou o campo |

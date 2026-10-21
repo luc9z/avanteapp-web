@@ -34,14 +34,14 @@ Para os vets (recrutamento corpo a corpo, não por anúncio): "Clientes novos de
 | **Perfil no Google** (Google Business Profile) e grupos de Facebook da cidade | Busca "veterinário em domicílio Santiago" | R$ 0 | visualizações e cliques |
 | **URI Santiago** (curso de Medicina Veterinária e Centro Veterinário) | Forma vets na cidade; os recém-formados são quem tem horário livre e compra (painel). Conversa com a coordenação e um cartaz no curso | R$ 0 | vets recém-formados cadastrados |
 
-**Com as agropecuárias e o Sindicato Rural, parceria, não disputa** (competitors.md): elas já são onde a indicação de vet acontece e poderiam copiar o AVANTE em um dia com uma lista no WhatsApp. A proposta é o contrário: o cartaz do AVANTE no balcão com o nome da loja ("indicação Colpo Agropecuária", se ela topar), e a loja ganha um jeito de indicar sem se comprometer com um vet só. Isso vale já para pet shops na fase 1 e é a porta de entrada da fase 2 no campo.
+**Com as agropecuárias e o Sindicato Rural, parceria, não disputa** (concorrentes.md): elas já são onde a indicação de vet acontece e poderiam copiar o AVANTE em um dia com uma lista no WhatsApp. A proposta é o contrário: o cartaz do AVANTE no balcão com o nome da loja ("indicação Colpo Agropecuária", se ela topar), e a loja ganha um jeito de indicar sem se comprometer com um vet só. Isso vale já para pet shops na fase 1 e é a porta de entrada da fase 2 no campo.
 
 **O que não vamos fazer agora**: Google Ads (pouca busca numa cidade de 49 mil), influenciador pago, outdoor, e o produtor rural (fica para a fase 2).
 
 ## Os 30 dias (D0 = segunda, 16/11/2026, abertura para tutores)
 | data | canal | o que sai |
 | --- | --- | --- |
-| 02/11 a 06/11 (D-14 a D-10) | visita pessoal | Visitar 15 vets (lista em ops.md) e cadastrar os 10 primeiros como Vet Fundador. Foto de perfil e raio de atendimento preenchidos na hora. |
+| 02/11 a 06/11 (D-14 a D-10) | visita pessoal | Visitar 15 vets (lista em operacao.md) e cadastrar os 10 primeiros como Vet Fundador. Foto de perfil e raio de atendimento preenchidos na hora. |
 | 05/11 (D-11) | pet shops | Pedir espaço no balcão de 4 pet shops e 2 agropecuárias da cidade. |
 | 09/11 (D-7) | Instagram orgânico | Post 1: "Santiago vai ter veterinário em casa pelo app. Lista de espera no link." |
 | 10/11 (D-6) | rádio | Pauta enviada: a regra nova do CFMV para atendimento em casa e um app daqui. |
@@ -75,7 +75,7 @@ Quando não houver novidade: rotina de um vet fundador (com autorização), perg
 **Regras**: nada de preço ou tabela de consulta ou procedimento no anúncio (o vet não pode divulgar isso, Res. CFMV 1.649/2025, art. 6º, V); nada de "o melhor veterinário"; os depoimentos do painel são simulados e **nunca** viram depoimento em anúncio; post com vet só com autorização por escrito, e ele responde eticamente pelo que compartilhar (art. 5º).
 
 ## Orçamento e números
-- **Novembro (R$ 500)**: Meta R$ 300, impressão R$ 100, reserva R$ 100 (spot de rádio ou mais anúncio no que funcionar). A partir de janeiro: **R$ 200/mês** (ver cfo.md: é o que mais reduz o prejuízo).
+- **Novembro (R$ 500)**: Meta R$ 300, impressão R$ 100, reserva R$ 100 (spot de rádio ou mais anúncio no que funcionar). A partir de janeiro: **R$ 200/mês** (ver financeiro.md: é o que mais reduz o prejuízo).
 - **O máximo para ganhar um vet pagante**: ele deixa R$ 25,27/mês × 12 meses travados = **R$ 303**. Como ele só paga depois de 3 atendimentos e precisa de pelo menos 1 por mês para continuar, o custo de marketing por **atendimento fechado** precisa ficar abaixo de cerca de **R$ 60**.
 - **Os três números semanais**:
   1. **Pedidos de tutores por semana**. Meta: 8 ou mais a partir da semana 2. Abaixo de 3, trocar o gancho e o canal.

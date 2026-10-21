@@ -14,14 +14,14 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 ## 2. Contagem regressiva
 | semana | o que | prazo | caminho crítico |
 | --- | --- | --- | --- |
-| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de ops.md~~ (feito no código) → **publicar** regras e hosting (sem Blaze; comandos em ops.md), virar admin e revisar quem usou o BEMVINDO | 25/10 | **sim** |
+| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de operacao.md~~ (feito no código) → **publicar** regras e hosting (sem Blaze; comandos em operacao.md), virar admin e revisar quem usou o BEMVINDO | 25/10 | **sim** |
 | 22/10 a 25/10 | Montar a lista de vets de Santiago: consulta pública de inscritos no site do CRMV-RS, Google Maps, perguntar nos pet shops | 25/10 | **sim** |
 | 26/10 a 01/11 | Definir a meta de vets ativos (condição do conselho): contar quantos atendem fora da clínica na lista e mirar pelo menos metade deles, com no mínimo 10 | 01/11 | **sim** |
 | 26/10 a 01/11 | Lembrete de vacina a partir do "caderno do pet" (o motivo para voltar ao app) | 13/11 | não |
 | 26/10 a 01/11 | Pedir 3 orçamentos de contador (só contratar se o teste passar) | 01/11 | não |
 | 26/10 a 01/11 | Registrar `avantevet.com.br`; criar @avantevet; perfil no Google | 01/11 | não |
 | 26/10 a 01/11 | Enviar pedido de parecer ao CRMV-RS sobre o "Patrocinado" | 01/11 | não (resposta pode demorar) |
-| 02/11 a 06/11 | Visitar 15 vets e fechar 10 fundadores (rotina em ops.md) | 06/11 | **sim** |
+| 02/11 a 06/11 | Visitar 15 vets e fechar 10 fundadores (rotina em operacao.md) | 06/11 | **sim** |
 | 05/11 a 11/11 | Cartazes nos pet shops e agropecuárias; pauta na rádio | 11/11 | não |
 | 09/11 a 13/11 | Lista de espera e posts D-7 a D-3 (marketing.md) | 13/11 | não |
 | **14/11 (sábado)** | **Abertura de teste**: 5 tutores conhecidos fazem pedidos de verdade, com vets fundadores. Observar cada um do começo ao fim (condição do conselho) e anotar onde travam; repetir com 5 vets aceitando o pedido | 14/11 | **sim** |
@@ -38,7 +38,7 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 | 14h a 18h | Concierge. Visitar 2 pet shops para ver se os cartazes estão no lugar. |
 | 20h | Planilha: pedidos, aceites, atendimentos. |
 
-Se algo quebrar: o app cair (avisar nos grupos, desligar o anúncio, corrigir); nenhum vet aceitar (concierge, e se não der, avisar o tutor e indicar clínica); reclamação (rotina em ops.md).
+Se algo quebrar: o app cair (avisar nos grupos, desligar o anúncio, corrigir); nenhum vet aceitar (concierge, e se não der, avisar o tutor e indicar clínica); reclamação (rotina em operacao.md).
 
 ## 4. Os primeiros 30 dias
 **Toda semana**: pedidos de tutores, % aceitos em até 2 horas, atendimentos realizados e pagos, vets ativos e custo por pedido no anúncio.

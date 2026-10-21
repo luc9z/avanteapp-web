@@ -2,7 +2,7 @@
 
 | número | valor | fonte |
 | --- | ---: | --- |
-| Preço | R$ 29,90 | Oferta Vet Fundador (offer.md) |
+| Preço | R$ 29,90 | Oferta Vet Fundador (oferta.md) |
 | Imposto | 15,5% (R$ 4,63) | **Estimativa** conservadora: Simples Nacional, Anexo V, primeira faixa. Se o CNAE e o fator R permitirem o Anexo III, cai para 6%. O contador confirma. MEI provavelmente não serve: atividade de plataforma ou portal na internet não costuma constar da lista do MEI (confirmar). |
 | PIX da mensalidade | R$ 0 por cobrança | **Estimativa**: sem Cloud Functions não há checkout (AbacatePay); o vet paga por PIX direto na conta. Confirmar a tarifa do banco escolhido para a conta da empresa. |
 | Divulgação | R$ 500/mês | Definido pelo fundador |

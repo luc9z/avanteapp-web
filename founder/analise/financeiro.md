@@ -14,11 +14,11 @@
 2. Confirmar com o contador o Anexo III (6%) em vez do Anexo V (15,5%): junto com o item 1, equilíbrio em 14 vets, ano 1 com -R$ 2.936.
 3. Premium a R$ 49,90 depois dos 12 meses travados: equilíbrio em 16 vets (aparece no ano 2).
 
-**O custo escondido do plano grátis**: a cobrança e a ativação são manuais. Para 30 vets, é perto de 1 hora por mês conferindo PIX e tocando em "PIX recebido" no admin. Sem Cloud Functions também não há notificação push quando o app está fechado (o vet só é avisado com o app aberto), o que pesa no concierge por WhatsApp (ops.md).
+**O custo escondido do plano grátis**: a cobrança e a ativação são manuais. Para 30 vets, é perto de 1 hora por mês conferindo PIX e tocando em "PIX recebido" no admin. Sem Cloud Functions também não há notificação push quando o app está fechado (o vet só é avisado com o app aberto), o que pesa no concierge por WhatsApp (operacao.md).
 
 **Condições do conselho sobre dinheiro**: não atendidas. O ano 1 não se paga, e a demanda ainda não foi provada. A lente Ofertas pede CNPJ e cobrança antes de pagar divulgação; o plano deixa o CNPJ para depois do teste de novembro porque no teste ninguém paga (o Fundador só paga depois de 3 atendimentos), e assim os R$ 1.100 de abertura só saem se houver demanda. Este relatório já conta contador e imposto desde o mês 1, então é conservador.
 
-Estimativas que precisam de orçamento real (ver cfo-sources.md): imposto, contador, Groq, abertura do CNPJ, gráfica e advogado. Não é assessoria contábil nem fiscal: o contador confirma o enquadramento, o CNAE e o pró-labore antes de abrir a empresa.
+Estimativas que precisam de orçamento real (ver financeiro-fontes.md): imposto, contador, Groq, abertura do CNPJ, gráfica e advogado. Não é assessoria contábil nem fiscal: o contador confirma o enquadramento, o CNAE e o pró-labore antes de abrir a empresa.
 
 ---
 

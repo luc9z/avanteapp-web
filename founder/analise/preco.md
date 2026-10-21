@@ -1,7 +1,7 @@
 # Preço
 
 ## 1. O que os vets disseram
-40 respostas de preço (os mesmos 20 vets simulados de Santiago, nos dois pitches; curva em `pricing-curve.md`):
+40 respostas de preço (os mesmos 20 vets simulados de Santiago, nos dois pitches; curva em `curva-de-preco.md`):
 
 | ponto | preço/mês | o que significa |
 | --- | ---: | --- |
@@ -14,7 +14,7 @@
 O Premium a R$ 59,90 (o preço atual no código antigo) fica **acima** da faixa. R$ 49,90 fica no limite de cima; R$ 29,90 fica no meio.
 
 ## 2. O que os concorrentes cobram
-Ver `competitors.md`. Os apps de vet a domicílio ganham por comissão ou por contato, não por mensalidade fixa, então a comparação direta é fraca: o que o vet compara de verdade é "R$ X por mês contra o valor de uma consulta". Os próprios vets do painel repetem: **uma visita paga a mensalidade**.
+Ver `concorrentes.md`. Os apps de vet a domicílio ganham por comissão ou por contato, não por mensalidade fixa, então a comparação direta é fraca: o que o vet compara de verdade é "R$ X por mês contra o valor de uma consulta". Os próprios vets do painel repetem: **uma visita paga a mensalidade**.
 
 ## 3. O que o negócio precisa (ferramenta do CFO, imposto de 15,5% recalculado em cada preço, Firebase grátis e PIX direto)
 | preço | sobra por vet/mês | vets para empatar | ano 1 |
@@ -29,7 +29,7 @@ O preço mexe pouco no ano 1, porque quase não há vets pagando no começo. **O
 - **Free**: R$ 0, para sempre. É o que enche o mapa de vets, e o mapa cheio é o que o tutor precisa ver.
 - **Essencial**: R$ 29,90. Hoje vende "sem anúncios" e relatórios, que nenhum vet do painel citou como motivo para pagar. Manter, mas não empurrar.
 - **Premium**: **R$ 49,90** (já atualizado no padrão do app; o admin pode ter outro valor salvo em `config/plans`).
-- **Oferta de lançamento**: **Vet Fundador** (ver offer.md): grátis até 3 atendimentos pagos pelo app, depois **R$ 29,90 travado por 12 meses**, 30 vagas. A data de fim é real: as vagas acabam ou o lançamento termina em 13/12/2026, o que vier primeiro. Não treina o vet a esperar desconto, porque o preço normal é cobrado de quem entrar depois.
+- **Oferta de lançamento**: **Vet Fundador** (ver oferta.md): grátis até 3 atendimentos pagos pelo app, depois **R$ 29,90 travado por 12 meses**, 30 vagas. A data de fim é real: as vagas acabam ou o lançamento termina em 13/12/2026, o que vier primeiro. Não treina o vet a esperar desconto, porque o preço normal é cobrado de quem entrar depois.
 - Nada de "de R$ 59,90 por R$ 29,90" como âncora: o preço que vale daqui para frente é R$ 49,90.
 
 ## 5. O que testar com vets reais
