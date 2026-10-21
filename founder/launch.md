@@ -14,7 +14,7 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 ## 2. Contagem regressiva
 | semana | o que | prazo | caminho crítico |
 | --- | --- | --- | --- |
-| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de ops.md~~ (feito no código) → **publicar**: regras, functions e hosting (comandos em ops.md); criar o cupom FUNDADOR em `config/coupons` | 25/10 | **sim** |
+| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de ops.md~~ (feito no código) → **publicar** regras e hosting (sem Blaze; comandos em ops.md), virar admin e revisar quem usou o BEMVINDO | 25/10 | **sim** |
 | 22/10 a 25/10 | Montar a lista de vets de Santiago: consulta pública de inscritos no site do CRMV-RS, Google Maps, perguntar nos pet shops | 25/10 | **sim** |
 | 26/10 a 01/11 | Definir a meta de vets ativos (condição do conselho): contar quantos atendem fora da clínica na lista e mirar pelo menos metade deles, com no mínimo 10 | 01/11 | **sim** |
 | 26/10 a 01/11 | Lembrete de vacina a partir do "caderno do pet" (o motivo para voltar ao app) | 13/11 | não |
@@ -33,7 +33,7 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 | 7h | Conferir o app: cadastro, pedido, chat, mapa. Fazer um pedido de teste e cancelar. |
 | 8h | Mensagem para a lista de espera; post "abriu" no Instagram e nos grupos de Facebook. |
 | 8h30 | Ligar o anúncio da Meta (R$ 10/dia, ganchos 1 e 2). |
-| 9h a 12h | Concierge: cada pedido com vet em até 1 hora; se travar, WhatsApp. |
+| 9h a 12h | Concierge: cada pedido com vet em até 1 hora; se travar, WhatsApp. (Sem Blaze não há push: o vet só vê o pedido com o app aberto, então avise por WhatsApp todo pedido novo.) |
 | 12h | Mensagem aos 10 vets: "abriu, fiquem de olho nos pedidos". |
 | 14h a 18h | Concierge. Visitar 2 pet shops para ver se os cartazes estão no lugar. |
 | 20h | Planilha: pedidos, aceites, atendimentos. |
@@ -47,4 +47,4 @@ Se algo quebrar: o app cair (avisar nos grupos, desligar o anúncio, corrigir); 
 | --- | --- | --- |
 | **Dia 7 (23/11)** | Chegaram pedidos? De onde (anúncio, cartaz, rádio)? Os vets responderam? | Menos de 3 pedidos: trocar o gancho. Menos de 50% aceitos: problema de vet. |
 | **Dia 14 (30/11)** | Algum atendimento foi pago? O que os tutores disseram? Que gancho funcionou? | Zero atendimentos realizados: entrevistar 5 tutores que pediram e não fecharam. |
-| **Dia 30 (16/12)** e fechamento do teste em 13/12 | A linha de sucesso foi batida? | **Passou**: abrir o CNPJ, ligar a cobrança, divulgação de R$ 200/mês, planejar a fase 2 (cidades vizinhas ou campo). **Não passou**: não abrir empresa, rever a oferta para o tutor ou a cunha. |
+| **Dia 30 (16/12)** e fechamento do teste em 13/12 | A linha de sucesso foi batida? | **Passou**: abrir o CNPJ e a conta PJ, começar a receber os PIX dos Fundadores que bateram 3 atendimentos (aba Vets do admin), divulgação de R$ 200/mês, planejar a fase 2 (cidades vizinhas ou campo). **Não passou**: não abrir empresa, rever a oferta para o tutor ou a cunha. |

@@ -4,10 +4,10 @@
 | --- | ---: | --- |
 | Preço | R$ 29,90 | Oferta Vet Fundador (offer.md) |
 | Imposto | 15,5% (R$ 4,63) | **Estimativa** conservadora: Simples Nacional, Anexo V, primeira faixa. Se o CNAE e o fator R permitirem o Anexo III, cai para 6%. O contador confirma. MEI provavelmente não serve: atividade de plataforma ou portal na internet não costuma constar da lista do MEI (confirmar). |
-| Taxa do PIX no gateway | R$ 1,00 por cobrança | **Estimativa**. A página oficial de preços do AbacatePay não apareceu na busca; um relato de usuário fala em cerca de 4% ([TabNews](https://www.tabnews.com.br/Oletros/0efa9c5e-5de5-4bf9-9595-7ed496ad2bbd)), o que daria R$ 1,20. Pegar a tabela no painel do AbacatePay. |
+| PIX da mensalidade | R$ 0 por cobrança | **Estimativa**: sem Cloud Functions não há checkout (AbacatePay); o vet paga por PIX direto na conta. Confirmar a tarifa do banco escolhido para a conta da empresa. |
 | Divulgação | R$ 500/mês | Definido pelo fundador |
 | Contador online | R$ 150/mês | **Estimativa**. Pedir 2 ou 3 orçamentos (contador de Santiago e contabilidade online). |
-| Firebase | R$ 30/mês | **Estimativa** para poucos usuários no plano Blaze. Ver o faturamento real no console do Google Cloud. |
+| Firebase | R$ 0/mês | Plano gratuito Spark, por decisão do fundador (sem Blaze). Limites gratuitos do Firestore bastam para uma cidade; conferir o uso no console. |
 | Groq (IA) | R$ 20/mês | **Estimativa**. Ver o uso real no painel da Groq. |
 | Domínio | R$ 40/ano | Registro.br (.com.br). `avantevet.com.br` e `appavante.com.br` estavam livres em 21/10/2026, segundo consulta RDAP no registro.br. |
 | Abertura do CNPJ | R$ 300 | **Estimativa** (Junta Comercial do RS e certificado digital). |

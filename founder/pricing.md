@@ -16,12 +16,12 @@ O Premium a R$ 59,90 (o preço atual no código antigo) fica **acima** da faixa.
 ## 2. O que os concorrentes cobram
 Ver `competitors.md`. Os apps de vet a domicílio ganham por comissão ou por contato, não por mensalidade fixa, então a comparação direta é fraca: o que o vet compara de verdade é "R$ X por mês contra o valor de uma consulta". Os próprios vets do painel repetem: **uma visita paga a mensalidade**.
 
-## 3. O que o negócio precisa (ferramenta do CFO, com imposto de 15,5% recalculado em cada preço)
+## 3. O que o negócio precisa (ferramenta do CFO, imposto de 15,5% recalculado em cada preço, Firebase grátis e PIX direto)
 | preço | sobra por vet/mês | vets para empatar | ano 1 |
 | ---: | ---: | ---: | ---: |
-| R$ 29,90 | R$ 24,27 | 29 | -R$ 7.107 |
-| R$ 39,90 | R$ 32,72 | 22 | -R$ 6.642 |
-| R$ 49,90 | R$ 41,17 | 18 | -R$ 6.178 |
+| R$ 29,90 | R$ 25,27 | 27 | -R$ 6.692 |
+| R$ 39,90 | R$ 33,72 | 20 | -R$ 6.227 |
+| R$ 49,90 | R$ 42,17 | 16 | -R$ 5.763 |
 
 O preço mexe pouco no ano 1, porque quase não há vets pagando no começo. **O preço não é a alavanca; a demanda é.**
 

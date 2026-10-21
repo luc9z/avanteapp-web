@@ -76,7 +76,7 @@ Quando não houver novidade: rotina de um vet fundador (com autorização), perg
 
 ## Orçamento e números
 - **Novembro (R$ 500)**: Meta R$ 300, impressão R$ 100, reserva R$ 100 (spot de rádio ou mais anúncio no que funcionar). A partir de janeiro: **R$ 200/mês** (ver cfo.md: é o que mais reduz o prejuízo).
-- **O máximo para ganhar um vet pagante**: ele deixa R$ 24,27/mês × 12 meses travados = **R$ 291**. Como ele só paga depois de 3 atendimentos e precisa de pelo menos 1 por mês para continuar, o custo de marketing por **atendimento fechado** precisa ficar abaixo de cerca de **R$ 60**.
+- **O máximo para ganhar um vet pagante**: ele deixa R$ 25,27/mês × 12 meses travados = **R$ 303**. Como ele só paga depois de 3 atendimentos e precisa de pelo menos 1 por mês para continuar, o custo de marketing por **atendimento fechado** precisa ficar abaixo de cerca de **R$ 60**.
 - **Os três números semanais**:
   1. **Pedidos de tutores por semana**. Meta: 8 ou mais a partir da semana 2. Abaixo de 3, trocar o gancho e o canal.
   2. **Pedidos aceitos por um vet em até 2 horas**. Meta: 70%. Abaixo de 50%, o problema é a oferta de vets (recrutar mais ou ativar o aviso por WhatsApp).

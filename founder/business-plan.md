@@ -2,44 +2,44 @@
 
 **Verdict: Not yet**
 
-- ✓ Each vet-mês earns $24.27 before fixed costs (81% contribution).
-- ✗ Year 1 operating LOSS: $7,107.
-- ✓ Break-even is 29 vet-mêss a day against a capacity of 30.
+- ✓ Each vet-mês earns $25.27 before fixed costs (85% contribution).
+- ✗ Year 1 operating LOSS: $6,692.
+- ✓ Break-even is 27 vet-mêss a day against a capacity of 30.
 - ✗ 4 of 20 simulated buyers buy (20%, the bar is 25%).
 
 | key number | |
 | --- | ---: |
 | Price | $29.90 a vet-mês |
-| Profit margin at plan | -154% per vet-mês |
-| Break-even | 29 vet-mêss a day |
-| Year 1 operating profit | $-7,107 |
+| Profit margin at plan | -141% per vet-mês |
+| Break-even | 27 vet-mêss a day |
+| Year 1 operating profit | $-6,692 |
 | Startup spend | $1,100 |
-| Cash needed before it pays for itself | $8,207 |
+| Cash needed before it pays for itself | $7,792 |
 | Startup money earned back | not in year 1 |
 | Buyer panel | 4 buy · 16 pass |
 
-_Valores em reais (a ferramenta imprime "$"). Unidade: 1 vet pagante por 1 mês; onde está "a day", leia "por mês". Painel: oferta Vet Fundador; os mesmos 20 vets deram 0 de 20 com os planos antigos (panel-v1/)._
+_Valores em reais (a ferramenta imprime "$"). Unidade: 1 vet pagante por 1 mês; onde está "a day", leia "por mês". Firebase no plano gratuito (sem Blaze), mensalidade por PIX direto. Painel: oferta Vet Fundador; os mesmos 20 vets deram 0 de 20 com os planos antigos (panel-v1/)._
 
 ## The idea
 
 - What it is: app (web, avante-pro.web.app) que conecta tutores de pets e produtores rurais a médicos-veterinários que atendem a domicílio e na propriedade: busca por proximidade e especialidade, agendamento em etapas, chat, avaliações e um assistente de triagem com IA.
 - Who it is for: dois lados. Quem paga é o veterinário autônomo (assinatura mensal). Quem usa de graça é o tutor ou o produtor rural que precisa de atendimento sem levar o animal à clínica.
-- What it sells, at what price: planos para o vet. Free (R$ 0), Essencial (R$ 29,90/mês), Premium (hoje R$ 59,90/mês no código; a análise de preço recomendou R$ 49,90). Sem comissão sobre a consulta: o vet combina e recebe o valor direto do cliente.
+- What it sells, at what price: planos para o vet. Free (R$ 0), Essencial (R$ 29,90/mês), Premium (R$ 49,90/mês desde esta revisão; era R$ 59,90). Sem comissão sobre a consulta: o vet combina e recebe o valor direto do cliente.
 - Where and how: lançamento em **Santiago (RS)** e região (Fronteira Oeste / região central). Santiago tem 48.938 habitantes (Censo 2022), 173.836 bovinos, 61.314 ovinos e 4.973 equinos (IBGE, PPM 2025). Pagamento das assinaturas via AbacatePay (PIX), ainda "em breve" no app.
 - Budget and constraints: R$ 500/mês para divulgação. O fundador ainda não tem CNPJ nem contador. App já construído (React + Firebase), operado pelo fundador.
 
-Nota: os passos 1 a 5 (conselho, concorrentes, painel de 20 vets, preço, oferta) rodaram numa sessão anterior, no computador do fundador, com a praça ainda indefinida. Os resultados estão resumidos nos arquivos desta pasta; os arquivos completos ficaram lá.
+Nota: os 11 passos foram rodados de novo nesta pasta, já com Santiago como praça. Uma rodada anterior, no computador do fundador e sem praça definida, tinha dado 0 de 20 vets e nota 4,3 no conselho.
 
 ## Summary
 
-**Veredito: ainda não (Not yet).** Duas verificações falham: o ano 1 dá prejuízo (-R$ 7.107) e só 20% dos vets simulados compram (a régua é 25%). O que precisa mudar não é preço nem oferta: é **provar que tutores pedem atendimento pelo app**, com o teste de novembro de launch.md.
+**Veredito: ainda não (Not yet).** Duas verificações falham: o ano 1 dá prejuízo (-R$ 6.692) e só 20% dos vets simulados compram (a régua é 25%). O que precisa mudar não é preço nem oferta: é **provar que tutores pedem atendimento pelo app**, com o teste de novembro de launch.md.
 
 **O negócio.** O AVANTE leva um veterinário registrado no CRMV até a casa do tutor (e, numa fase 2, até a propriedade rural). O vet paga uma mensalidade sem comissão e o cliente usa de graça. A cidade de lançamento é Santiago (RS): 49 mil habitantes, 174 mil bovinos.
 
 **Os três números.**
-- Cada vet pagante deixa R$ 24,27/mês a R$ 29,90 (preço travado do Vet Fundador).
-- O equilíbrio é 29 vets pagando, contra um teto de 30 vagas de Fundador. Com o Premium normal a R$ 49,90, cai para 18.
-- O ano 1 pede R$ 8.207 de caixa. Com a divulgação a R$ 200/mês depois do lançamento, o prejuízo cai para R$ 3.507.
+- Cada vet pagante deixa R$ 25,27/mês a R$ 29,90 (preço travado do Vet Fundador), com o Firebase no plano gratuito e a mensalidade por PIX direto.
+- O equilíbrio é 27 vets pagando, contra um teto de 30 vagas de Fundador. Com o Premium normal a R$ 49,90, cai para 16.
+- O ano 1 pede R$ 7.792 de caixa. Com a divulgação a R$ 200/mês depois do lançamento, o prejuízo cai para R$ 3.092.
 
 **O que as evidências dizem.**
 - **Conselho**: 3 FUND IF, nota 4,3. Os três concordam que o risco é o marketplace vazio e o cliente fugindo para o WhatsApp, e que o selo pago podia esbarrar no CFMV.
@@ -51,11 +51,11 @@ Nota: os passos 1 a 5 (conselho, concorrentes, painel de 20 vets, preço, oferta
 
 **O maior risco** é não haver demanda de tutores. A resposta é o teste de 4 semanas com a linha de sucesso escrita antes (10 vets ativos, 30 pedidos, 12 atendimentos pagos até 13/12) e sem abrir empresa antes de passar.
 
-**Já feito no app** (no branch, falta publicar): ninguém mais ativa Premium de graça; selo "Patrocinado"; triagem por IA neutra; contagem de atendimentos pagos e o progresso do Vet Fundador no painel do vet.
+**Já feito no app** (no branch, falta publicar), tudo no plano gratuito do Firebase, sem Blaze: ninguém mais ativa Premium de graça; o vet pede o plano e você ativa na aba Vets do /admin depois do PIX; selo "Patrocinado"; triagem por IA neutra; contagem de atendimentos pagos e o progresso do Vet Fundador no painel do vet. O preço do plano grátis: cobrança manual e nenhum aviso de pedido com o app fechado.
 
 **Para começar o fundador precisa de** R$ 500 em novembro, 10 a 12 horas por semana e, só se o teste passar, cerca de R$ 1.100 de abertura mais o contador.
 
-**A coisa a fazer esta semana**: publicar as correções no Firebase (comandos em ops.md), criar o cupom FUNDADOR e montar a lista de vets de Santiago (CRMV-RS, clínicas, URI) para as visitas a partir de 02/11.
+**A coisa a fazer esta semana**: publicar as regras e o app no Firebase, no plano gratuito (comandos em ops.md), virar admin e montar a lista de vets de Santiago (CRMV-RS, clínicas, URI) para as visitas a partir de 02/11.
 
 _O painel é de compradores simulados e os números são projeções; clientes reais e orçamentos reais confirmam. Não é assessoria financeira, jurídica nem fiscal._
 
@@ -253,12 +253,12 @@ O Premium a R$ 59,90 (o preço atual no código antigo) fica **acima** da faixa.
 ### 2. O que os concorrentes cobram
 Ver `competitors.md`. Os apps de vet a domicílio ganham por comissão ou por contato, não por mensalidade fixa, então a comparação direta é fraca: o que o vet compara de verdade é "R$ X por mês contra o valor de uma consulta". Os próprios vets do painel repetem: **uma visita paga a mensalidade**.
 
-### 3. O que o negócio precisa (ferramenta do CFO, com imposto de 15,5% recalculado em cada preço)
+### 3. O que o negócio precisa (ferramenta do CFO, imposto de 15,5% recalculado em cada preço, Firebase grátis e PIX direto)
 | preço | sobra por vet/mês | vets para empatar | ano 1 |
 | ---: | ---: | ---: | ---: |
-| R$ 29,90 | R$ 24,27 | 29 | -R$ 7.107 |
-| R$ 39,90 | R$ 32,72 | 22 | -R$ 6.642 |
-| R$ 49,90 | R$ 41,17 | 18 | -R$ 6.178 |
+| R$ 29,90 | R$ 25,27 | 27 | -R$ 6.692 |
+| R$ 39,90 | R$ 33,72 | 20 | -R$ 6.227 |
+| R$ 49,90 | R$ 42,17 | 16 | -R$ 5.763 |
 
 O preço mexe pouco no ano 1, porque quase não há vets pagando no começo. **O preço não é a alavanca; a demanda é.**
 
@@ -329,21 +329,23 @@ Se os 30 Fundadores ficarem todos no Premium, "topo da busca" deixa de significa
 
 > Moeda: todos os valores abaixo estão em **reais** (a ferramenta imprime "$"). A unidade é **1 vet pagante por 1 mês**: onde o relatório diz "a day", leia "por mês".
 
-- **A margem**: cada vet pagante deixa **R$ 24,27/mês** depois do imposto e da taxa do PIX (81% de contribuição a R$ 29,90). O problema não é a margem por vet, é a escala: o custo fixo é R$ 704/mês e o **ponto de equilíbrio é 29 vets pagando**, praticamente as 30 vagas de Fundador.
-- **A linha que mais pesa**: a divulgação (R$ 500 dos R$ 704). Com R$ 200/mês de divulgação depois do lançamento, o ponto de equilíbrio cai para 17 vets e o prejuízo do ano 1 cai de R$ 7.107 para R$ 3.507. Dobrar o ritmo de vets pagantes, mantendo R$ 500, reduz o prejuízo só para R$ 5.772. Cortar custo fixo move mais que crescer.
-- **Caixa**: com o plano base, o fundador precisa de **R$ 8.207** até o fim do ano 1, sem salário para si. O aporte inicial é R$ 1.100; o resto são os prejuízos mensais (R$ 461 a R$ 704 por mês).
-- **Teto do mercado**: Santiago tem 49 mil habitantes. Mesmo com 30 vets a R$ 49,90, a receita máxima fica perto de R$ 1.500/mês. **Assinatura de vet numa cidade só não sustenta o negócio**; Santiago serve como cidade-teste, e o modelo precisa de mais cidades ou de outra receita para virar empresa.
+**Premissa nova: sem o plano Blaze.** O app fica no plano gratuito do Firebase (Spark): R$ 0 de hospedagem e banco, mas **sem Cloud Functions**. Então não há checkout automático: o vet pede o plano no app, paga por **PIX direto na sua conta** e você ativa no painel /admin. Não há taxa de gateway (estimativa: PIX recebido de graça num banco digital).
+
+- **A margem**: cada vet pagante deixa **R$ 25,27/mês** depois do imposto (85% de contribuição a R$ 29,90). O custo fixo é **R$ 674/mês** e o **ponto de equilíbrio é 27 vets pagando**, quase as 30 vagas de Fundador.
+- **A linha que mais pesa**: a divulgação (R$ 500 dos R$ 674). Com R$ 200/mês depois do lançamento, o equilíbrio cai para **15 vets** e o prejuízo do ano 1 cai de R$ 6.692 para **R$ 3.092**. Cortar custo fixo move mais que crescer.
+- **Caixa**: com o plano base, o fundador precisa de **R$ 7.792** até o fim do ano 1, sem salário para si (R$ 4.192 com a divulgação a R$ 200).
+- **Teto do mercado**: mesmo com 30 vets a R$ 49,90, a receita fica perto de R$ 1.500/mês. **Assinatura de vet numa cidade só não sustenta o negócio**; Santiago é cidade-teste, e o modelo precisa de mais cidades ou de outra receita.
 
 **Três jeitos de melhorar a margem** (testados na ferramenta):
-1. Divulgação de R$ 500 só no mês do teste e do lançamento, depois R$ 200: equilíbrio em 17 vets, ano 1 com -R$ 3.507.
-2. Confirmar com o contador o enquadramento de 6% (Anexo III) em vez de 15,5%: junto com o item 1, equilíbrio em 15 vets, ano 1 com -R$ 3.351.
-3. Premium a R$ 49,90 depois dos 12 meses travados: equilíbrio em 16 vets (no ano 1 quase não aparece, porque os Fundadores pagam R$ 29,90).
+1. Divulgação de R$ 500 só no mês do teste e do lançamento, depois R$ 200: equilíbrio em 15 vets, ano 1 com -R$ 3.092.
+2. Confirmar com o contador o Anexo III (6%) em vez do Anexo V (15,5%): junto com o item 1, equilíbrio em 14 vets, ano 1 com -R$ 2.936.
+3. Premium a R$ 49,90 depois dos 12 meses travados: equilíbrio em 16 vets (aparece no ano 2).
 
-**Condições do conselho sobre dinheiro**: não atendidas. O ano 1 não se paga, e a demanda ainda não foi provada. A lente Ofertas pede CNPJ e cobrança antes de pagar divulgação; o plano deixa o CNPJ para depois do teste de novembro porque no teste ninguém paga (o Fundador só paga depois de 3 atendimentos), e assim os R$ 1.100 de abertura só saem se houver demanda. Este relatório já conta o contador e o imposto desde o mês 1, então é conservador.
+**O custo escondido do plano grátis**: a cobrança e a ativação são manuais. Para 30 vets, é perto de 1 hora por mês conferindo PIX e tocando em "PIX recebido" no admin. Sem Cloud Functions também não há notificação push quando o app está fechado (o vet só é avisado com o app aberto), o que pesa no concierge por WhatsApp (ops.md).
 
-**Preço**: os Fundadores pagam R$ 29,90 por 12 meses, então o ano 1 roda a esse preço. O Premium normal passou para R$ 49,90 (pricing.md); com ele, o equilíbrio cai para 18 vets, mas isso só aparece no ano 2.
+**Condições do conselho sobre dinheiro**: não atendidas. O ano 1 não se paga, e a demanda ainda não foi provada. A lente Ofertas pede CNPJ e cobrança antes de pagar divulgação; o plano deixa o CNPJ para depois do teste de novembro porque no teste ninguém paga (o Fundador só paga depois de 3 atendimentos), e assim os R$ 1.100 de abertura só saem se houver demanda. Este relatório já conta contador e imposto desde o mês 1, então é conservador.
 
-Estimativas que precisam de orçamento real (ver cfo-sources.md): imposto, taxa do gateway, contador, Firebase, Groq, abertura do CNPJ, gráfica e advogado. Não é assessoria contábil nem fiscal: o contador confirma o enquadramento, o CNAE e o pró-labore antes de abrir a empresa.
+Estimativas que precisam de orçamento real (ver cfo-sources.md): imposto, contador, Groq, abertura do CNPJ, gráfica e advogado. Não é assessoria contábil nem fiscal: o contador confirma o enquadramento, o CNAE e o pró-labore antes de abrir a empresa.
 
 ---
 
@@ -357,51 +359,51 @@ Every number below comes from the input file. Nothing is looked up or guessed.
 | --- | ---: |
 | Price | $29.90 |
 | Imposto Simples Nacional (estimativa conservadora: Anexo V, 15,5%) | -$4.63 |
-| Taxa da cobrança PIX no gateway (estimativa) | -$1.00 |
-| **Contribution** (what each vet-mês leaves to pay the fixed costs) | **$24.27** (81%) |
+| PIX recebido direto na conta da empresa (estimativa: grátis no banco digital) | -$0.00 |
+| **Contribution** (what each vet-mês leaves to pay the fixed costs) | **$25.27** (85%) |
 
 ### The margin that matters
 
-Fixed costs: $704 a month (Divulgação local (definido pelo fundador) $500, Contador online para ME no Simples (estimativa) $150, Firebase Blaze + Cloud Functions (estimativa) $30, API de IA da triagem, Groq (estimativa) $20, Domínio .com.br (R$ 40/ano) $4).
+Fixed costs: $674 a month (Divulgação local (definido pelo fundador) $500, Contador online para ME no Simples (estimativa) $150, Firebase no plano gratuito Spark (sem Cloud Functions) $0, API de IA da triagem, Groq (estimativa) $20, Domínio .com.br (R$ 40/ano) $4).
 
-- **Break-even: 29 vet-mêss a day.** Below that you lose money every month.
-- **Profit margin at your plan** (10 a day): **-154%** of every sale, after every cost.
+- **Break-even: 27 vet-mêss a day.** Below that you lose money every month.
+- **Profit margin at your plan** (10 a day): **-141%** of every sale, after every cost.
 - Capacity: 30 a day.
 
 ### Year 1, month by month
 
 | month | vet-mêss a day | revenue | profit | cumulative (after $1,100 startup) |
 | ---: | ---: | ---: | ---: | ---: |
-| 1 | 0 | $0 | -$704 | -$1,804 |
-| 2 | 0 | $0 | -$704 | -$2,507 |
-| 3 | 1 | $30 | -$679 | -$3,186 |
-| 4 | 2 | $60 | -$655 | -$3,841 |
-| 5 | 3 | $90 | -$631 | -$4,472 |
-| 6 | 4 | $120 | -$606 | -$5,078 |
-| 7 | 5 | $150 | -$582 | -$5,660 |
-| 8 | 6 | $179 | -$558 | -$6,218 |
-| 9 | 7 | $209 | -$534 | -$6,752 |
-| 10 | 8 | $239 | -$509 | -$7,261 |
-| 11 | 9 | $269 | -$485 | -$7,746 |
-| 12 | 10 | $299 | -$461 | -$8,207 |
+| 1 | 0 | $0 | -$674 | -$1,774 |
+| 2 | 0 | $0 | -$674 | -$2,447 |
+| 3 | 1 | $30 | -$648 | -$3,095 |
+| 4 | 2 | $60 | -$623 | -$3,718 |
+| 5 | 3 | $90 | -$598 | -$4,316 |
+| 6 | 4 | $120 | -$572 | -$4,888 |
+| 7 | 5 | $150 | -$547 | -$5,435 |
+| 8 | 6 | $179 | -$522 | -$5,957 |
+| 9 | 7 | $209 | -$497 | -$6,454 |
+| 10 | 8 | $239 | -$471 | -$6,925 |
+| 11 | 9 | $269 | -$446 | -$7,371 |
+| 12 | 10 | $299 | -$421 | -$7,792 |
 
-- **Year 1 operating profit: -$7,107** on $1,644 of revenue.
-- After the $1,100 startup spend: -$8,207.
+- **Year 1 operating profit: -$6,692** on $1,644 of revenue.
+- After the $1,100 startup spend: -$7,792.
 - Startup money earned back: not within year 1.
-- Cash you need before it pays for itself: **$8,207**.
+- Cash you need before it pays for itself: **$7,792**.
 
 ### What if
 
 | scenario | margin at plan | break-even a day | year 1 profit |
 | --- | ---: | ---: | ---: |
-| Base plan | -154% | 29 | -$7,107 |
-| Price -10% | -182% | 34 | -$7,272 |
-| Volume -20% | -213% | 29 | -$7,374 |
-| Unit costs +15% | -157% | 31 | -$7,154 |
+| Base plan | -141% | 27 | -$6,692 |
+| Price -10% | -167% | 31 | -$6,857 |
+| Volume -20% | -197% | 27 | -$6,970 |
+| Unit costs +15% | -143% | 28 | -$6,730 |
 
 ### Red flags
 
-- Year 1 loses money on operations (-$7,107).
+- Year 1 loses money on operations (-$6,692).
 - The startup spend is not earned back within year 1.
 
 ## Marketing
@@ -482,7 +484,7 @@ Quando não houver novidade: rotina de um vet fundador (com autorização), perg
 
 ### Orçamento e números
 - **Novembro (R$ 500)**: Meta R$ 300, impressão R$ 100, reserva R$ 100 (spot de rádio ou mais anúncio no que funcionar). A partir de janeiro: **R$ 200/mês** (ver cfo.md: é o que mais reduz o prejuízo).
-- **O máximo para ganhar um vet pagante**: ele deixa R$ 24,27/mês × 12 meses travados = **R$ 291**. Como ele só paga depois de 3 atendimentos e precisa de pelo menos 1 por mês para continuar, o custo de marketing por **atendimento fechado** precisa ficar abaixo de cerca de **R$ 60**.
+- **O máximo para ganhar um vet pagante**: ele deixa R$ 25,27/mês × 12 meses travados = **R$ 303**. Como ele só paga depois de 3 atendimentos e precisa de pelo menos 1 por mês para continuar, o custo de marketing por **atendimento fechado** precisa ficar abaixo de cerca de **R$ 60**.
 - **Os três números semanais**:
   1. **Pedidos de tutores por semana**. Meta: 8 ou mais a partir da semana 2. Abaixo de 3, trocar o gancho e o canal.
   2. **Pedidos aceitos por um vet em até 2 horas**. Meta: 70%. Abaixo de 50%, o problema é a oferta de vets (recrutar mais ou ativar o aviso por WhatsApp).
@@ -537,26 +539,36 @@ O app já está no ar como **AVANTE** (avante-pro.web.app), com verde #375337 e 
 
 ## Operations
 
-### Bloqueios no app (achados no código; 1 a 4 já corrigidos no branch)
-1. ✅ **Qualquer vet podia virar Premium de graça.** As regras deixavam o próprio usuário gravar `plan` e `featured`, e a tela de planos validava os cupons BEMVINDO e AVANTE100 no navegador e anunciava o BEMVINDO para todos. **Corrigido**: `firestore.rules` bloqueia o dono de gravar plano pago, destaque, cupom, nota, contagem de visitas e `crmvVerified: true` (17 testes no emulador passando); o cupom só vale pela Cloud Function `redeemCoupon`, lido de `config/coupons`, com limite de usos e uso único por vet; o aviso do BEMVINDO saiu da tela.
-2. ✅ **A triagem com IA recomendava quem paga, sem avisar.** **Corrigido**: a IA escolhe por espécie, online e nota; o plano não entra mais na escolha nem no prompt.
-3. ✅ **O selo dizia "Destaque".** **Corrigido**: virou "Patrocinado" na busca e no assistente, e os Termos de Uso explicam que é anúncio pago.
-4. ✅ **A regra das 3 visitas não era medida.** **Corrigido**: no atendimento finalizado, o vet toca em "Recebi o pagamento"; a função `onRequestPaidVisit` conta 1 atendimento pago quando o cliente também confirmou; no 3º, marca o fim do período grátis do Fundador. O painel do vet mostra "Vet Fundador · X de 3".
-5. ⏳ **O pagamento está "em breve".** Ligar a cobrança PIX recorrente (AbacatePay já está no código) antes de o primeiro Fundador completar as 3 visitas. Só depois de abrir o CNPJ.
+### O app no plano gratuito do Firebase (sem Blaze)
+Decisão do fundador: **não assinar o Blaze**. O app já foi feito para rodar sem servidor (IA chamada do navegador, notificações locais, nota calculada na tela). O que muda:
 
-**Para valer no app no ar, falta publicar** (do seu computador, com o Firebase CLI logado):
+| o quê | como fica |
+| --- | --- |
+| Ativar plano pago ou Vet Fundador | O vet toca em "Quero ser Vet Fundador" ou "Pedir assinatura" (tela de planos). O pedido aparece na aba **Vets** do `/admin`, e você ativa com um toque. |
+| Cobrar a mensalidade | Você manda a chave PIX por WhatsApp, recebe e toca em "PIX recebido (+1 mês)" no admin. O admin mostra até quando cada vet está pago. |
+| Contar os 3 atendimentos do Fundador | Calculado na tela: atendimento finalizado, com "Recebi o pagamento" marcado pelo vet e confirmado pelo cliente (ou 48h sem resposta). O painel do vet mostra "X de 3"; o admin avisa quando é hora de começar a cobrar. |
+| Notificação de pedido novo | Só com o app aberto (notificação local). Com o app fechado, o vet **não** é avisado. Por isso o concierge por WhatsApp (abaixo) é obrigatório no lançamento. |
+| Confirmação automática em 24h, limpeza de chats antigos, média de avaliações no perfil | Não rodam (eram Cloud Functions). A nota aparece certa no painel do vet; na busca do cliente pode ficar desatualizada. |
+
+### Bloqueios no app (corrigidos no branch)
+1. ✅ **Qualquer vet podia virar Premium de graça** (cupom BEMVINDO validado no navegador e anunciado na tela; regras deixavam o vet gravar o próprio plano). Agora `firestore.rules` só deixa o **admin** gravar plano pago, destaque, Vet Fundador, mensalidade paga e nota. 33 testes no emulador passando.
+2. ✅ **A triagem com IA recomendava quem paga, sem avisar.** Agora escolhe por espécie, online e nota.
+3. ✅ **O selo dizia "Destaque".** Agora "Patrocinado", e os Termos de Uso explicam que é anúncio pago.
+4. ✅ **A regra das 3 visitas não era medida.** Botão "Recebi o pagamento" no atendimento finalizado e contagem na tela.
+
+**Para publicar** (do seu computador, com o Firebase CLI logado no projeto certo: o `.firebaserc` aponta para `avante-pro`, mas o `.env.example` para `avantepro-a1438`; confira com `firebase use` qual é o do app no ar):
 ```
 firebase deploy --only firestore:rules
-cd functions && npm install && cd .. && firebase deploy --only functions
 npm run build && firebase deploy --only hosting
 ```
-As Cloud Functions exigem o plano Blaze do Firebase. **Atenção**: com as regras novas, ninguém ativa plano pago sem a função `redeemCoupon` publicada (ou sem você editar o vet pelo console do Firebase). Vets que já ativaram Premium pelo BEMVINDO continuam Premium; revise-os no console se quiser.
+Não rode `firebase deploy` sem `--only`: ele tentaria publicar as Cloud Functions, o que exige o Blaze.
 
-**Cupom das 30 vagas** (criar no console, documento `config/coupons`):
-```
-FUNDADOR: { discount: 100, active: true, maxUses: 30, used: 0, plans: ["premium"], fundador: true, fundadorPrice: 29.9 }
-```
-Limite conhecido: cliente e vet podem editar a solicitação inteira (regra antiga de `requests`), então um vet com duas contas conseguiria inflar a própria contagem. Para 30 vets numa cidade pequena, o risco é baixo; rever quando houver cobrança automática.
+**Antes de abrir para os vets:**
+- Vire admin: no console do Firestore, crie a coleção `admins` com um documento cujo ID seja o seu uid (a tela `/admin` mostra o uid).
+- Revise na aba Vets quem ativou o Premium pelo BEMVINDO antes da correção e decida se mantém.
+- **Chave da Groq exposta**: a IA usa `VITE_GROQ_KEY`, que vai dentro do app publicado e pode ser copiada por qualquer pessoa. No plano gratuito não há como esconder. Use uma chave com limite de gasto baixo na Groq (ou deixe a IA desligada no lançamento: sem a chave, o app mostra "IA não configurada").
+
+Limite conhecido: cliente e vet podem editar a solicitação inteira (regra antiga de `requests`), então um vet com duas contas conseguiria inflar a própria contagem. Para 30 vets que você conhece pessoalmente, o risco é baixo; o admin mostra os números para você conferir.
 
 ### O ciclo do dia (o fundador, sozinho)
 1. 8h: ver pedidos novos da noite. **(o cliente vê)**
@@ -569,9 +581,9 @@ Limite conhecido: cliente e vet podem editar a solicitação inteira (regra anti
 ### Fornecedores
 | item | opções | custo | observação |
 | --- | --- | --- | --- |
-| Cobrança PIX recorrente | AbacatePay (já no código), Asaas, Mercado Pago | taxa por cobrança, ver painel de cada um | pegar a tabela oficial antes de decidir; Asaas documenta PIX recorrente ([docs](https://docs.asaas.com/docs/recurring-pix)) |
+| Recebimento da mensalidade | PIX direto na conta (PF no teste; conta PJ num banco digital depois do CNPJ) | estimativa R$ 0 | sem Blaze não há checkout automático (AbacatePay e Asaas precisariam de Cloud Functions para ativar o plano sozinhos) |
 | Contador | contador de Santiago e 2 contabilidades online | estimativa R$ 150/mês | pedir orçamento já perguntando CNAE, Anexo III ou V, fator R e pró-labore |
-| Hospedagem | Firebase (Blaze) | estimativa R$ 30/mês | ativar alerta de orçamento no Google Cloud (ex.: R$ 50) |
+| Hospedagem | Firebase no plano gratuito (Spark) | R$ 0 | sem Cloud Functions; ver acima o que muda |
 | IA | Groq | estimativa R$ 20/mês | alerta de uso |
 | Impressos | gráfica local de Santiago | estimativa R$ 100 a R$ 300 | 10 cartazes A3 e 500 panfletos |
 | Anúncios | Meta Ads | R$ 300 em novembro | cartão do fundador até ter CNPJ |
@@ -601,7 +613,7 @@ Só o fundador. Estimativa de **10 a 12 horas por semana** no primeiro mês (vis
 **Revisão semanal (sexta)**: os três números de marketing.md, os vets que pararam de responder e o que mudar na semana seguinte.
 
 ### Ferramentas
-O app (já pronto), uma planilha Google para o funil, WhatsApp Business (grátis), Meta Business Suite (grátis), o gateway PIX e o emissor de nota de serviço (NFS-e) que o contador indicar.
+O app (já pronto, com a aba Vets do /admin para planos e mensalidades), uma planilha Google para o funil, WhatsApp Business (grátis), Meta Business Suite (grátis), o gateway PIX e o emissor de nota de serviço (NFS-e) que o contador indicar.
 
 ### Registros, licenças e regras a confirmar
 (Regras mudam e variam por cidade; confirme cada uma com o órgão ou com um profissional. Não é assessoria jurídica.)
@@ -619,7 +631,10 @@ O app (já pronto), uma planilha Google para o funil, WhatsApp Business (grátis
 | --- | --- | --- | --- |
 | Poucos pedidos de tutores | alta | fatal | É o teste de novembro; com menos de 3 pedidos por semana na semana 2, trocar o gancho; na semana 4, parar e repensar |
 | Vet não responde a tempo | média | alto | Concierge por WhatsApp e aviso de pedido pelo WhatsApp |
-| Vet usa o Premium sem pagar (bloqueio 1) | alta hoje | alto | Corrigir as regras antes de abrir |
+| Vet usa o Premium sem pagar (bloqueio 1) | baixa depois de publicar as regras | alto | Publicar as regras antes de abrir; revisar quem ativou pelo BEMVINDO |
+| Vet não vê pedido com o app fechado (sem push) | alta | alto | Concierge por WhatsApp em até 1h; combinar com cada vet o aviso por WhatsApp |
+| Alguém copia a chave da Groq do app | média | baixo | Chave com limite de gasto baixo, ou IA desligada no lançamento |
+| Esquecer de conferir um PIX | média | baixo | Olhar a aba Vets toda sexta ("mensalidade paga até") |
 | CRMV-RS questiona o destaque pago | baixa a média | alto | "Patrocinado" e parecer do CRMV-RS antes |
 | Tutor marca e não está em casa | média | médio | Confirmação no dia; depois, sinal via PIX |
 | Atendimento ruim vira reclamação pública | média | médio | Rotina de reclamação; orientar sobre o CRMV-RS |
@@ -644,7 +659,7 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 ### 2. Contagem regressiva
 | semana | o que | prazo | caminho crítico |
 | --- | --- | --- | --- |
-| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de ops.md~~ (feito no código) → **publicar**: regras, functions e hosting (comandos em ops.md); criar o cupom FUNDADOR em `config/coupons` | 25/10 | **sim** |
+| 22/10 a 25/10 | ~~Corrigir os bloqueios 1 a 4 de ops.md~~ (feito no código) → **publicar** regras e hosting (sem Blaze; comandos em ops.md), virar admin e revisar quem usou o BEMVINDO | 25/10 | **sim** |
 | 22/10 a 25/10 | Montar a lista de vets de Santiago: consulta pública de inscritos no site do CRMV-RS, Google Maps, perguntar nos pet shops | 25/10 | **sim** |
 | 26/10 a 01/11 | Definir a meta de vets ativos (condição do conselho): contar quantos atendem fora da clínica na lista e mirar pelo menos metade deles, com no mínimo 10 | 01/11 | **sim** |
 | 26/10 a 01/11 | Lembrete de vacina a partir do "caderno do pet" (o motivo para voltar ao app) | 13/11 | não |
@@ -663,7 +678,7 @@ Comparação com o painel: ele disse que 20% dos vets pagariam se os clientes vi
 | 7h | Conferir o app: cadastro, pedido, chat, mapa. Fazer um pedido de teste e cancelar. |
 | 8h | Mensagem para a lista de espera; post "abriu" no Instagram e nos grupos de Facebook. |
 | 8h30 | Ligar o anúncio da Meta (R$ 10/dia, ganchos 1 e 2). |
-| 9h a 12h | Concierge: cada pedido com vet em até 1 hora; se travar, WhatsApp. |
+| 9h a 12h | Concierge: cada pedido com vet em até 1 hora; se travar, WhatsApp. (Sem Blaze não há push: o vet só vê o pedido com o app aberto, então avise por WhatsApp todo pedido novo.) |
 | 12h | Mensagem aos 10 vets: "abriu, fiquem de olho nos pedidos". |
 | 14h a 18h | Concierge. Visitar 2 pet shops para ver se os cartazes estão no lugar. |
 | 20h | Planilha: pedidos, aceites, atendimentos. |
@@ -677,6 +692,6 @@ Se algo quebrar: o app cair (avisar nos grupos, desligar o anúncio, corrigir); 
 | --- | --- | --- |
 | **Dia 7 (23/11)** | Chegaram pedidos? De onde (anúncio, cartaz, rádio)? Os vets responderam? | Menos de 3 pedidos: trocar o gancho. Menos de 50% aceitos: problema de vet. |
 | **Dia 14 (30/11)** | Algum atendimento foi pago? O que os tutores disseram? Que gancho funcionou? | Zero atendimentos realizados: entrevistar 5 tutores que pediram e não fecharam. |
-| **Dia 30 (16/12)** e fechamento do teste em 13/12 | A linha de sucesso foi batida? | **Passou**: abrir o CNPJ, ligar a cobrança, divulgação de R$ 200/mês, planejar a fase 2 (cidades vizinhas ou campo). **Não passou**: não abrir empresa, rever a oferta para o tutor ou a cunha. |
+| **Dia 30 (16/12)** e fechamento do teste em 13/12 | A linha de sucesso foi batida? | **Passou**: abrir o CNPJ e a conta PJ, começar a receber os PIX dos Fundadores que bateram 3 atendimentos (aba Vets do admin), divulgação de R$ 200/mês, planejar a fase 2 (cidades vizinhas ou campo). **Não passou**: não abrir empresa, rever a oferta para o tutor ou a cunha. |
 
 _The panel is simulated buyers and the numbers are projections from your inputs. Confirm demand with real customers and costs with real quotes before you spend. Not financial, legal or tax advice._

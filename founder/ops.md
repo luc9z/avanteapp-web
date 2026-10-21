@@ -1,25 +1,35 @@
 # Operação
 
-## Bloqueios no app (achados no código; 1 a 4 já corrigidos no branch)
-1. ✅ **Qualquer vet podia virar Premium de graça.** As regras deixavam o próprio usuário gravar `plan` e `featured`, e a tela de planos validava os cupons BEMVINDO e AVANTE100 no navegador e anunciava o BEMVINDO para todos. **Corrigido**: `firestore.rules` bloqueia o dono de gravar plano pago, destaque, cupom, nota, contagem de visitas e `crmvVerified: true` (17 testes no emulador passando); o cupom só vale pela Cloud Function `redeemCoupon`, lido de `config/coupons`, com limite de usos e uso único por vet; o aviso do BEMVINDO saiu da tela.
-2. ✅ **A triagem com IA recomendava quem paga, sem avisar.** **Corrigido**: a IA escolhe por espécie, online e nota; o plano não entra mais na escolha nem no prompt.
-3. ✅ **O selo dizia "Destaque".** **Corrigido**: virou "Patrocinado" na busca e no assistente, e os Termos de Uso explicam que é anúncio pago.
-4. ✅ **A regra das 3 visitas não era medida.** **Corrigido**: no atendimento finalizado, o vet toca em "Recebi o pagamento"; a função `onRequestPaidVisit` conta 1 atendimento pago quando o cliente também confirmou; no 3º, marca o fim do período grátis do Fundador. O painel do vet mostra "Vet Fundador · X de 3".
-5. ⏳ **O pagamento está "em breve".** Ligar a cobrança PIX recorrente (AbacatePay já está no código) antes de o primeiro Fundador completar as 3 visitas. Só depois de abrir o CNPJ.
+## O app no plano gratuito do Firebase (sem Blaze)
+Decisão do fundador: **não assinar o Blaze**. O app já foi feito para rodar sem servidor (IA chamada do navegador, notificações locais, nota calculada na tela). O que muda:
 
-**Para valer no app no ar, falta publicar** (do seu computador, com o Firebase CLI logado):
+| o quê | como fica |
+| --- | --- |
+| Ativar plano pago ou Vet Fundador | O vet toca em "Quero ser Vet Fundador" ou "Pedir assinatura" (tela de planos). O pedido aparece na aba **Vets** do `/admin`, e você ativa com um toque. |
+| Cobrar a mensalidade | Você manda a chave PIX por WhatsApp, recebe e toca em "PIX recebido (+1 mês)" no admin. O admin mostra até quando cada vet está pago. |
+| Contar os 3 atendimentos do Fundador | Calculado na tela: atendimento finalizado, com "Recebi o pagamento" marcado pelo vet e confirmado pelo cliente (ou 48h sem resposta). O painel do vet mostra "X de 3"; o admin avisa quando é hora de começar a cobrar. |
+| Notificação de pedido novo | Só com o app aberto (notificação local). Com o app fechado, o vet **não** é avisado. Por isso o concierge por WhatsApp (abaixo) é obrigatório no lançamento. |
+| Confirmação automática em 24h, limpeza de chats antigos, média de avaliações no perfil | Não rodam (eram Cloud Functions). A nota aparece certa no painel do vet; na busca do cliente pode ficar desatualizada. |
+
+## Bloqueios no app (corrigidos no branch)
+1. ✅ **Qualquer vet podia virar Premium de graça** (cupom BEMVINDO validado no navegador e anunciado na tela; regras deixavam o vet gravar o próprio plano). Agora `firestore.rules` só deixa o **admin** gravar plano pago, destaque, Vet Fundador, mensalidade paga e nota. 33 testes no emulador passando.
+2. ✅ **A triagem com IA recomendava quem paga, sem avisar.** Agora escolhe por espécie, online e nota.
+3. ✅ **O selo dizia "Destaque".** Agora "Patrocinado", e os Termos de Uso explicam que é anúncio pago.
+4. ✅ **A regra das 3 visitas não era medida.** Botão "Recebi o pagamento" no atendimento finalizado e contagem na tela.
+
+**Para publicar** (do seu computador, com o Firebase CLI logado no projeto certo: o `.firebaserc` aponta para `avante-pro`, mas o `.env.example` para `avantepro-a1438`; confira com `firebase use` qual é o do app no ar):
 ```
 firebase deploy --only firestore:rules
-cd functions && npm install && cd .. && firebase deploy --only functions
 npm run build && firebase deploy --only hosting
 ```
-As Cloud Functions exigem o plano Blaze do Firebase. **Atenção**: com as regras novas, ninguém ativa plano pago sem a função `redeemCoupon` publicada (ou sem você editar o vet pelo console do Firebase). Vets que já ativaram Premium pelo BEMVINDO continuam Premium; revise-os no console se quiser.
+Não rode `firebase deploy` sem `--only`: ele tentaria publicar as Cloud Functions, o que exige o Blaze.
 
-**Cupom das 30 vagas** (criar no console, documento `config/coupons`):
-```
-FUNDADOR: { discount: 100, active: true, maxUses: 30, used: 0, plans: ["premium"], fundador: true, fundadorPrice: 29.9 }
-```
-Limite conhecido: cliente e vet podem editar a solicitação inteira (regra antiga de `requests`), então um vet com duas contas conseguiria inflar a própria contagem. Para 30 vets numa cidade pequena, o risco é baixo; rever quando houver cobrança automática.
+**Antes de abrir para os vets:**
+- Vire admin: no console do Firestore, crie a coleção `admins` com um documento cujo ID seja o seu uid (a tela `/admin` mostra o uid).
+- Revise na aba Vets quem ativou o Premium pelo BEMVINDO antes da correção e decida se mantém.
+- **Chave da Groq exposta**: a IA usa `VITE_GROQ_KEY`, que vai dentro do app publicado e pode ser copiada por qualquer pessoa. No plano gratuito não há como esconder. Use uma chave com limite de gasto baixo na Groq (ou deixe a IA desligada no lançamento: sem a chave, o app mostra "IA não configurada").
+
+Limite conhecido: cliente e vet podem editar a solicitação inteira (regra antiga de `requests`), então um vet com duas contas conseguiria inflar a própria contagem. Para 30 vets que você conhece pessoalmente, o risco é baixo; o admin mostra os números para você conferir.
 
 ## O ciclo do dia (o fundador, sozinho)
 1. 8h: ver pedidos novos da noite. **(o cliente vê)**
@@ -32,9 +42,9 @@ Limite conhecido: cliente e vet podem editar a solicitação inteira (regra anti
 ## Fornecedores
 | item | opções | custo | observação |
 | --- | --- | --- | --- |
-| Cobrança PIX recorrente | AbacatePay (já no código), Asaas, Mercado Pago | taxa por cobrança, ver painel de cada um | pegar a tabela oficial antes de decidir; Asaas documenta PIX recorrente ([docs](https://docs.asaas.com/docs/recurring-pix)) |
+| Recebimento da mensalidade | PIX direto na conta (PF no teste; conta PJ num banco digital depois do CNPJ) | estimativa R$ 0 | sem Blaze não há checkout automático (AbacatePay e Asaas precisariam de Cloud Functions para ativar o plano sozinhos) |
 | Contador | contador de Santiago e 2 contabilidades online | estimativa R$ 150/mês | pedir orçamento já perguntando CNAE, Anexo III ou V, fator R e pró-labore |
-| Hospedagem | Firebase (Blaze) | estimativa R$ 30/mês | ativar alerta de orçamento no Google Cloud (ex.: R$ 50) |
+| Hospedagem | Firebase no plano gratuito (Spark) | R$ 0 | sem Cloud Functions; ver acima o que muda |
 | IA | Groq | estimativa R$ 20/mês | alerta de uso |
 | Impressos | gráfica local de Santiago | estimativa R$ 100 a R$ 300 | 10 cartazes A3 e 500 panfletos |
 | Anúncios | Meta Ads | R$ 300 em novembro | cartão do fundador até ter CNPJ |
@@ -64,7 +74,7 @@ Só o fundador. Estimativa de **10 a 12 horas por semana** no primeiro mês (vis
 **Revisão semanal (sexta)**: os três números de marketing.md, os vets que pararam de responder e o que mudar na semana seguinte.
 
 ## Ferramentas
-O app (já pronto), uma planilha Google para o funil, WhatsApp Business (grátis), Meta Business Suite (grátis), o gateway PIX e o emissor de nota de serviço (NFS-e) que o contador indicar.
+O app (já pronto, com a aba Vets do /admin para planos e mensalidades), uma planilha Google para o funil, WhatsApp Business (grátis), Meta Business Suite (grátis), o gateway PIX e o emissor de nota de serviço (NFS-e) que o contador indicar.
 
 ## Registros, licenças e regras a confirmar
 (Regras mudam e variam por cidade; confirme cada uma com o órgão ou com um profissional. Não é assessoria jurídica.)
@@ -82,7 +92,10 @@ O app (já pronto), uma planilha Google para o funil, WhatsApp Business (grátis
 | --- | --- | --- | --- |
 | Poucos pedidos de tutores | alta | fatal | É o teste de novembro; com menos de 3 pedidos por semana na semana 2, trocar o gancho; na semana 4, parar e repensar |
 | Vet não responde a tempo | média | alto | Concierge por WhatsApp e aviso de pedido pelo WhatsApp |
-| Vet usa o Premium sem pagar (bloqueio 1) | alta hoje | alto | Corrigir as regras antes de abrir |
+| Vet usa o Premium sem pagar (bloqueio 1) | baixa depois de publicar as regras | alto | Publicar as regras antes de abrir; revisar quem ativou pelo BEMVINDO |
+| Vet não vê pedido com o app fechado (sem push) | alta | alto | Concierge por WhatsApp em até 1h; combinar com cada vet o aviso por WhatsApp |
+| Alguém copia a chave da Groq do app | média | baixo | Chave com limite de gasto baixo, ou IA desligada no lançamento |
+| Esquecer de conferir um PIX | média | baixo | Olhar a aba Vets toda sexta ("mensalidade paga até") |
 | CRMV-RS questiona o destaque pago | baixa a média | alto | "Patrocinado" e parecer do CRMV-RS antes |
 | Tutor marca e não está em casa | média | médio | Confirmação no dia; depois, sinal via PIX |
 | Atendimento ruim vira reclamação pública | média | médio | Rotina de reclamação; orientar sobre o CRMV-RS |
