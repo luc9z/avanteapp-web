@@ -1,0 +1,13 @@
+{
+  "id": "P018",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "Minha agenda já é cheia pelo boca a boca e pelo grupo de WhatsApp dos produtores; produtor rural aqui liga direto pro vet que conhece, não vai abrir app. Pagar mensalidade num app que eles mesmos dizem que quase não tem cliente é jogar dinheiro fora.",
+  "objection": "App novo sem cliente nenhum não serve pra nada. Fazendeiro da região não vai baixar aplicativo pra chamar vet de boi, ele manda mensagem no WhatsApp pra quem já atende a propriedade dele.",
+  "would_change_my_mind": "Ver que produtores da região estão de fato pedindo atendimento de bovino e ovino pelo app e chegando pedido de propriedade nova pra mim todo mês, de gente que eu não atenderia de outro jeito.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 40,
+  "price_too_expensive": 70
+}

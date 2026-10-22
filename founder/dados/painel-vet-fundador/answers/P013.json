@@ -1,0 +1,13 @@
+{
+  "id": "P013",
+  "buys": true,
+  "purchases_first_month": 1,
+  "reason_code": "convenience",
+  "reason": "Eu gosto de testar app novo e passo a semana na estrada, então ter pedido com o local no mapa e agenda no celular me ajuda de verdade. Só pago depois de 3 atendimentos pagos que vieram pelo app, e R$ 29,90 é menos que uma visita; se chegou até aí, se pagou.",
+  "objection": "Não quero virar mais um numa lista sendo comparado por nota e preço com colega da mesma cidade, e com poucos clientes cadastrados hoje tenho dúvida se os 3 atendimentos vão chegar algum dia, principalmente do pessoal do campo.",
+  "would_change_my_mind": "Se o app começar a mostrar preço e ranking de nota lado a lado com os colegas, eu cancelo e fico no Free.",
+  "price_too_cheap": 9.9,
+  "price_cheap": 19.9,
+  "price_expensive": 49.9,
+  "price_too_expensive": 89.9
+}

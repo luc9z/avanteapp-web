@@ -1,0 +1,13 @@
+{
+  "id": "P010",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "O Free já me dá perfil, pedidos, chat e agenda, que é tudo de que eu preciso pra atender no fim de semana. Com poucos clientes cadastrados em Santiago, pagar R$ 59,90 pra ficar no topo de uma busca que quase ninguém faz não se paga no mês.",
+  "objection": "Mais uma mensalidade pra pagar sem garantia de que vai entrar consulta. Se o app não me trouxer pelo menos uma visita a mais por mês, é dinheiro jogado fora.",
+  "would_change_my_mind": "Ver no próprio app que já tem bastante tutor pedindo atendimento na minha região e que os vets no Premium estão pegando visivelmente mais pedidos, tipo uma ou duas consultas a mais por mês que pagam a assinatura.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 35,
+  "price_too_expensive": 60
+}

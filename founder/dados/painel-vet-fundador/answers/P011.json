@@ -1,0 +1,13 @@
+{
+  "id": "P011",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda já está cheia com produtor que me conhece há anos e me chama direto no WhatsApp; não preciso pagar pra aparecer no topo de um app que ainda quase não tem cliente. No máximo crio o perfil grátis pra ver no que dá, mas pagar mensalidade depois de 3 visitas eu não vejo motivo.",
+  "objection": "Não quero entrar numa vitrine onde o produtor fica me comparando por nota e preço com colega da mesma cidade, e ainda aparecer como 'Patrocinado' passa a ideia de que eu preciso comprar cliente. Produtor de Santiago escolhe vet por indicação, não por app.",
+  "would_change_my_mind": "Ver que produtores grandes da região realmente estão pedindo atendimento de bovino e ovino pelo app, com chamados que eu não pegaria de outro jeito, e sem ranking de preço público entre os vets.",
+  "price_too_cheap": 9.9,
+  "price_cheap": 19.9,
+  "price_expensive": 39.9,
+  "price_too_expensive": 69.9
+}

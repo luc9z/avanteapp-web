@@ -1,0 +1,13 @@
+{
+  "id": "P009",
+  "buys": true,
+  "purchases_first_month": 1,
+  "reason_code": "need",
+  "reason": "Tenho horário sobrando e preciso de cliente, e só pago depois de 3 atendimentos pagos que vieram do app, então não tenho nada a perder ativando. Se o app me trouxer 3 consultas, R$ 29,90 por mês é menos que uma visita, aí continuo pagando sem problema.",
+  "objection": "Produtor rural daqui não vai pedir veterinário por aplicativo, ele liga ou manda mensagem no grupo de WhatsApp para quem já conhece. Com pouco cliente cadastrado, acho que vou demorar muito para chegar nas 3 visitas, ou nunca chegar.",
+  "would_change_my_mind": "Se em dois ou três meses não aparecer nenhum pedido de verdade pelo app, cancelo e fico só no Free ou saio.",
+  "price_too_cheap": 9.9,
+  "price_cheap": 19.9,
+  "price_expensive": 49.9,
+  "price_too_expensive": 89.9
+}

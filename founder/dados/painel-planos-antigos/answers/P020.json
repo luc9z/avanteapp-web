@@ -1,0 +1,13 @@
+{
+  "id": "P020",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda de fazenda já enche por indicação e pelo WhatsApp, os produtores me conhecem e me chamam direto. Um app com poucos clientes cadastrados não me traz nada que eu já não tenha; no máximo crio o perfil grátis pra ver se aparece alguma coisa.",
+  "objection": "Produtor rural daqui não vai baixar app pra chamar vet, ele manda áudio no WhatsApp. E o app não resolve meu problema real, que é o cliente que marca a visita e não aparece ou não paga: sem cobrança antecipada, pagar R$ 59,90 por selo e topo de busca num app vazio é dinheiro jogado fora.",
+  "would_change_my_mind": "Ver que pedidos de bovinos e ovinos estão chegando de verdade pelo Free, de produtores novos fora da minha rede, e o app ter algum sinal ou garantia contra visita marcada e não paga.",
+  "price_too_cheap": 10,
+  "price_cheap": 25,
+  "price_expensive": 50,
+  "price_too_expensive": 90
+}

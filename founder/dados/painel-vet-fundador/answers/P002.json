@@ -1,0 +1,13 @@
+{
+  "id": "P002",
+  "buys": true,
+  "purchases_first_month": 1,
+  "reason_code": "price",
+  "reason": "Eu gosto de testar app novo e aqui não arrisco nada: só pago depois de 3 atendimentos pagos que vieram do app, e R$ 29,90 é menos que um terço de uma visita de fim de semana. Se o app me trouxer 3 clientes que pagaram, sigo pagando sem drama.",
+  "objection": "O app não resolve meu maior medo: o cliente marca, eu pego o carro, e ele não está em casa ou enrola para pagar. Sem sinal ou pagamento antecipado, o risco da visita perdida continua todo comigo, e com poucos clientes cadastrados pode levar meses até eu fechar essas 3 visitas.",
+  "would_change_my_mind": "Se depois dos primeiros meses eu tiver muitos pedidos que não viram atendimento pago ou clientes que somem, cancelo e fico no Free; se o app cobrasse um sinal do cliente na hora do pedido, eu pagaria até o preço cheio.",
+  "price_too_cheap": 9.9,
+  "price_cheap": 19.9,
+  "price_expensive": 49.9,
+  "price_too_expensive": 79.9
+}

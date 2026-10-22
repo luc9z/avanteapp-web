@@ -1,0 +1,144 @@
+{
+ "business": "AVANTE (app de veterinária a domicílio e na propriedade), Santiago RS",
+ "seed": 7,
+ "dealt": 20,
+ "answered": 20,
+ "skipped": [],
+ "buys": 0,
+ "passes": 20,
+ "buy_rate": 0.0,
+ "by_segment": [
+  [
+   "Dono de clínica pequena ou vet misto em Santiago (pets na cidade e algum atendimento a campo)",
+   5,
+   0.0
+  ],
+  [
+   "Vet de grandes animais estabelecido (bovinos, ovinos, reprodução, sanidade), atende fazendas da região",
+   6,
+   0.0
+  ],
+  [
+   "Vet empregado em agropecuária ou cooperativa que faz atendimentos por fora",
+   2,
+   0.0
+  ],
+  [
+   "Recém-formado autônomo (até 3 anos de formado), ainda montando carteira",
+   7,
+   0.0
+  ]
+ ],
+ "by_behaviour": [
+  [
+   "Precisa de cliente novo",
+   4,
+   0.0
+  ],
+  [
+   "Testa ferramentas novas",
+   2,
+   0.0
+  ],
+  [
+   "Desconfiado de tecnologia",
+   3,
+   0.0
+  ],
+  [
+   "Vive do boca a boca e do WhatsApp",
+   5,
+   0.0
+  ],
+  [
+   "Agenda cheia na temporada",
+   3,
+   0.0
+  ],
+  [
+   "Calcula custo-benefício de tudo",
+   3,
+   0.0
+  ]
+ ],
+ "by_income": [
+  [
+   "$60,000 to $111,000",
+   7,
+   0.0
+  ],
+  [
+   "$111,000 and up",
+   7,
+   0.0
+  ],
+  [
+   "under $60,000",
+   6,
+   0.0
+  ]
+ ],
+ "why_not": [
+  [
+   "need",
+   10,
+   [
+    "Minha agenda já tá cheia com as fazendas que atendo há anos, e o produtor me chama no WhatsApp ou liga direto. Não vou pagar mensalidade num app que ainda nem tem cliente cadastrado pra me mandar serviço novo.",
+    "Minha agenda já está cheia com produtor que me conhece por indicação e me chama no WhatsApp; não preciso de app pra achar cliente. Com poucos clientes cadastrados ainda, pagar pra aparecer no topo de uma busca que quase ninguém usa não faz sentido pra mim."
+   ],
+   [
+    "P003",
+    "P005"
+   ]
+  ],
+  [
+   "trust",
+   7,
+   [
+    "Eu preciso de cliente novo, então crio o perfil no Free sem pensar duas vezes, custa nada. Mas pagar R$ 59,90 pra ficar no topo de uma busca que quase ninguém usa ainda não faz sentido; aparecer em primeiro numa lista vazia não me traz atendimento.",
+    "Até faço o perfil no Free, que não custa nada, mas pagar pra aparecer no topo de um app que ainda quase não tem cliente em Santiago eu não pago. Aqui o pessoal me acha pela agropecuária e pelo WhatsApp."
+   ],
+   [
+    "P001",
+    "P004"
+   ]
+  ],
+  [
+   "timing",
+   3,
+   [
+    "Eu crio a conta grátis na hora, gosto de testar app novo, mas pagar R$ 59,90 pra ficar no topo de uma busca que quase ninguém usa ainda não faz sentido. Primeiro quero ver pedido chegando no Free.",
+    "Eu preciso de cliente novo, sim, então crio o perfil no Free na hora, porque não custa nada e já recebo pedido. Mas pagar Premium para ficar no topo de uma busca que quase ninguém usa ainda é jogar dinheiro fora; primeiro quero ver se aparece algum pedido."
+   ],
+   [
+    "P002",
+    "P006"
+   ]
+  ]
+ ],
+ "why_yes": [],
+ "flip": [
+  "Ver pedidos chegando de verdade no Free: se em um ou dois meses eu receber uns três ou quatro atendimentos pelo app e perceber que tem mais gente pedindo do que eu consigo pegar, aí pago o Premium pra ficar na frente.",
+  "Receber pelo menos uns 3 ou 4 pedidos reais por mês pelo Free, de gente que apareceu e pagou; aí o Premium se paga com uma consulta.",
+  "Ver que o app de fato me trouxe atendimentos de fazendas novas pagando bem, uns dois ou três por mês, usando o plano grátis antes.",
+  "Ver pedido de verdade chegando no Free, uns três ou quatro atendimentos por mês de gente que não me conhecia. Aí o Premium se paga com uma consulta e eu assino.",
+  "Ver que tem produtor de verdade da região pedindo atendimento de bovino pelo app toda semana, com algum sinal ou garantia de pagamento antes da visita.",
+  "Ver que pelo Free já estão chegando pedidos de verdade na minha região e que tem outros vets disputando, aí o topo da busca e a prioridade passam a valer os R$ 59,90.",
+  "Ver que estou recebendo pedidos de verdade pelo Free todo mês, de propriedades da região, e ter uma confirmação clara de que o plano pago está de acordo com as regras de publicidade do CRMV.",
+  "Ver que o Free me trouxe atendimentos de verdade, de gente que eu não conhecia, por uns dois ou três meses seguidos.",
+  "Receber uns 3 ou 4 pedidos reais pelo Free num mês, ou ver que já tem bastante gente de Santiago pedindo atendimento no app. Aí o Premium pra ficar no topo se paga com uma consulta.",
+  "Ver no próprio app que já tem bastante tutor pedindo atendimento na minha região e que os vets no Premium estão pegando visivelmente mais pedidos, tipo uma ou duas consultas a mais por mês que pagam a assinatura.",
+  "Ver que os produtores da região estão de fato usando o app e que estão chegando pedidos de fazenda nova, de fora do meu círculo, pelo menos alguns por mês no plano grátis.",
+  "Ver no Free que estão chegando pedidos de verdade, pelo menos duas ou três visitas por mês vindas do app; aí uma visita já paga o Premium e eu assino.",
+  "Ver no Free, por uns dois ou três meses, pedidos reais de produtores e tutores chegando pra mim, de gente que eu não atenderia de outro jeito. Se o app me trouxer cliente novo de verdade, pago o Essencial ou o Premium sem problema.",
+  "Ver no Free, por uns dois ou três meses, pedidos reais de propriedades novas chegando pelo app; se uma visita a mais por mês viesse dali, o Premium se pagaria e eu assinaria.",
+  "Ver no plano grátis, durante uns dois ou três meses, pedidos de verdade chegando de clientes novos que eu não teria de outro jeito. Se o Free me trouxer serviço, aí pago o Premium.",
+  "Ver pedidos de verdade chegando pelo Free nos primeiros meses, uns 3 ou 4 atendimentos por mês que eu não teria pelo boca a boca. Aí o Premium se paga com uma consulta e eu assino.",
+  "Ver que o Free me trouxe de verdade alguns atendimentos de produtor rural novo, que não teria chegado pelo boca a boca, em uns dois ou três meses.",
+  "Ver que produtores da região estão de fato pedindo atendimento de bovino e ovino pelo app e chegando pedido de propriedade nova pra mim todo mês, de gente que eu não atenderia de outro jeito.",
+  "Ver que o Free me trouxe pedidos de verdade, uns 3 ou 4 atendimentos pagos por mês vindos do app. Aí o Premium se paga com uma visita e eu assino pra ficar na frente dos outros.",
+  "Ver que pedidos de bovinos e ovinos estão chegando de verdade pelo Free, de produtores novos fora da minha rede, e o app ter algum sinal ou garantia contra visita marcada e não paga."
+ ],
+ "purchases_first_month_per_buyer": null,
+ "price_answers": 20
+}

@@ -1,0 +1,13 @@
+{
+  "id": "P004",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "habit",
+  "reason": "Aqui em Santiago o pessoal me acha pelo WhatsApp e pela indicação da agropecuária, e o app ainda quase não tem cliente. Até crio o perfil grátis, mas não conto em pagar mensalidade por um app que não sei se vai me trazer atendimento.",
+  "objection": "Produtor daqui liga pro vet que conhece ou pergunta na agropecuária, não vai abrir aplicativo pra chamar veterinário. Duvido que cheguem 3 atendimentos pagos por ali tão cedo.",
+  "would_change_my_mind": "Ver o app trazendo de fato pedidos de gente que não me conhecia, de propriedade rural da região, nos primeiros meses. Se pingar atendimento novo todo mês, R$ 29,90 se paga com uma visita.",
+  "price_too_cheap": 5,
+  "price_cheap": 15,
+  "price_expensive": 40,
+  "price_too_expensive": 60
+}

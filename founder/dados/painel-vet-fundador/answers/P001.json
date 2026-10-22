@@ -1,0 +1,13 @@
+{
+  "id": "P001",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "trust",
+  "reason": "Eu crio o perfil grátis porque não custa nada, mas não conto em pagar mensalidade de app que ainda não tem cliente. Meus atendimentos vêm do boca a boca e do grupo de WhatsApp dos produtores, e não vejo produtor daqui pedindo vet por aplicativo tão cedo.",
+  "objection": "App novo sem cliente nenhum não serve pra nada. Aparecer no topo como 'Patrocinado' não adianta se ninguém está procurando ali.",
+  "would_change_my_mind": "Ver pedidos de verdade chegando no app aqui em Santiago, tipo um mês com vários produtores e tutores pedindo atendimento na minha região antes de eu ter que pagar.",
+  "price_too_cheap": 9.9,
+  "price_cheap": 19.9,
+  "price_expensive": 49.9,
+  "price_too_expensive": 79.9
+}

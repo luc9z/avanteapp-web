@@ -1,0 +1,13 @@
+{
+  "id": "P003",
+  "buys": false,
+  "purchases_first_month": 0,
+  "reason_code": "need",
+  "reason": "Minha agenda já tá cheia com as fazendas que atendo há anos, e o produtor me chama no WhatsApp ou liga direto. Não vou pagar mensalidade num app que ainda nem tem cliente cadastrado pra me mandar serviço novo.",
+  "objection": "Produtor rural daqui não vai baixar app pra chamar veterinário, ele liga pra quem conhece. Selo dourado e topo da busca não valem nada se ninguém procura ali.",
+  "would_change_my_mind": "Ver que o app de fato me trouxe atendimentos de fazendas novas pagando bem, uns dois ou três por mês, usando o plano grátis antes.",
+  "price_too_cheap": 10,
+  "price_cheap": 20,
+  "price_expensive": 45,
+  "price_too_expensive": 80
+}

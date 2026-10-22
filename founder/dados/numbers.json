@@ -1,0 +1,68 @@
+{
+  "business": "AVANTE, Santiago RS (unidade = 1 vet pagante por 1 mês; 'a day' no relatório = 'por mês')",
+  "unit": "vet-mês",
+  "price": 29.9,
+  "variable": [
+    {
+      "label": "Imposto Simples Nacional (estimativa conservadora: Anexo V, 15,5%)",
+      "cost": 4.63
+    },
+    {
+      "label": "PIX recebido direto na conta da empresa (estimativa: grátis no banco digital)",
+      "cost": 0.0
+    }
+  ],
+  "fixed_monthly": [
+    {
+      "label": "Divulgação local (definido pelo fundador)",
+      "cost": 500
+    },
+    {
+      "label": "Contador online para ME no Simples (estimativa)",
+      "cost": 150
+    },
+    {
+      "label": "Firebase no plano gratuito Spark (sem Cloud Functions)",
+      "cost": 0
+    },
+    {
+      "label": "API de IA da triagem, Groq (estimativa)",
+      "cost": 20
+    },
+    {
+      "label": "Domínio .com.br (R$ 40/ano)",
+      "cost": 3.5
+    }
+  ],
+  "startup": [
+    {
+      "label": "Abertura do CNPJ (ME) e taxas da Junta (estimativa)",
+      "cost": 300
+    },
+    {
+      "label": "Material impresso para agropecuárias e clínicas (estimativa)",
+      "cost": 300
+    },
+    {
+      "label": "Consulta com advogado sobre publicidade (CDC e CFMV) (estimativa)",
+      "cost": 500
+    }
+  ],
+  "days_per_month": 1,
+  "capacity_per_day": 30,
+  "plan_per_day": 10,
+  "ramp_per_day": [
+    0,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ]
+}
