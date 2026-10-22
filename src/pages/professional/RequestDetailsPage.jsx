@@ -948,6 +948,23 @@ export default function RequestDetailsPage({ idEmbutido, embutido = false }) {
                 onRate={() => navigate(`/rate/${id}`)}
               />
             )}
+
+            {/* O vet marca que recebeu: mede os atendimentos PAGOS vindos do app
+                (a meta do Vet Fundador conta a confirmação do cliente). */}
+            {isFinished && isProf && (
+              <PaymentReceivedCard
+                received={req.paymentReceived === true}
+                onConfirm={async () => {
+                  try {
+                    await updateDoc(doc(db, 'requests', id), {
+                      paymentReceived: true,
+                      paymentReceivedAt: serverTimestamp(),
+                    })
+                    showToast('Pagamento registrado.', 'success')
+                  } catch (e) { showToast(friendlyError(e), 'error') }
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1018,6 +1035,38 @@ function GreenBtn({ onClick, disabled, loading, iconPath, iconFill, label, flex1
    B) client confirmed, NOT rated → green "concluído" + (client) rate CTA
    C) rated → "avaliado" note
 ──────────────────────────────────────────────────────────────── */
+/* ── Pagamento recebido (só o veterinário vê) ───────────────────
+   O valor da visita é combinado e pago direto ao vet; este registro só
+   serve para medir quantos atendimentos pagos vieram pelo app.
+──────────────────────────────────────────────────────────────── */
+function PaymentReceivedCard({ received, onConfirm }) {
+  const [saving, setSaving] = useState(false)
+
+  if (received) {
+    return (
+      <p className="text-center text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+        ✓ Pagamento da visita registrado
+      </p>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 flex items-center gap-3">
+      <p className="flex-1 text-xs text-gray-600 leading-relaxed">
+        O cliente já pagou a visita? Registrar ajuda a medir os atendimentos que vieram pelo app.
+      </p>
+      <button
+        onClick={async () => { setSaving(true); try { await onConfirm() } finally { setSaving(false) } }}
+        disabled={saving}
+        className="px-4 min-h-[44px] rounded-xl bg-primary text-white text-xs font-bold whitespace-nowrap
+                   hover:bg-primary-600 disabled:opacity-50 transition-colors"
+      >
+        {saving ? <Spinner size={14} color="white" /> : 'Recebi o pagamento'}
+      </button>
+    </div>
+  )
+}
+
 function FinalizadoCard({ req, isClient, isProf, onClientConfirm, onRate }) {
   const [confirming, setConfirming] = useState(false)
 

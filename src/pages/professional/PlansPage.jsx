@@ -5,7 +5,7 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, onSnapshot, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { chamarServidor } from '../../services/servidor'
 import { useAuth } from '../../contexts/AuthContext'
@@ -14,8 +14,8 @@ import { showToast } from '../../components/common/Toast'
 import { DEFAULT_PLANS } from '../admin/AdminPage'
 import { VetBottomNav } from '../../components/common/BottomNav'
 import { useTheme } from '../../contexts/ThemeContext'
-import { avisarAtivacaoDePlano } from '../../services/origem'
 import AvanteLogo from '../../components/common/AvanteLogo'
+import { countPaidVisits, FUNDADOR_TRIAL_VISITS, FUNDADOR_PRICE, FUNDADOR_SLOTS } from '../../utils/paidVisits'
 
 
 const brl = v => Number(v) <= 0 ? 'Grátis' : `R$ ${Number(v).toFixed(2).replace('.', ',')}`
@@ -59,6 +59,11 @@ export default function PlansPage() {
   const [paying, setPaying] = useState(false)
   // Até quando o plano pago vale. Sem data: Free ou plano de cupom.
   const [validade, setValidade] = useState(null)
+  // Vet Fundador: dados da conta, vagas (config/fundador) e atendimentos feitos.
+  const [eu, setEu] = useState(null)
+  const [vagasFundador, setVagasFundador] = useState(null)   // { vagas, usados, fechaEm }
+  const [atendimentos, setAtendimentos] = useState(0)
+  const [entrando, setEntrando] = useState(false)
 
   useEffect(() => {
     return onSnapshot(doc(db, 'config', 'plans'),
@@ -71,12 +76,26 @@ export default function PlansPage() {
     if (!user?.uid) return
     return onSnapshot(doc(db, 'users', user.uid), snap => {
       const p = snap.data()?.plan || null
+      setEu(snap.data() || null)
       setCurrentPlan(p)
       setValidade(snap.data()?.planExpiresAt?.toDate?.() || null)
       if (p && !tocouNaSelecao) setSelectedId(p)
     }, () => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
+
+  useEffect(() => {
+    return onSnapshot(doc(db, 'config', 'fundador'),
+      snap => setVagasFundador(snap.exists() ? snap.data() : {}), () => setVagasFundador({}))
+  }, [])
+
+  // A meta conta na hora aqui; o servidor confere de novo na tarefa diária.
+  useEffect(() => {
+    if (!user?.uid || !eu?.fundador || eu?.fundadorTrialEndedAt) return
+    getDocs(query(collection(db, 'requests'), where('professionalId', '==', user.uid)))
+      .then(s => setAtendimentos(countPaidVisits(s.docs.map(d => d.data()), Date.now(), eu.fundador.desde)))
+      .catch(() => {})
+  }, [user?.uid, eu?.fundador, eu?.fundadorTrialEndedAt])
 
   useEffect(() => {
     if (searchParams.get('status') === 'paid') {
@@ -105,29 +124,40 @@ export default function PlansPage() {
   const mesmoPlanoTravado = !!selected && selected.id === currentPlan
     && (!validade || Date.now() < renovaAPartirDe.getTime())
 
-  // Anual = 12 meses pelo preço de 10 (2 meses grátis)
-  const priceFor = p => period === 'anual' ? p.price * 10 : p.price
-  const periodLabel = period === 'anual' ? '/ano' : '/mês'
+  // Vet Fundador. O preço travado vale para o Premium MENSAL depois do
+  // período grátis, por 12 meses (o servidor aplica; aqui só mostra).
+  const fundador = eu?.fundador || null
+  const fimDoTeste = eu?.fundadorTrialEndedAt?.toDate?.() || null
+  const travadoAte = fimDoTeste
+    ? new Date(fimDoTeste.getTime() + Number(fundador?.mesesTravado || 12) * 30 * 864e5) : null
+  const precoFundador = fundador && travadoAte && Date.now() <= travadoAte.getTime()
+    ? Number(fundador.price || FUNDADOR_PRICE) : null
+  const metaFundador = Number(fundador?.trialVisits || FUNDADOR_TRIAL_VISITS)
+  const vagas = Number(vagasFundador?.vagas ?? FUNDADOR_SLOTS)
+  const vagasRestantes = Math.max(0, vagas - Number(vagasFundador?.usados ?? 0))
+  const fechaEm = vagasFundador?.fechaEm?.toDate?.() || null
+  const inscricoesFechadas = !!fechaEm && Date.now() > fechaEm.getTime()
+  const temPlanoPagoEmVigor = !!currentPlan && currentPlan !== 'free' && !!validade && validade.getTime() > Date.now()
+  const mostrarConvite = vagasFundador !== null && !fundador && !temPlanoPagoEmVigor
+    && vagasRestantes > 0 && !inscricoesFechadas
+  const reais = v => Number(v).toFixed(2).replace('.', ',')
 
-  /**
-   * Cupom de lançamento gravado pelo próprio app. Só funciona enquanto as
-   * regras antigas estiverem no ar: com as novas, plano pago só o servidor
-   * grava. É a reserva para quando a Cloud Function ainda não existe
-   * (servidor ainda não publicado). Remover quando o Worker estiver no ar.
-   */
-  async function cupomPeloApp(code) {
-    const LAUNCH_COUPONS = { BEMVINDO: 100, AVANTE100: 100 }
-    if (LAUNCH_COUPONS[code] !== 100) return false
-    await setDoc(doc(db, 'users', user.uid), {
-      plan: selectedId,
-      featured: ['premium', 'destaque'].includes(selectedId),
-      planActivatedAt: serverTimestamp(),
-      planCoupon: code,
-      updatedAt: serverTimestamp(),
-    }, { merge: true })
-    await avisarAtivacaoDePlano(user.uid, selectedId, code)
-    return true
+  async function entrarNoFundador() {
+    setEntrando(true)
+    try {
+      await chamarServidor('/fundador', {})
+      showToast('Você é Vet Fundador! Seu Premium já está ativo.', 'success')
+    } catch (e) {
+      if (import.meta.env.DEV) console.error(e)
+      showToast(e?.message || 'Não foi possível entrar agora. Tente de novo.', 'error')
+    } finally { setEntrando(false) }
   }
+
+  // Anual = 12 meses pelo preço de 10 (2 meses grátis)
+  const priceFor = p => (precoFundador != null && p.id === 'premium' && period === 'mensal')
+    ? precoFundador
+    : period === 'anual' ? p.price * 10 : p.price
+  const periodLabel = period === 'anual' ? '/ano' : '/mês'
 
   /** Servidor não configurado ou fora do ar (Worker ainda não publicado). */
   const servidorAusente = e => e?.codigo === 'indisponivel'
@@ -140,13 +170,7 @@ export default function PlansPage() {
     setCouponBusy(true)
     try {
       // O servidor valida o cupom: a lista de cupons não é legível pelo app.
-      let data
-      try {
-        data = await chamarServidor('/cupom', { planId: selectedId, code })
-      } catch (e) {
-        if (servidorAusente(e) && await cupomPeloApp(code)) data = { activated: true }
-        else throw e
-      }
+      const data = await chamarServidor('/cupom', { planId: selectedId, code })
       if (data?.activated) {
         showToast(`Cupom ${code} aplicado, plano ativado!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
@@ -249,6 +273,62 @@ export default function PlansPage() {
             )}
           </div>
         </div>
+
+        {/* ── Vet Fundador ───────────────────────────────────
+             Antes da escada de planos: para quem ainda não assina, é a
+             oferta que o painel de veterinários pediu (não pagar nada
+             antes de o app trazer cliente). */}
+        {mostrarConvite && (
+          <div className="mb-6 rounded-2xl border-2 border-amber-400/60 bg-amber-400/[0.08] p-5 flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-amber-300 text-xs font-bold uppercase tracking-wide">Vet Fundador</p>
+              <span className="text-[11px] font-bold text-amber-200 bg-amber-400/15 rounded-full px-2.5 py-1">
+                {vagasRestantes} {vagasRestantes === 1 ? 'vaga restante' : 'vagas restantes'}
+              </span>
+            </div>
+            <p className="text-white font-bold text-lg leading-snug">
+              Premium grátis até você concluir {FUNDADOR_TRIAL_VISITS} atendimentos pelo app.
+            </p>
+            <p className="text-white/70 text-sm leading-relaxed">
+              Depois, R$ {reais(FUNDADOR_PRICE)} por mês, travado por 12 meses. Sem comissão sobre
+              a visita e sem cartão agora. Conta como atendimento o pedido finalizado e confirmado
+              pelo cliente.
+            </p>
+            <button onClick={entrarNoFundador} disabled={entrando}
+              className="self-start bg-amber-400 text-gray-900 font-bold rounded-full px-6 min-h-[44px] text-sm
+                         hover:bg-amber-300 disabled:opacity-60 transition-all">
+              {entrando ? <Spinner size={16} /> : 'Quero ser Vet Fundador'}
+            </button>
+          </div>
+        )}
+
+        {fundador && !fimDoTeste && (
+          <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/[0.06] p-4 flex flex-col gap-2">
+            <p className="text-amber-300 text-xs font-bold uppercase tracking-wide">Você é Vet Fundador</p>
+            <p className="text-white font-bold">
+              {Math.min(atendimentos, metaFundador)} de {metaFundador} atendimentos concluídos pelo app
+            </p>
+            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              <div className="h-full bg-amber-400 rounded-full transition-all"
+                style={{ width: `${Math.min(100, (100 * atendimentos) / metaFundador)}%` }} />
+            </div>
+            <p className="text-white/60 text-xs leading-relaxed">
+              {atendimentos >= metaFundador
+                ? `Meta atingida. Na contagem diária o período grátis termina, e você terá 5 dias para assinar por R$ ${reais(fundador.price || FUNDADOR_PRICE)} por mês, travado por 12 meses.`
+                : `Seu Premium segue grátis até completar a meta. Depois, R$ ${reais(fundador.price || FUNDADOR_PRICE)} por mês, travado por 12 meses. A contagem oficial é atualizada uma vez por dia.`}
+            </p>
+          </div>
+        )}
+
+        {precoFundador != null && (
+          <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/[0.06] p-4">
+            <p className="text-amber-300 text-xs font-bold uppercase tracking-wide">Vet Fundador</p>
+            <p className="text-white text-sm mt-1 leading-relaxed">
+              Período grátis concluído. Seu Premium mensal sai por
+              <strong> R$ {reais(precoFundador)}</strong> até {travadoAte.toLocaleDateString('pt-BR')}.
+            </p>
+          </div>
+        )}
 
         {/* Cards */}
         {plans === null ? (
@@ -362,7 +442,7 @@ export default function PlansPage() {
             <input
               value={coupon}
               onChange={e => setCoupon(e.target.value.toUpperCase())}
-              placeholder="Ex.: BEMVINDO"
+              placeholder="Código do cupom"
               maxLength={20}
               className="flex-1 bg-white/[0.06] border border-white/10 rounded-xl px-4 py-2.5 text-sm
                          text-white placeholder-white/25 outline-none uppercase tracking-wider

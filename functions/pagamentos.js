@@ -14,7 +14,7 @@
 const PLANOS_PADRAO = [
   { id: 'free', name: 'Free', price: 0 },
   { id: 'essencial', name: 'Essencial', price: 29.9 },
-  { id: 'premium', name: 'Premium', price: 59.9 },
+  { id: 'premium', name: 'Premium', price: 49.9 },
 ]
 
 /** Quanto tempo cada pagamento libera. PIX não renova sozinho. */
@@ -97,7 +97,55 @@ function podePagar({ agora, planoAtual, expiraAtual, planoNovo }) {
   return { ok: true }
 }
 
+/**
+ * Vet Fundador: Premium grátis até o vet concluir N atendimentos pelo app;
+ * depois, o Premium mensal sai pelo preço travado por 12 meses. Ao bater a
+ * meta, o plano ganha um vencimento de CARENCIA dias para o vet pagar: a
+ * renovação abre na hora (JANELA_RENOVACAO_DIAS) e, sem pagamento, a tarefa
+ * diária devolve ao Free como qualquer plano vencido.
+ */
+const FUNDADOR = { vagas: 30, visitasGratis: 3, preco: 29.9, mesesTravado: 12, carenciaDias: 5 }
+
+/** O cliente tem 48h para confirmar; sem resposta, o atendimento vale. */
+const CONFIRMACAO_AUTOMATICA_MS = 48 * 3600 * 1000
+const STATUS_FINALIZADO = ['finalizado', 'done', 'completed', 'concluido']
+
+function emMs(v) {
+  if (v == null) return null
+  if (v instanceof Date) return v.getTime()
+  if (typeof v.toMillis === 'function') return v.toMillis()
+  const t = new Date(v).getTime()
+  return Number.isNaN(t) ? null : t
+}
+
+/**
+ * O atendimento conta para o Vet Fundador? Finalizado e confirmado pelo
+ * CLIENTE (ou 48h sem resposta dele). A marca "Recebi o pagamento" do vet
+ * não entra na conta: quem está no período grátis ganharia deixando de marcar.
+ */
+function atendimentoConta(req, agora, desde = null) {
+  if (!STATUS_FINALIZADO.includes(String(req && req.status || '').toLowerCase())) return false
+  const fim = emMs(req.finalizedAt)
+  // Só vale o que foi concluído DEPOIS de entrar no programa; senão quem já
+  // tinha histórico batia a meta no primeiro dia.
+  const inicio = emMs(desde)
+  if (inicio != null && (emMs(req.finalizedAt || req.createdAt) ?? -Infinity) < inicio) return false
+  if (req.confirmFinish_client === true) return true
+  return fim != null && agora - fim >= CONFIRMACAO_AUTOMATICA_MS
+}
+
+/** Preço do Premium mensal travado do Fundador, ou null se não se aplica. */
+function precoFundador({ usuario, planId, periodo, agora }) {
+  const f = usuario && usuario.fundador
+  if (!f || planId !== 'premium' || periodoValido(periodo) !== 'mensal') return null
+  const fimDoTeste = emMs(usuario.fundadorTrialEndedAt)
+  if (fimDoTeste == null) return null
+  const meses = Number(f.mesesTravado || FUNDADOR.mesesTravado)
+  return agora <= fimDoTeste + meses * 30 * 864e5 ? Number(f.price || FUNDADOR.preco) : null
+}
+
 module.exports = {
+  FUNDADOR, CONFIRMACAO_AUTOMATICA_MS, atendimentoConta, precoFundador,
   JANELA_RENOVACAO_DIAS, podePagar,
   PLANOS_PADRAO, DIAS_POR_PERIODO, PLANOS_DESTAQUE, ORIGENS,
   planoDoCatalogo, periodoValido, valorEmCentavos, novaExpiracao,

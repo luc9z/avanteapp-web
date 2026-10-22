@@ -91,8 +91,7 @@ export const DEFAULT_PLANS = [
     ],
     locked: [
       'Sem anúncios no painel',
-      'Selo de Destaque na busca',
-      'Topo dos resultados da busca',
+      'Topo da busca (marcado como Patrocinado)',
     ],
   },
   {
@@ -104,16 +103,14 @@ export const DEFAULT_PLANS = [
       'Histórico de atendimentos',
     ],
     locked: [
-      'Selo de Destaque na busca',
-      'Topo dos resultados da busca',
+      'Topo da busca (marcado como Patrocinado)',
     ],
   },
   {
-    id: 'premium', name: 'Premium', price: 59.9, billing: 'mensal',
+    id: 'premium', name: 'Premium', price: 49.9, billing: 'mensal',
     benefits: [
       'Tudo do plano Essencial',
-      'Selo dourado de Destaque',
-      'Topo dos resultados da busca',
+      'Topo da busca (marcado como Patrocinado)',
       'Prioridade nas solicitações',
     ],
     locked: [],

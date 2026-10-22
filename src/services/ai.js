@@ -80,7 +80,7 @@ function clientPrompt(ctx) {
   const vets = Array.isArray(ctx.vets) ? ctx.vets.slice(0, 4) : []
   const list = vets.length
     ? `\n\nVeterinários disponíveis:\n${vets
-        .map(v => `- ${clean(v.name, 60)}${v.featured ? ' ⭐ Destaque' : ''}${v.online ? ' 🟢' : ''}: ${clean(v.specialties, 80)}`)
+        .map(v => `- ${clean(v.name, 60)}${v.online ? ' 🟢' : ''}: ${clean(v.specialties, 80)}`)
         .join('\n')}`
     : ''
 

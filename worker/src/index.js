@@ -4,8 +4,9 @@
  *   POST /checkout              cria o pagamento (PIX ou cartão) na AbacatePay
  *   POST /cupom                 aplica cupom (100% ativa o plano direto)
  *   POST /cpf                   nome e nascimento pelo CPF (apicpf)
+ *   POST /fundador              entra no Vet Fundador (Premium grátis até 3 atendimentos)
  *   POST /webhook/abacatepay    aviso de pagamento da AbacatePay
- *   cron diário                 planos vencidos voltam ao Free
+ *   cron diário                 conta os atendimentos dos Fundadores; planos vencidos voltam ao Free
  *
  * Mesma lógica das Cloud Functions (functions/index.js), que ficam como
  * alternativa caso o projeto vá para o plano Blaze. As regras de dinheiro
@@ -69,7 +70,9 @@ async function cupomValido(db, codigo) {
   const code = String(codigo || '').trim().toUpperCase()
   if (!code) return null
   const todos = (await db.ler('config/coupons'))?.dados || {}
-  const c = todos[code] || (code === 'BEMVINDO' ? { discount: 100, active: true } : null)
+  // Só cupons criados pelo admin. Havia um BEMVINDO fixo aqui que dava
+  // Premium grátis e sem vencimento a quem digitasse: furava o Vet Fundador.
+  const c = todos[code] || null
   if (!c || c.active === false) return null
   return { code, discount: Number(c.discount) || 0, dias: Number(c.dias) || null }
 }
@@ -133,16 +136,20 @@ async function checkout(env, db, eu, dados) {
   const plano = pg.planoDoCatalogo(await catalogo(db), String(dados.planId || ''))
   if (!plano) throw new Falha(404, 'nao-encontrado', 'Plano não encontrado.')
   if (!(Number(plano.price) > 0)) throw new Falha(400, 'invalido', 'Este plano não exige pagamento.')
-  await travaMesmoPlano(db, eu.uid, plano.id)
+  const u = await travaMesmoPlano(db, eu.uid, plano.id)
   const periodo = pg.periodoValido(dados.period)
 
+  // Vet Fundador que já bateu a meta: Premium mensal pelo preço travado.
+  // Nesse caso o cupom não soma: o preço de fundador já é o desconto.
+  const precoFundador = pg.precoFundador({ usuario: u, planId: plano.id, periodo, agora: Date.now() })
+
   let cupom = null
-  if (dados.coupon) {
+  if (dados.coupon && precoFundador == null) {
     const c = await cupomValido(db, dados.coupon)
     if (!c) throw new Falha(404, 'nao-encontrado', 'Cupom inválido ou expirado.')
     if (c.discount < 100) cupom = c
   }
-  const centavos = pg.valorEmCentavos(plano.price, periodo, cupom?.discount || 0)
+  const centavos = pg.valorEmCentavos(precoFundador ?? plano.price, periodo, cupom?.discount || 0)
   if (centavos < 100) throw new Falha(400, 'invalido', 'Valor abaixo do mínimo para pagamento.')
 
   const produtoId = await produtoDoPlano(env, db, plano, periodo, centavos)
@@ -164,10 +171,72 @@ async function checkout(env, db, eu, dados) {
   // O registro que o webhook vai conferir. Valor e plano saem DAQUI.
   await db.gravar(`payments/${ck.id}`, {
     uid: eu.uid, planId: plano.id, periodo, centavos,
-    cupom: cupom?.code || null, externalId, status: 'pendente',
+    cupom: cupom?.code || null, fundador: precoFundador != null, externalId, status: 'pendente',
     devMode: !!ck.devMode, createdAt: new Date(),
   })
   return { url: ck.url }
+}
+
+/**
+ * Entra no Vet Fundador: Premium grátis, sem vencimento, até a tarefa
+ * diária contar os atendimentos da meta. As vagas ficam em config/fundador
+ * ({ vagas, usados, fechaEm? }); o contador e o plano entram no MESMO
+ * commit, com pré-condição, então duas entradas ao mesmo tempo não passam
+ * da última vaga.
+ */
+async function fundador(env, db, eu) {
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const lido = await db.ler(`users/${eu.uid}`)
+    const u = lido?.dados
+    if (!u) throw new Falha(404, 'nao-encontrado', 'Conta não encontrada.')
+    if (!['medico_veterinario', 'vet', 'professional'].includes(u.profession)) {
+      throw new Falha(403, 'invalido', 'O Vet Fundador é para veterinários.')
+    }
+    if (u.fundador) return { ativo: true }
+
+    const agora = new Date()
+    const expira = u.planExpiresAt ? new Date(u.planExpiresAt).getTime() : 0
+    if ((u.plan || 'free') !== 'free' && expira > agora.getTime()) {
+      throw new Falha(409, 'ja-ativo', 'Você já tem um plano pago em vigor. O Vet Fundador é para quem ainda não assina.')
+    }
+
+    const cfg = await db.ler('config/fundador')
+    const vagas = Number(cfg?.dados.vagas ?? pg.FUNDADOR.vagas)
+    const usados = Number(cfg?.dados.usados ?? 0)
+    const fecha = cfg?.dados.fechaEm ? new Date(cfg.dados.fechaEm).getTime() : null
+    if (fecha && agora.getTime() > fecha) throw new Falha(409, 'encerrado', 'As inscrições de Vet Fundador já fecharam.')
+    if (usados >= vagas) throw new Falha(409, 'esgotado', 'As vagas de Vet Fundador acabaram.')
+
+    try {
+      await db.commit([
+        db.escrita('config/fundador', { vagas, usados: usados + 1 },
+          cfg ? { updateTime: cfg.atualizadoEm } : { exists: false }),
+        db.escrita(`users/${eu.uid}`, {
+          plan: 'premium',
+          featured: true,
+          planActivatedAt: agora,
+          planExpiresAt: null,
+          planCoupon: 'FUNDADOR',
+          paidVisits: 0,
+          fundador: {
+            desde: agora,
+            trialVisits: pg.FUNDADOR.visitasGratis,
+            price: pg.FUNDADOR.preco,
+            mesesTravado: pg.FUNDADOR.mesesTravado,
+          },
+        }, { updateTime: lido.atualizadoEm }),
+        db.escrita(`payments/fundador_${eu.uid}`, {
+          uid: eu.uid, planId: 'premium', centavos: 0, status: 'fundador', createdAt: agora,
+        }),
+      ])
+      return { ativo: true, vagasRestantes: vagas - usados - 1 }
+    } catch (e) {
+      // Alguém mexeu nas vagas ou na conta entre a leitura e a gravação: lê de novo.
+      if (e instanceof ErroBanco && (e.status === 400 || e.status === 409)) continue
+      throw e
+    }
+  }
+  throw new Falha(409, 'erro', 'Muita gente entrando ao mesmo tempo. Tente de novo.')
 }
 
 async function cupom(env, db, eu, dados) {
@@ -350,6 +419,37 @@ async function webhook(req, env, db) {
 }
 
 /* ── Tarefa diária ── */
+
+/**
+ * Conta os atendimentos de cada Vet Fundador ainda no período grátis.
+ * Na meta, encerra o período: o plano ganha um vencimento curto (carência)
+ * para o vet pagar o preço travado; sem pagamento, expirarPlanos devolve
+ * ao Free como qualquer plano vencido.
+ */
+async function contarFundadores(env) {
+  const db = banco(env)
+  const agora = Date.now()
+  const fundadores = await db.onde('users', { planCoupon: 'FUNDADOR' })
+  let encerrados = 0
+  for (const f of fundadores) {
+    const u = f.dados
+    if (!u.fundador || u.fundadorTrialEndedAt) continue
+    const uid = f.caminho.split('/')[1]
+    const pedidos = await db.onde('requests', { professionalId: uid })
+    const feitos = pedidos.filter(p => pg.atendimentoConta(p.dados, agora, u.fundador.desde)).length
+    const meta = Number(u.fundador.trialVisits || pg.FUNDADOR.visitasGratis)
+    const campos = { paidVisits: feitos }
+    if (feitos >= meta) {
+      campos.fundadorTrialEndedAt = new Date(agora)
+      campos.planExpiresAt = new Date(agora + pg.FUNDADOR.carenciaDias * 864e5)
+      encerrados++
+    }
+    if (feitos !== u.paidVisits || campos.fundadorTrialEndedAt) await db.gravar(f.caminho, campos)
+  }
+  console.log(`${fundadores.length} Fundador(es) contado(s); ${encerrados} terminaram o período grátis.`)
+  return encerrados
+}
+
 async function expirarPlanos(env) {
   const db = banco(env)
   const vencidos = await db.ateData('users', 'planExpiresAt', new Date())
@@ -361,7 +461,7 @@ async function expirarPlanos(env) {
   return escritas.length
 }
 
-const ROTAS = { '/checkout': checkout, '/cupom': cupom, '/cpf': consultaCpf }
+const ROTAS = { '/checkout': checkout, '/cupom': cupom, '/cpf': consultaCpf, '/fundador': fundador }
 
 export default {
   async fetch(req, env) {
@@ -386,6 +486,11 @@ export default {
   },
 
   async scheduled(evento, env, ctx) {
-    ctx.waitUntil(expirarPlanos(env))
+    // Primeiro conta os Fundadores (pode dar vencimento a quem bateu a meta),
+    // depois expira. Uma falha na contagem não segura a expiração.
+    ctx.waitUntil((async () => {
+      await contarFundadores(env).catch(e => console.error('fundadores:', e?.message))
+      await expirarPlanos(env)
+    })())
   },
 }

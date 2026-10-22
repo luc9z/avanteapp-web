@@ -63,6 +63,19 @@ export default function TermsPage() {
           atualizados. Pagamentos, quando aplicáveis, são processados por provedores
           terceiros; o AVANTE não armazena dados de cartão.
         </p>
+        <p className="mt-2">
+          Veterinários do plano Premium aparecem no topo da busca com a marcação
+          <strong> "Patrocinado"</strong>, que indica um anúncio pago, não uma avaliação
+          de qualidade feita pelo AVANTE. A sugestão do assistente de triagem não leva o
+          plano em conta.
+        </p>
+        <p className="mt-2">
+          No programa Vet Fundador, o Premium é gratuito até o Veterinário concluir pelo
+          app o número de atendimentos informado na adesão (atendimento finalizado e
+          confirmado pelo cliente, ou sem resposta do cliente em 48 horas). Depois, o
+          Premium mensal custa o preço de fundador informado, travado por 12 meses. Sem
+          pagamento, o plano volta ao Free.
+        </p>
       </LegalSection>
 
       <LegalSection n="6" title="Conduta do usuário">

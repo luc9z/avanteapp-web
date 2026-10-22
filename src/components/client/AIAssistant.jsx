@@ -42,10 +42,11 @@ function vetMatchesSpecialties(vet, specs) {
 
 function rankVets(vets, userText) {
   const specs = matchSpecialties(userText)
-  // Não descarta ninguém: match de espécie só dá boost. Premium sempre no topo.
+  // Não descarta ninguém: match de espécie só dá boost. A triagem escolhe
+  // pelo caso (espécie, online, nota): o plano pago NÃO muda a recomendação.
+  // Patrocínio é anúncio na busca, identificado como tal; na triagem de
+  // saúde, favorecer quem paga seria enganar o tutor.
   return [...vets].sort((a, b) => {
-    const fa = isFeatured(a) ? 1 : 0, fb = isFeatured(b) ? 1 : 0
-    if (fa !== fb) return fb - fa
     const ma = vetMatchesSpecialties(a, specs) ? 1 : 0
     const mb = vetMatchesSpecialties(b, specs) ? 1 : 0
     if (ma !== mb) return mb - ma
@@ -503,7 +504,7 @@ function VetSuggestionCard({ vet, onBook }) {
   const rating = vet.averageRating ? Number(vet.averageRating).toFixed(1) : null
   const initial = (vet.name || '?')[0].toUpperCase()
 
-  // Destaque: mesmo cartão dos demais, com o dourado apenas como acento
+  // Patrocinado (plano pago): mesmo cartão dos demais, com o dourado apenas como acento
   // (borda fina + selo), como nos cartões de plano. Antes o cartão
   // inteiro virava laranja e destoava do resto do sistema.
   if (featured) {
@@ -515,7 +516,7 @@ function VetSuggestionCard({ vet, onBook }) {
           <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
-          Destaque
+          Patrocinado
         </span>
 
         {vet.photoURL ? (

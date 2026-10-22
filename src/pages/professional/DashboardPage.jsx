@@ -16,6 +16,7 @@ import { VetBottomNav } from '../../components/common/BottomNav'
 import { directChatId } from '../../services/directChat'
 import { isPending, isActive, normalizeStatus, statusInfo } from '../../utils/status'
 import { vetCoversSpecies } from '../../utils/specialties'
+import { countPaidVisits, FUNDADOR_TRIAL_VISITS, FUNDADOR_PRICE } from '../../utils/paidVisits'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -434,6 +435,13 @@ export default function DashboardPage() {
           const vence = profile?.planExpiresAt?.toDate?.() || null
           const dias = vence ? Math.ceil((vence.getTime() - Date.now()) / 864e5) : null
           const renovar = dias != null && dias <= 5
+          // Vet Fundador: no período grátis, o cartão mostra a meta; depois
+          // dela, pede o pagamento pelo preço travado.
+          const fund = profile?.fundador || null
+          const emTeste = !!fund && !profile?.fundadorTrialEndedAt
+          const meta = Number(fund?.trialVisits || FUNDADOR_TRIAL_VISITS)
+          const feitos = Math.min(countPaidVisits(requests, Date.now(), fund?.desde), meta)
+          const precoFund = Number(fund?.price || FUNDADOR_PRICE).toFixed(2).replace('.', ',')
           return (
             <Link to="/plans" data-coach="vet-plano"
               className={`flex items-center gap-3 rounded-2xl p-4 transition-all
@@ -445,18 +453,23 @@ export default function DashboardPage() {
               <div className="flex-1 min-w-0">
                 <p className={`text-[10px] font-bold uppercase tracking-wide ${
                   ehPremium ? 'text-gray-400' : 'text-white/70'}`}>
-                  Seu plano: {plano}
+                  Seu plano: {plano}{fund ? ' · Vet Fundador' : ''}
                 </p>
                 <p className={`font-bold text-sm mt-0.5 ${ehPremium ? 'text-gray-800' : 'text-white'}`}>
-                  {ehPremium ? 'Gerenciar assinatura' : 'Apareça primeiro na busca'}
+                  {emTeste ? `${feitos} de ${meta} atendimentos pelo app`
+                    : ehPremium ? 'Gerenciar assinatura' : 'Apareça primeiro na busca'}
                 </p>
                 <p className={`text-xs mt-0.5 ${renovar ? 'font-semibold text-red-500' : ehPremium ? 'text-gray-500' : 'text-white/85'}`}>
-                  {renovar
+                  {emTeste
+                    ? `Premium grátis até completar ${meta}. Depois, R$ ${precoFund}/mês travado por 12 meses.`
+                    : fund && renovar
+                    ? `Período grátis concluído. Pague R$ ${precoFund}/mês para manter o Premium.`
+                    : renovar
                     ? (dias <= 0 ? 'Vence hoje. Renove para não perder o plano.'
                       : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}. Renove para não perder o plano.`)
                     : vence ? `Vale até ${vence.toLocaleDateString('pt-BR')}`
                     : ehPremium ? 'Trocar de plano quando quiser'
-                    : 'Receba mais pedidos com o selo de destaque'}
+                    : 'Apareça no topo da busca (Patrocinado)'}
                 </p>
               </div>
               <span className={`flex-shrink-0 inline-flex items-center gap-1 rounded-xl px-3.5 min-h-[44px]
@@ -465,7 +478,7 @@ export default function DashboardPage() {
                   ? 'border border-primary/40 text-primary'
                   : 'bg-white text-amber-700 shadow-sm'
               }`}>
-                {renovar ? 'Renovar' : ehPremium ? 'Trocar' : 'Ver planos'}
+                {emTeste ? 'Ver' : renovar ? (fund ? 'Pagar' : 'Renovar') : ehPremium ? 'Trocar' : 'Ver planos'}
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>

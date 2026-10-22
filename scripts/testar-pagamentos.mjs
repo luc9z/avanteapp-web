@@ -66,13 +66,44 @@ ok(pg.origemSegura('http://localhost:5173') === 'http://localhost:5173', 'localh
 ok(pg.origemSegura('https://site-falso.com') === 'https://avante.vet.br', 'domínio de fora vira o oficial')
 ok(pg.origemSegura('https://avante.vet.br.golpe.com') === 'https://avante.vet.br', 'imitação do domínio vira o oficial')
 
+console.log('\n=== Vet Fundador ===')
+const H = 3600 * 1000
+ok(pg.atendimentoConta({ status: 'finalizado', confirmFinish_client: true }, AGORA), 'finalizado e confirmado pelo cliente: conta')
+ok(!pg.atendimentoConta({ status: 'finalizado', confirmFinish_client: false, finalizedAt: new Date(AGORA - 47 * H) }, AGORA),
+  'finalizado há 47h sem confirmação: ainda não conta')
+ok(pg.atendimentoConta({ status: 'finalizado', confirmFinish_client: false, finalizedAt: new Date(AGORA - 49 * H) }, AGORA),
+  'finalizado há 49h sem resposta do cliente: conta')
+ok(!pg.atendimentoConta({ status: 'em_andamento', confirmFinish_client: true }, AGORA), 'em andamento: não conta')
+ok(!pg.atendimentoConta({ status: 'finalizado', paymentReceived: true }, AGORA), 'só a marca do vet, sem cliente nem 48h: não conta')
+const ENTROU = new Date(AGORA - 5 * DIA)
+ok(!pg.atendimentoConta({ status: 'finalizado', confirmFinish_client: true, finalizedAt: new Date(AGORA - 9 * DIA) }, AGORA, ENTROU),
+  'concluído ANTES de entrar no Fundador: não conta')
+ok(pg.atendimentoConta({ status: 'finalizado', confirmFinish_client: true, finalizedAt: new Date(AGORA - 1 * DIA) }, AGORA, ENTROU),
+  'concluído depois de entrar: conta')
+ok(!pg.atendimentoConta({ status: 'finalizado', confirmFinish_client: true }, AGORA, ENTROU),
+  'sem data nenhuma, com adesão registrada: não conta (não dá para provar que é novo)')
+const fund = { fundador: { price: 29.9, mesesTravado: 12 }, fundadorTrialEndedAt: new Date(AGORA - 10 * DIA) }
+ok(pg.precoFundador({ usuario: fund, planId: 'premium', periodo: 'mensal', agora: AGORA }) === 29.9, 'fundador que bateu a meta: Premium mensal a R$ 29,90')
+ok(pg.precoFundador({ usuario: fund, planId: 'premium', periodo: 'anual', agora: AGORA }) === null, 'anual: preço normal')
+ok(pg.precoFundador({ usuario: fund, planId: 'essencial', periodo: 'mensal', agora: AGORA }) === null, 'outro plano: preço normal')
+ok(pg.precoFundador({ usuario: { fundador: { price: 29.9 } }, planId: 'premium', periodo: 'mensal', agora: AGORA }) === null,
+  'ainda no período grátis: não há o que cobrar')
+ok(pg.precoFundador({ usuario: { ...fund, fundadorTrialEndedAt: new Date(AGORA - 400 * DIA) }, planId: 'premium', periodo: 'mensal', agora: AGORA }) === null,
+  'passados os 12 meses: volta ao preço normal')
+ok(pg.FUNDADOR.carenciaDias <= pg.JANELA_RENOVACAO_DIAS, 'a carência cabe na janela de renovação (o vet consegue pagar na hora)')
+const vagasApp = fs.readFileSync('src/utils/paidVisits.js', 'utf8')
+for (const [nome, chave] of [['FUNDADOR_TRIAL_VISITS', 'visitasGratis'], ['FUNDADOR_PRICE', 'preco'], ['FUNDADOR_SLOTS', 'vagas']]) {
+  const v = Number((vagasApp.match(new RegExp(`${nome} = ([\\d.]+)`)) || [])[1])
+  ok(v === pg.FUNDADOR[chave], `${nome}: app ${v} = servidor ${pg.FUNDADOR[chave]}`)
+}
+
 console.log('\n=== catálogo do servidor = catálogo do app ===')
 const admin = fs.readFileSync('src/pages/admin/AdminPage.jsx', 'utf8')
 for (const p of pg.PLANOS_PADRAO) {
   const m = new RegExp(`id: '${p.id}'[^}]*?price: ([\\d.]+)`).exec(admin)
   ok(m && Number(m[1]) === p.price, `${p.id}: app ${m ? m[1] : '?'} = servidor ${p.price}`)
 }
-ok(pg.planoDoCatalogo(null, 'premium')?.price === 59.9, 'sem config/plans (banco resetado): usa o padrão')
+ok(pg.planoDoCatalogo(null, 'premium')?.price === 49.9, 'sem config/plans (banco resetado): usa o padrão')
 ok(pg.planoDoCatalogo([{ id: 'premium', price: 79.9 }], 'premium').price === 79.9, 'com config/plans: vale o do admin')
 ok(pg.planoDoCatalogo(null, 'inexistente') === null, 'plano inventado não existe')
 

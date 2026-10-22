@@ -140,6 +140,19 @@ export function banco(env) {
       return this.commit([this.escrita(caminho, dados)])
     },
 
+    /** Documentos de uma coleção com campo == valor (todos os filtros juntos). */
+    async onde(colecao, iguais) {
+      const filtros = Object.entries(iguais).map(([campo, valor]) => ({
+        fieldFilter: { field: { fieldPath: campo }, op: 'EQUAL', value: paraValor(valor) },
+      }))
+      const where = filtros.length === 1 ? filtros[0] : { compositeFilter: { op: 'AND', filters: filtros } }
+      const r = await req('POST', `${raiz}:runQuery`, { structuredQuery: { from: [{ collectionId: colecao }], where } })
+      return (r || []).filter(x => x.document).map(x => ({
+        caminho: x.document.name.split('/documents/')[1],
+        dados: deCampos(x.document.fields || {}),
+      }))
+    },
+
     /** Documentos de uma coleção com campo <= valor (só o que a tarefa diária precisa). */
     async ateData(colecao, campo, data) {
       const r = await req('POST', `${raiz}:runQuery`, {

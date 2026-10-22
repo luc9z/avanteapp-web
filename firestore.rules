@@ -48,6 +48,14 @@ service cloud.firestore {
             && !mudou.hasAny(['planExpiresAt', 'planCheckoutId', 'planPeriodo', 'planCoupon']));
     }
 
+    // Vet Fundador: a vaga, a contagem de atendimentos e o fim do período
+    // grátis só o servidor grava. Senão o vet zerava a própria contagem e
+    // ficava no Premium grátis para sempre.
+    function fundadorIntacto() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['fundador', 'fundadorTrialEndedAt', 'paidVisits']);
+    }
+
     // CPF da conta (cpfHash): gravado uma única vez, no MESMO lote que cria
     // a reserva em cpfs/{hash} com o uid desta conta. Depois não muda pelo
     // app: trocar deixaria "soltar" um CPF e reservar o de outra pessoa.
@@ -79,11 +87,13 @@ service cloud.firestore {
         && (isAdmin()
             || (request.auth.uid == userId
                 && request.resource.data.get('plan', 'free') == 'free'
-                && request.resource.data.get('featured', false) == false));
+                && request.resource.data.get('featured', false) == false
+                && !request.resource.data.keys()
+                      .hasAny(['fundador', 'fundadorTrialEndedAt', 'paidVisits'])));
       allow update: if request.auth != null
         && (isAdmin()
             || (request.auth.uid == userId && camposProtegidosIntactos()
-                && cpfHashIntacto() && planoIntacto()));
+                && cpfHashIntacto() && planoIntacto() && fundadorIntacto()));
       allow delete: if isAdmin();
     }
 
@@ -232,6 +242,18 @@ service cloud.firestore {
           || request.resource.data.get('quote', {}).get('total', 0)
              == resource.data.get('quote', {}).get('total', 0);
       }
+      // Cada lado só marca o que é seu: a confirmação de que o atendimento
+      // aconteceu é do CLIENTE (é ela que conta para o Vet Fundador), e o
+      // "recebi o pagamento" é do VET. O vet só pode zerar a confirmação
+      // (é o que acontece ao finalizar).
+      function vetNaoConfirmaPeloCliente() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['confirmFinish_client'])
+          || request.resource.data.confirmFinish_client == false;
+      }
+      function clienteNaoMarcaPagamento() {
+        return !request.resource.data.diff(resource.data).affectedKeys()
+                  .hasAny(['paymentReceived', 'paymentReceivedAt']);
+      }
       function clienteNaoTrocaAsPartes() {
         return !request.resource.data.diff(resource.data).affectedKeys()
                   .hasAny(['clientId', 'professionalId', 'professionalName']);
@@ -252,8 +274,10 @@ service cloud.firestore {
         && (isAdmin()          // moderação pelo painel (devolver à fila)
             || (resource.data.clientId == request.auth.uid
                 && clienteNaoTrocaAsPartes()
-                && totalDoOrcamentoIntacto())
-            || resource.data.professionalId == request.auth.uid
+                && totalDoOrcamentoIntacto()
+                && clienteNaoMarcaPagamento())
+            || (resource.data.professionalId == request.auth.uid
+                && vetNaoConfirmaPeloCliente())
             || (resource.data.status == 'urgente'
                 && !('professionalId' in resource.data)
                 && isVetUser()

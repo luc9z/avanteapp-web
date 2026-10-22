@@ -233,6 +233,42 @@ await teste('dono NÃO apaga a reserva (liberaria o CPF)', () =>
   assertFails(deleteDoc(doc(db(VET2), 'cpfs', CPF_A))))
 await teste('segunda conta reserva um CPF livre normalmente', () => assertSucceeds(reservar(CLIENTE2, CPF_B)))
 
+console.log('\n== Vet Fundador ==')
+await env.withSecurityRulesDisabled(async ctx => {
+  const d = ctx.firestore()
+  await setDoc(doc(d, 'users', 'vet_fundador'), {
+    uid: 'vet_fundador', profession: 'medico_veterinario', plan: 'premium', featured: true,
+    planCoupon: 'FUNDADOR', paidVisits: 2, fundador: { trialVisits: 3, price: 29.9 },
+  })
+  await setDoc(doc(d, 'requests', 'visita_feita'), {
+    clientId: CLIENTE, professionalId: 'vet_fundador', status: 'finalizado', confirmFinish_client: false,
+  })
+})
+await teste('Fundador NÃO zera a própria contagem de atendimentos', () =>
+  assertFails(updateDoc(doc(db('vet_fundador'), 'users', 'vet_fundador'), { paidVisits: 0 })))
+await teste('Fundador NÃO aumenta a meta para ficar grátis mais tempo', () =>
+  assertFails(updateDoc(doc(db('vet_fundador'), 'users', 'vet_fundador'), { fundador: { trialVisits: 99, price: 29.9 } })))
+await teste('vet comum NÃO se coloca no Vet Fundador', () =>
+  assertFails(updateDoc(doc(db(VET2), 'users', VET2), { fundador: { trialVisits: 3, price: 29.9 } })))
+await teste('conta nova NÃO nasce como Fundador', () =>
+  assertFails(setDoc(doc(db('conta_nova_3'), 'users', 'conta_nova_3'), { uid: 'conta_nova_3', fundador: { trialVisits: 3 } })))
+await teste('Fundador ainda edita o próprio perfil (nome)', () =>
+  assertSucceeds(updateDoc(doc(db('vet_fundador'), 'users', 'vet_fundador'), { name: 'Dra. Fundadora' })))
+await teste('vet NÃO confirma o atendimento no lugar do cliente', () =>
+  assertFails(updateDoc(doc(db('vet_fundador'), 'requests', 'visita_feita'), { confirmFinish_client: true })))
+await teste('vet marca "recebi o pagamento"', () =>
+  assertSucceeds(updateDoc(doc(db('vet_fundador'), 'requests', 'visita_feita'), { paymentReceived: true })))
+await teste('vet zera a confirmação ao finalizar (fluxo normal)', () =>
+  assertSucceeds(updateDoc(doc(db('vet_fundador'), 'requests', 'visita_feita'), { confirmFinish_client: false })))
+await teste('cliente confirma que o atendimento aconteceu', () =>
+  assertSucceeds(updateDoc(doc(db(CLIENTE), 'requests', 'visita_feita'), { confirmFinish_client: true })))
+await teste('cliente NÃO marca o pagamento pelo vet', () =>
+  assertFails(updateDoc(doc(db(CLIENTE), 'requests', 'visita_feita'), { paymentReceived: false })))
+await teste('app lê as vagas do Fundador (config/fundador)', () =>
+  assertSucceeds(getDoc(doc(db(VET2), 'config', 'fundador'))))
+await teste('vet NÃO mexe nas vagas', () =>
+  assertFails(setDoc(doc(db(VET2), 'config', 'fundador'), { vagas: 999, usados: 0 })))
+
 console.log('\n== Admin ==')
 await teste('admin lê a base inteira', () =>
   assertSucceeds(getDocs(collection(db(ADMIN), 'users'))))

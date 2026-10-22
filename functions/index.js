@@ -409,12 +409,12 @@ async function clienteDaConta(db, uid, emailDoLogin) {
   }
 }
 
-/** Cupom ativo de config/coupons (BEMVINDO existe por padrão). */
+/** Cupom ativo de config/coupons (só os criados pelo admin). */
 async function cupomValido(db, codigo) {
   const code = String(codigo || '').trim().toUpperCase()
   if (!code) return null
   const todos = (await db.doc('config/coupons').get()).data() || {}
-  const c = todos[code] || (code === 'BEMVINDO' ? { discount: 100, active: true } : null)
+  const c = todos[code] || null
   if (!c || c.active === false) return null
   return { code, discount: Number(c.discount) || 0, dias: Number(c.dias) || null }
 }
