@@ -11,29 +11,8 @@ import AddressSheet from './AddressSheet'
 import { directChatId, freshExpiry } from '../../services/directChat'
 import { SPECIALTY_TO_SPECIES } from '../../utils/specialties'
 import { format, addDays, startOfDay, getDay, isSameDay } from 'date-fns'
-import DatePicker, { registerLocale } from 'react-datepicker'
 import { ptBR } from 'date-fns/locale'
-import 'react-datepicker/dist/react-datepicker.css'
-import './datepicker.css'
 
-registerLocale('pt-BR', ptBR)
-
-/**
- * Primeiro horário ainda possível hoje, arredondado para cima.
- *
- * Às 20:32 com passo de 30 min, o primeiro horário é 21:00 - nem 20:32
- * nem 20:30, que já passou. O teto evita o caso da virada: às 23:50 o
- * arredondamento cairia no dia seguinte e liberaria a lista inteira.
- */
-function primeiroHorarioDeHoje(passoMin = 30, fimHora = 22) {
-  const agora = new Date()
-  const emMinutos = agora.getHours() * 60 + agora.getMinutes()
-  const arredondado = Math.ceil(emMinutos / passoMin) * passoMin
-  const limitado = Math.min(arredondado, fimHora * 60)
-  const d = new Date(agora)
-  d.setHours(Math.floor(limitado / 60), limitado % 60, 0, 0)
-  return d
-}
 
 /** O horário "HH:mm" já passou, considerando o dia escolhido? */
 function jaPassou(hhmm, dia) {
@@ -60,6 +39,17 @@ function generateSlots(dayConfig, slotDuration) {
 }
 
 const WEEKDAY_SHORT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+/**
+ * Agenda usada quando o veterinário não configurou a dele: todo dia, de
+ * hora em hora, das 7h às 21h. Antes, sem configuração, a tela trocava
+ * para um calendário de mês com lista de horas: o tutor via duas telas
+ * diferentes para a mesma etapa, conforme o vet escolhido.
+ */
+const AGENDA_PADRAO = {
+  slotDuration: 60,
+  days: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, { active: true, start: '07:00', end: '22:00' }])),
+}
 
 const EMOJI = { 'Cão': '🐶', 'Gato': '🐱', 'Bovino': '🐄', 'Equino': '🐴', 'Ave': '🐔', 'Ovino/Caprino': '🐑', 'Suíno': '🐷', 'Outro': '🐾' }
 
@@ -104,7 +94,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
   const [submitting, setSubmitting] = useState(false)
 
   // Agenda com slots
-  const [vetAvail, setVetAvail] = useState(null) // null = carregando, false = sem config
+  const [vetAvail, setVetAvail] = useState(null) // null = carregando, false = sem config (usa AGENDA_PADRAO)
   const [slotDate, setSlotDate] = useState(null)  // Date selecionada
   const [slotTime, setSlotTime] = useState(null)  // string "HH:mm"
   const [bookedSlots, setBookedSlots] = useState([]) // ["HH:mm", ...]
@@ -166,7 +156,7 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
 
   // Quando muda a data selecionada no modo slots, busca quais slots já estão ocupados
   useEffect(() => {
-    if (!slotDate || !vetAvail || !professional?.uid) return
+    if (!slotDate || vetAvail === null || !professional?.uid) return
     setLoadingSlots(true)
     setSlotTime(null)
     const dayStart = startOfDay(slotDate)
@@ -415,55 +405,28 @@ export default function ScheduleSheet({ open, onClose, professional, user, onSuc
           {/* ── PASSO 2: Data e horário ──────────────────────── */}
           {step === 2 && (
             <div className="flex flex-col gap-4 animate-fade-up">
-              {/* Modo SLOTS - vet configurou disponibilidade */}
-              {vetAvail ? (
+              {/* Sempre o mesmo carrossel de dias e horários: com a agenda
+                  que o vet configurou ou, sem ela, a AGENDA_PADRAO. */}
+              {vetAvail === null ? (
+                <div className="flex justify-center py-10"><Spinner size={24} color="#375337" /></div>
+              ) : (
                 <SlotPicker
-                  avail={vetAvail}
+                  avail={vetAvail || AGENDA_PADRAO}
                   slotDate={slotDate}
                   slotTime={slotTime}
                   bookedSlots={bookedSlots}
                   loadingSlots={loadingSlots}
                   onDateChange={d => { setSlotDate(d); setWhen(null) }}
-                  onTimeChange={t => {
-                    setSlotTime(t)
-                    if (slotDate && t) {
-                      const [h, m] = t.split(':').map(Number)
+                  onTimeChange={tm => {
+                    setSlotTime(tm)
+                    if (slotDate && tm) {
+                      const [h, m] = tm.split(':').map(Number)
                       const dt = new Date(slotDate)
                       dt.setHours(h, m, 0, 0)
                       setWhen(dt)
                     }
                   }}
                 />
-              ) : (
-                /* Modo LIVRE - sem config de slots */
-                <>
-                  <DatePicker
-                    selected={when}
-                    onChange={setWhen}
-                    showTimeSelect
-                    inline
-                    timeIntervals={30}
-                    minDate={new Date()}
-                    /* O piso olha o dia que está SENDO VISTO, não o já
-                       escolhido. Antes dependia de `when`, que é nulo ao
-                       abrir - e aí caía no 06:00, oferecendo a manhã
-                       inteira mesmo às 20h. */
-                    minTime={isSameDay(when || new Date(), new Date())
-                      ? primeiroHorarioDeHoje(30)
-                      : new Date(new Date().setHours(6, 0, 0, 0))}
-                    maxTime={new Date(new Date().setHours(22, 0, 0, 0))}
-                    locale="pt-BR"
-                    timeCaption="Hora"
-                    calendarClassName="avante-datepicker"
-                  />
-                  {when && (
-                    <div className="w-full bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3 text-center">
-                      <p className="text-primary font-bold text-sm capitalize">
-                        {format(when, "EEEE, dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    </div>
-                  )}
-                </>
               )}
             </div>
           )}
@@ -641,11 +604,21 @@ function SlotPicker({ avail, slotDate, slotTime, bookedSlots, loadingSlots, onDa
     if (dayConf?.active) days.push(d)
   }
 
-  const dayConfig = slotDate ? avail.days?.[getDay(slotDate)] : null
   // No dia de hoje, horário que já passou não é opção. Sem este filtro
   // dava para agendar às 8h da manhã depois das 20h.
-  const slots = (dayConfig ? generateSlots(dayConfig, avail.slotDuration || 60) : [])
-    .filter(t => !jaPassou(t, slotDate))
+  const slotsDo = d => {
+    const conf = d ? avail.days?.[getDay(d)] : null
+    return (conf ? generateSlots(conf, avail.slotDuration || 60) : []).filter(t => !jaPassou(t, d))
+  }
+  const slots = slotsDo(slotDate)
+
+  // Já abre no primeiro dia que ainda tem horário (à noite, hoje não tem):
+  // um toque a menos, e a tela nunca começa vazia.
+  const primeiroDia = days.find(d => slotsDo(d).length > 0) || null
+  useEffect(() => {
+    if (!slotDate && primeiroDia) onDateChange(primeiroDia)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slotDate, primeiroDia?.getTime()])
 
   return (
     <div className="flex flex-col gap-4">
