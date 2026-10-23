@@ -93,7 +93,12 @@ export default function DashboardPage() {
   }, [uid])
 
   const [urgentRequests, setUrgentRequests] = useState([])
+  // Emergência só para quem teve o CRMV conferido (as regras do banco
+  // recusam a leitura para os demais; sem esta guarda, o painel ficava
+  // tentando ouvir e registrando erro).
+  const crmvConferido = profile?.crmvVerified === true
   useEffect(() => {
+    if (!crmvConferido) { setUrgentRequests([]); return }
     const q = query(collection(db, 'requests'), where('status', '==', 'urgente'))
     return onSnapshot(q, snap => {
       const now = new Date()
@@ -102,7 +107,7 @@ export default function DashboardPage() {
           .filter(r => !r.professionalId && r.urgentExpiry && new Date(r.urgentExpiry) > now)
       )
     }, err => console.error('[urgências] listener falhou:', err))
-  }, [])
+  }, [crmvConferido])
 
   // Emergências só aparecem para vets cuja área de atuação (specialties)
   // cobre a espécie da solicitação. Compat: requests antigos sem `species`
@@ -418,6 +423,24 @@ export default function DashboardPage() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* ── CRMV em conferência ──────────────────────────────
+             Até o admin conferir o CRMV no cadastro do CFMV, o vet não
+             aparece na busca nem recebe emergências. O aviso explica isso
+             para ele não achar que o app está vazio. */}
+        {profile && !crmvConferido && (
+          <div className={`rounded-2xl p-4 border ${profile.crmvNote
+            ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+            <p className={`font-bold text-sm ${profile.crmvNote ? 'text-red-800' : 'text-amber-800'}`}>
+              {profile.crmvNote ? 'Não conseguimos confirmar seu CRMV' : 'Seu CRMV está em conferência'}
+            </p>
+            <p className={`text-xs mt-1 leading-relaxed ${profile.crmvNote ? 'text-red-700' : 'text-amber-700'}`}>
+              {profile.crmvNote
+                ? `${profile.crmvNote} Confira o número em "Seus dados" ou fale com a equipe AVANTE.`
+                : 'A equipe AVANTE confere seu registro no cadastro do CFMV. Até lá, você não aparece na busca dos tutores nem recebe emergências.'}
+            </p>
           </div>
         )}
 

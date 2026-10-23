@@ -127,7 +127,8 @@ export default function ProfessionalDetailPage() {
             <div className="flex flex-col divide-y divide-gray-50">
               {profile.council && (
                 <ProfRow iconPath="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                  label="CRMV" value={profile.council} />
+                  label={profile.crmvVerified ? 'CRMV · conferido no CFMV' : 'CRMV · em conferência'}
+                  value={profile.council} />
               )}
               {profile.phone && (
                 <ProfRow iconPath="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
@@ -239,12 +240,16 @@ export default function ProfessionalDetailPage() {
       <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-2xl z-20 px-4"
            style={{ bottom: 'calc(3.9rem + env(safe-area-inset-bottom, 0px))' }}>
         <div className="bg-white border border-gray-100 shadow-card-hover rounded-2xl p-2.5 flex gap-2 animate-fade-up">
+          {/* Sem CRMV conferido, o vet não recebe pedidos (nem aparece na
+              busca). Esta página só abre por um link direto. */}
           <button
             onClick={() => setScheduleOpen(true)}
+            disabled={!profile?.crmvVerified}
             data-coach="request-btn"
-            className="flex-1 btn-primary py-3"
+            className="flex-1 btn-primary py-3 disabled:opacity-50"
           >
-            {isOnlineCheck(profile) ? 'Solicitar atendimento' : 'Agendar atendimento'}
+            {!profile?.crmvVerified ? 'CRMV em conferência'
+              : isOnlineCheck(profile) ? 'Solicitar atendimento' : 'Agendar atendimento'}
           </button>
           {/* Chat antes da solicitação - exclusivo Premium (suspenso para os demais) */}
           {(() => {

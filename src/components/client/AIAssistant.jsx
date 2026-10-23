@@ -189,6 +189,7 @@ export default function AIAssistant({ open, onClose, onBooking }) {
     getDocs(query(
       collection(db, 'users'),
       where('profession', '==', 'medico_veterinario'),
+      where('crmvVerified', '==', true),
       limit(10)
     ))
       .then(snap => setVets(snap.docs.map(d => ({ uid: d.id, ...d.data() }))))

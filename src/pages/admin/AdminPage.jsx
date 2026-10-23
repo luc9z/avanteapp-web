@@ -23,7 +23,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   doc, getDoc, setDoc, collection, onSnapshot, addDoc, updateDoc,
-  deleteDoc, serverTimestamp,
+  deleteDoc, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
@@ -156,6 +156,7 @@ function baixarCSV(nome, colunas, linhas) {
 
 const TABS = [
   ['visao', 'Visão geral'],
+  ['crmv', 'CRMV'],
   ['usuarios', 'Usuários'],
   ['solicitacoes', 'Solicitações'],
   ['ofertas', 'Ofertas'],
@@ -261,6 +262,7 @@ export default function AdminPage() {
       </div>
 
       {tab === 'visao'        && <OverviewTab onGo={irPara} />}
+      {tab === 'crmv'         && <CrmvTab />}
       {tab === 'usuarios'     && <UsersTab filtroInicial={filtroInicial} />}
       {tab === 'solicitacoes' && <RequestsTab filtroInicial={filtroInicial} />}
       {tab === 'ofertas'      && <OffersTab />}
@@ -274,6 +276,136 @@ export default function AdminPage() {
           {user?.uid}
         </button>
       </div>
+    </div>
+  )
+}
+
+/* ════════════════ ABA CRMV ════════════════
+   Conferência manual do CRMV no cadastro público do CFMV (Siscad). A
+   consulta do CFMV tem captcha e não tem API pública, então quem confere
+   é o admin: abre a consulta, busca pelo nome e compara número, UF e
+   situação. Só depois disso o vet aparece na busca e recebe emergências
+   (firestore.rules: crmvIntacto, isVetVerificado). */
+const SISCAD_URL = 'https://siscad.cfmv.gov.br/paginas/busca'
+
+function CrmvTab() {
+  const [users, setUsers] = useState(null)
+  const [salvando, setSalvando] = useState(null)
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'users'),
+      snap => setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      e => {
+        console.error('[admin] crmv:', e)
+        showToast(friendlyError(e, 'Não foi possível carregar os veterinários.'), 'error')
+        setUsers([])
+      })
+  }, [])
+
+  const vets = (users || []).filter(isVet)
+  const quando = u => u.createdAt?.toMillis?.() || 0
+  // Pendentes primeiro (os mais antigos esperando primeiro), depois os recusados.
+  const pendentes = vets.filter(u => u.crmvVerified !== true && !u.crmvNote).sort((a, b) => quando(a) - quando(b))
+  const recusados = vets.filter(u => u.crmvVerified !== true && u.crmvNote)
+  const conferidos = vets.filter(u => u.crmvVerified === true).length
+
+  async function confirmar(u) {
+    setSalvando(u.id)
+    try {
+      await updateDoc(doc(db, 'users', u.id), {
+        crmvVerified: true, crmvCheckedAt: serverTimestamp(), crmvNote: deleteField(),
+      })
+      showToast(`CRMV de ${u.name || 'veterinário'} confirmado.`, 'success')
+    } catch (e) {
+      showToast(friendlyError(e, 'Não foi possível salvar.'), 'error')
+    } finally { setSalvando(null) }
+  }
+
+  async function recusar(u) {
+    const motivo = window.prompt(
+      'O que não confere? O veterinário vai ler esta mensagem no painel.',
+      'O número informado não aparece no cadastro do CFMV com este nome.')
+    if (!motivo || !motivo.trim()) return
+    setSalvando(u.id)
+    try {
+      await updateDoc(doc(db, 'users', u.id), {
+        crmvVerified: false, crmvCheckedAt: serverTimestamp(), crmvNote: motivo.trim().slice(0, 300),
+      })
+      showToast('Veterinário avisado.', 'success')
+    } catch (e) {
+      showToast(friendlyError(e, 'Não foi possível salvar.'), 'error')
+    } finally { setSalvando(null) }
+  }
+
+  async function copiar(texto) {
+    try { await navigator.clipboard.writeText(texto); showToast('Nome copiado.', 'success') } catch { /* sem permissão */ }
+  }
+
+  if (!users) return <div className="flex justify-center py-16"><Spinner size={28} color="#375337" /></div>
+
+  const Linha = ({ u }) => (
+    <div className="card flex flex-col gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="font-bold text-gray-900 truncate">{u.name || 'Sem nome'}</p>
+          <p className="text-sm text-gray-600">
+            CRMV <strong>{u.council || 'não informado'}</strong>
+            {(u.city || u.state) && <> · {[u.city, u.state].filter(Boolean).join(' / ')}</>}
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {[u.phone, u.email].filter(Boolean).join(' · ')}
+            {u.createdAt?.toDate && <> · cadastro em {u.createdAt.toDate().toLocaleDateString('pt-BR')}</>}
+          </p>
+          {u.crmvNote && <p className="text-xs text-red-600 mt-1">Recusado: {u.crmvNote}</p>}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <a href={SISCAD_URL} target="_blank" rel="noopener noreferrer"
+          className="btn-ghost btn-sm border border-gray-200">Abrir consulta do CFMV</a>
+        {u.name && (
+          <button type="button" onClick={() => copiar(u.name)} className="btn-ghost btn-sm border border-gray-200">
+            Copiar nome
+          </button>
+        )}
+        <button type="button" onClick={() => confirmar(u)} disabled={salvando === u.id}
+          className="btn-primary btn-sm">
+          {salvando === u.id ? <Spinner size={14} color="white" /> : 'Confirmar CRMV'}
+        </button>
+        <button type="button" onClick={() => recusar(u)} disabled={salvando === u.id}
+          className="btn-ghost btn-sm border border-red-200 text-red-600">
+          Recusar
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="px-4 py-4 flex flex-col gap-4">
+      <div className="card">
+        <p className="card-title mb-2">Como conferir</p>
+        <ol className="text-sm text-gray-600 list-decimal pl-5 flex flex-col gap-1">
+          <li>Toque em <strong>Abrir consulta do CFMV</strong> e marque <strong>Pessoa física</strong>.</li>
+          <li>Escolha a <strong>UF</strong> do CRMV e cole o nome (botão Copiar nome).</li>
+          <li>Confira se o <strong>número da inscrição</strong> bate, se a situação é <strong>Ativo</strong> e se é <strong>Médico(a) Veterinário(a)</strong>.</li>
+          <li>Bateu: <strong>Confirmar CRMV</strong>. Não bateu: <strong>Recusar</strong> e diga o motivo.</li>
+        </ol>
+        <p className="text-xs text-gray-400 mt-2">
+          {pendentes.length} pendente{pendentes.length === 1 ? '' : 's'} · {recusados.length} recusado{recusados.length === 1 ? '' : 's'} · {conferidos} conferido{conferidos === 1 ? '' : 's'}.
+          Só os conferidos aparecem na busca dos tutores.
+        </p>
+      </div>
+
+      <p className="section-title !mb-0">Esperando conferência</p>
+      {pendentes.length === 0
+        ? <p className="text-sm text-gray-500">Nenhum veterinário esperando. 🎉</p>
+        : pendentes.map(u => <Linha key={u.id} u={u} />)}
+
+      {recusados.length > 0 && (
+        <>
+          <p className="section-title !mb-0 mt-2">Recusados (o vet pode corrigir e pedir de novo)</p>
+          {recusados.map(u => <Linha key={u.id} u={u} />)}
+        </>
+      )}
     </div>
   )
 }

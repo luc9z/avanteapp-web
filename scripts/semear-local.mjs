@@ -80,7 +80,7 @@ const cliUid = await criarConta('tutor@teste.local')
 
 await gravar(`users/${vetUid}`, {
   uid: vetUid, name: 'Dra. Helena Vasconcelos Andrade', email: 'vet@teste.local',
-  profession: 'medico_veterinario', council: 'CRMV-SP 12345', city: 'Uberlândia',
+  profession: 'medico_veterinario', council: 'CRMV-SP 12345', crmvVerified: true, city: 'Uberlândia',
   phone: '(34) 99999-8888', is_online: true, plan: 'premium',
   specialties: ['Bovinos', 'Equinos', 'Cães e Gatos'],
   serviceRadius: 50, baseLocation: { lat: -18.91, lng: -48.27 },

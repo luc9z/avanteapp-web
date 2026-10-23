@@ -20,6 +20,14 @@ service cloud.firestore {
 
     // Veterinário cadastrado. Usado para dar acesso clínico (pets e
     // prontuário) a quem atende — nunca a clientes de outras contas.
+    // Veterinário com o CRMV conferido pelo admin no cadastro do CFMV.
+    // Só ele atende emergência: o tutor não tem como saber se é vet de verdade.
+    function isVetVerificado() {
+      return isVetUser()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.get('crmvVerified', false) == true;
+    }
+
     function isVetUser() {
       return request.auth != null
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
@@ -34,6 +42,16 @@ service cloud.firestore {
     function camposProtegidosIntactos() {
       return !request.resource.data.diff(resource.data).affectedKeys()
                 .hasAny(['averageRating', 'ratingCount', 'disabled']);
+    }
+
+    // CRMV conferido: só o admin marca. O dono pode apenas voltar para
+    // "não verificado", e trocar o número do CRMV obriga a conferir de novo.
+    // Antes, o próprio vet gravava crmvVerified: true e virava "verificado".
+    function crmvIntacto() {
+      let mudou = request.resource.data.diff(resource.data).affectedKeys();
+      return !mudou.hasAny(['crmvCheckedAt', 'crmvNote'])
+        && (!mudou.hasAny(['crmvVerified']) || request.resource.data.crmvVerified == false)
+        && (!mudou.hasAny(['council']) || request.resource.data.get('crmvVerified', false) == false);
     }
 
     // Plano pago só o servidor ativa (pagamento confirmado ou cupom).
@@ -89,11 +107,12 @@ service cloud.firestore {
                 && request.resource.data.get('plan', 'free') == 'free'
                 && request.resource.data.get('featured', false) == false
                 && !request.resource.data.keys()
-                      .hasAny(['fundador', 'fundadorTrialEndedAt', 'paidVisits'])));
+                      .hasAny(['fundador', 'fundadorTrialEndedAt', 'paidVisits', 'crmvCheckedAt', 'crmvNote'])
+                && request.resource.data.get('crmvVerified', false) == false));
       allow update: if request.auth != null
         && (isAdmin()
             || (request.auth.uid == userId && camposProtegidosIntactos()
-                && cpfHashIntacto() && planoIntacto() && fundadorIntacto()));
+                && cpfHashIntacto() && planoIntacto() && fundadorIntacto() && crmvIntacto()));
       allow delete: if isAdmin();
     }
 
@@ -268,7 +287,7 @@ service cloud.firestore {
             || isAdmin()
             || (resource.data.status == 'urgente'
                 && !('professionalId' in resource.data)
-                && isVetUser()));
+                && isVetVerificado()));
 
       allow update: if request.auth != null
         && (isAdmin()          // moderação pelo painel (devolver à fila)
@@ -280,7 +299,7 @@ service cloud.firestore {
                 && vetNaoConfirmaPeloCliente())
             || (resource.data.status == 'urgente'
                 && !('professionalId' in resource.data)
-                && isVetUser()
+                && isVetVerificado()
                 && request.resource.data.professionalId == request.auth.uid));
 
       allow delete: if isAdmin();

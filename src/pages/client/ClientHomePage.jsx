@@ -155,6 +155,8 @@ export default function ClientHomePage() {
       let q = query(
         collection(db, 'users'),
         where('profession', '==', 'medico_veterinario'),
+        // Só quem teve o CRMV conferido pelo admin aparece para o tutor.
+        where('crmvVerified', '==', true),
       )
       if (selectedSpecialties.length > 0) {
         q = query(q, where('specialties', 'array-contains-any', selectedSpecialties))

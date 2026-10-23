@@ -43,9 +43,9 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(d, 'admins', ADMIN), { criadoEm: 'seed' })
   await setDoc(doc(d, 'users', VET), {
     uid: VET, name: 'Dra. Ana', profession: 'medico_veterinario',
-    averageRating: 4.2, ratingCount: 10, disabled: false, plan: 'free',
+    averageRating: 4.2, ratingCount: 10, disabled: false, plan: 'free', crmvVerified: true,
   })
-  await setDoc(doc(d, 'users', VET2), { uid: VET2, name: 'Dr. Bruno', profession: 'medico_veterinario' })
+  await setDoc(doc(d, 'users', VET2), { uid: VET2, name: 'Dr. Bruno', profession: 'medico_veterinario', crmvVerified: true })
   await setDoc(doc(d, 'users', BANIDO), {
     uid: BANIDO, name: 'Conta Desativada', profession: 'medico_veterinario', disabled: true,
   })
@@ -232,6 +232,31 @@ await teste('admin lista os CPFs', () => assertSucceeds(getDocs(collection(db(AD
 await teste('dono NÃO apaga a reserva (liberaria o CPF)', () =>
   assertFails(deleteDoc(doc(db(VET2), 'cpfs', CPF_A))))
 await teste('segunda conta reserva um CPF livre normalmente', () => assertSucceeds(reservar(CLIENTE2, CPF_B)))
+
+console.log('\n== CRMV conferido ==')
+await env.withSecurityRulesDisabled(async ctx => {
+  await setDoc(doc(ctx.firestore(), 'users', 'vet_novo'), {
+    uid: 'vet_novo', profession: 'medico_veterinario', council: 'RS 12212', crmvVerified: false,
+  })
+})
+await teste('vet NÃO se marca como CRMV verificado', () =>
+  assertFails(updateDoc(doc(db('vet_novo'), 'users', 'vet_novo'), { crmvVerified: true })))
+await teste('vet NÃO escreve a nota da conferência', () =>
+  assertFails(updateDoc(doc(db('vet_novo'), 'users', 'vet_novo'), { crmvNote: 'ok' })))
+await teste('conta nova NÃO nasce verificada', () =>
+  assertFails(setDoc(doc(db('vet_novo_2'), 'users', 'vet_novo_2'), { uid: 'vet_novo_2', profession: 'medico_veterinario', crmvVerified: true })))
+await teste('conta nova nasce "não verificada" (cadastro normal)', () =>
+  assertSucceeds(setDoc(doc(db('vet_novo_3'), 'users', 'vet_novo_3'), { uid: 'vet_novo_3', profession: 'medico_veterinario', crmvVerified: false })))
+await teste('vet NÃO verificado NÃO vê emergência aberta', () =>
+  assertFails(getDoc(doc(db('vet_novo'), 'requests', 'emergencia_aberta'))))
+await teste('vet NÃO verificado NÃO assume emergência', () =>
+  assertFails(updateDoc(doc(db('vet_novo'), 'requests', 'emergencia_aberta'), { professionalId: 'vet_novo', status: 'aceito' })))
+await teste('admin confirma o CRMV', () =>
+  assertSucceeds(updateDoc(doc(db(ADMIN), 'users', 'vet_novo'), { crmvVerified: true, crmvNote: null })))
+await teste('vet verificado que troca o número do CRMV NÃO continua verificado', () =>
+  assertFails(updateDoc(doc(db('vet_novo'), 'users', 'vet_novo'), { council: 'RS 99999' })))
+await teste('trocar o CRMV voltando a "não verificado" é permitido', () =>
+  assertSucceeds(updateDoc(doc(db('vet_novo'), 'users', 'vet_novo'), { council: 'RS 99999', crmvVerified: false })))
 
 console.log('\n== Vet Fundador ==')
 await env.withSecurityRulesDisabled(async ctx => {
