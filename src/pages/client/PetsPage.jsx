@@ -160,7 +160,9 @@ export default function PetsPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 stagger">
+          /* Uma coluna no celular; duas no computador, onde um cartão
+             esticado a 1000px deixava o nome do animal perdido num canto. */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start stagger">
             {(search
               ? pets.filter(p => {
                   const q = search.toLowerCase()

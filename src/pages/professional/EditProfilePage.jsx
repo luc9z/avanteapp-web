@@ -209,7 +209,7 @@ export default function EditProfilePage() {
   )
 
   return (
-    <div className="page-container largura-leitura pb-nav">
+    <div className={`page-container pb-nav ${isClient ? 'largura-leitura' : 'largura-lista'}`}>
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,9 +220,13 @@ export default function EditProfilePage() {
         <div className="w-6" />
       </div>
 
-      <form onSubmit={handleSave} className="px-4 py-5 flex flex-col gap-4">
+      {/* No computador, o vet vê o formulário em duas colunas: dados à
+          esquerda, onde e como atende à direita. Numa coluna só, era uma
+          faixa longa que obrigava a rolar com metade da tela vazia. */}
+      <form onSubmit={handleSave}
+        className={`px-4 py-5 flex flex-col gap-4 ${isClient ? '' : 'lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start'}`}>
         {/* Avatar com upload */}
-        <div className="flex justify-center pb-1">
+        <div className="flex justify-center pb-1 lg:col-span-2">
           <label className="relative cursor-pointer group">
             {form.photoURL ? (
               <img src={form.photoURL} alt="Foto de perfil"
@@ -325,7 +329,8 @@ export default function EditProfilePage() {
 
         {/* ── Área de atendimento (apenas veterinário) ────────── */}
         {!isClient && (
-          <div data-coach="perfil-area-atend" className="flex flex-col gap-3 border-t border-gray-100 pt-4 mt-1">
+          <div data-coach="perfil-area-atend"
+            className="flex flex-col gap-3 border-t border-gray-100 pt-4 mt-1 lg:border-t-0 lg:pt-0 lg:mt-0">
             <div>
               <h2 className="section-title">Área de atendimento</h2>
               <p className="text-muted">
@@ -425,7 +430,7 @@ export default function EditProfilePage() {
 
         {/* ── Portfólio e Certificações (apenas veterinário) ─── */}
         {!isClient && (
-          <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 mt-1">
+          <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 mt-1 lg:col-span-2">
             <div className="flex items-center">
               <h2 className="section-title flex-1">Portfólio e Certificações</h2>
               {portfolio.some(i => i.title.trim()) && (
@@ -492,7 +497,7 @@ export default function EditProfilePage() {
           </div>
         )}
 
-        <button type="submit" disabled={saving} className="btn-primary w-full py-4 mt-1">
+        <button type="submit" disabled={saving} className="btn-primary w-full py-4 mt-1 lg:col-span-2">
           {saving ? <Spinner /> : 'Salvar alterações'}
         </button>
       </form>

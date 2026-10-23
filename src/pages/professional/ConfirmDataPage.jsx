@@ -27,6 +27,7 @@ import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
 import MapPicker from '../../components/client/MapPicker'
 import { SPECIALTY_GROUPS } from '../../utils/specialties'
+import TelaEntrada from '../../components/common/TelaEntrada'
 
 const ESPECIES = SPECIALTY_GROUPS[0].items
 const CLINICAS = SPECIALTY_GROUPS[1].items
@@ -287,7 +288,18 @@ export default function ConfirmDataPage() {
   const brilho = destacar ? 'ring-2 ring-green-400/70 transition-shadow' : 'transition-shadow'
 
   return (
-    <div className="page-container largura-leitura">
+    /* No computador, a mesma moldura do login e do cadastro: a marca e o
+       que o vet ganha à esquerda, o formulário à direita. Antes era uma
+       faixa estreita no meio de um monitor vazio. */
+    <TelaEntrada
+      className="lg:!justify-start"
+      titulo="Receba pedidos de atendimento da sua região."
+      pontos={[
+        'Tutores e produtores pedem o atendimento pelo app',
+        'Você escolhe quais aceitar e define o seu preço',
+        'Sem comissão sobre a visita',
+      ]}
+    >
       {/* Sem barra inferior do app: o perfil ainda não existe, e ela
           levava para o painel no meio do cadastro. */}
       <div className="topbar">
@@ -513,6 +525,6 @@ export default function ConfirmDataPage() {
           </div>
         )}
       </form>
-    </div>
+    </TelaEntrada>
   )
 }

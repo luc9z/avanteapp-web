@@ -461,7 +461,7 @@ export default function PlansPage() {
       </div>
 
       {/* ── Barra fixa: assinar e pagar ───────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 z-40"
+      <div className="barra-fixa-planos fixed bottom-0 left-0 right-0 border-t border-white/10 z-40"
            style={{ background: barBg, backdropFilter: 'blur(14px)' }}>
         <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1">

@@ -237,7 +237,7 @@ export default function ProfessionalDetailPage() {
       </div>
 
       {/* ── Barra de ações (fixa, acima da navegação) ─────────── */}
-      <div className="fixed left-1/2 -translate-x-1/2 w-full max-w-2xl z-20 px-4"
+      <div className="barra-fixa-acoes fixed left-1/2 -translate-x-1/2 w-full max-w-2xl z-20 px-4"
            style={{ bottom: 'calc(3.9rem + env(safe-area-inset-bottom, 0px))' }}>
         <div className="bg-white border border-gray-100 shadow-card-hover rounded-2xl p-2.5 flex gap-2 animate-fade-up">
           {/* Sem CRMV conferido, o vet não recebe pedidos (nem aparece na

@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useAuth } from '../../contexts/AuthContext'
+import { NavLateral } from '../../components/common/BottomNav'
 import Spinner from '../../components/common/Spinner'
 import { showToast } from '../../components/common/Toast'
 import { friendlyError } from '../../utils/errors'
@@ -308,7 +309,9 @@ export default function ChatPage() {
 
   /* ── Render ─────────────────────────────────────────────────── */
   return (
-    <div className="page-container largura-leitura flex flex-col h-screen">
+    <div className="page-container largura-lista flex flex-col h-screen">
+      {/* No computador o chat ficava sem navegação: só a lateral, sem a barra de baixo. */}
+      <NavLateral />
 
       {/* ── Topbar ─────────────────────────────────────────────── */}
       <div className="topbar flex-shrink-0 shadow-sm">

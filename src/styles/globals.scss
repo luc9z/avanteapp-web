@@ -1035,3 +1035,16 @@
   /* O símbolo grande acima do formulário repetiria a marca do lado. */
   .tela-entrada-form .logo-so-celular { display: none; }
 }
+
+/* ── Barras fixas de ação no computador ───────────────────────────
+   No celular elas ficam acima da barra de navegação de baixo. No
+   computador essa barra não existe e a lateral ocupa a esquerda: sem
+   isto, a barra de ação flutuava no meio da tela, longe do rodapé, e
+   centralizada na janela inteira em vez de no conteúdo. */
+@media (min-width: 1024px) {
+  .com-rail .barra-fixa-acoes {
+    left: calc(50% + var(--rail-w) / 2) !important;
+    bottom: 1.5rem !important;
+  }
+  .com-rail .barra-fixa-planos { left: var(--rail-w); }
+}

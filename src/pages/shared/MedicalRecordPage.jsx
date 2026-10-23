@@ -11,6 +11,7 @@ import { showToast } from '../../components/common/Toast'
 import { confirmDialog } from '../../components/common/ConfirmDialog'
 import { DateFields } from '../../components/common/DateTimeFields'
 import { normalizeStatus } from '../../utils/status'
+import { NavLateral } from '../../components/common/BottomNav'
 
 /**
  * Garante que medicalRecords/{petId} exista com o dono do animal.
@@ -178,7 +179,8 @@ export default function MedicalRecordPage() {
   )
 
   return (
-    <div className="page-container largura-leitura">
+    <div className="page-container largura-lista">
+      <NavLateral />
       {/* Topbar */}
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary">

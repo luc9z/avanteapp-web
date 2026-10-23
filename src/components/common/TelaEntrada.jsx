@@ -14,7 +14,9 @@ const PONTOS = [
   'Agenda, orçamento e prontuário no mesmo lugar',
 ]
 
-export default function TelaEntrada({ children, className = '' }) {
+const TITULO = 'Atendimento veterinário a domicílio, na cidade e no campo.'
+
+export default function TelaEntrada({ children, className = '', titulo = TITULO, pontos = PONTOS }) {
   return (
     <div className="tela-entrada">
       <aside className="tela-entrada-marca" aria-hidden="true">
@@ -22,10 +24,10 @@ export default function TelaEntrada({ children, className = '' }) {
         <AvanteLogo variant="horizontal" className="h-20 text-brand-creme self-start" />
         <div className="flex flex-col gap-6 max-w-md">
           <p className="text-3xl xl:text-4xl font-bold leading-tight text-brand-creme">
-            Atendimento veterinário a domicílio, na cidade e no campo.
+            {titulo}
           </p>
           <ul className="flex flex-col gap-3">
-            {PONTOS.map(p => (
+            {pontos.map(p => (
               <li key={p} className="flex items-start gap-3 text-base text-brand-creme/80">
                 <svg className="w-5 h-5 mt-0.5 flex-shrink-0 text-brand-salvia" fill="none" stroke="currentColor"
                   strokeWidth={2.4} viewBox="0 0 24 24">

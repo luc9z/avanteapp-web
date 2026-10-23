@@ -148,7 +148,7 @@ export default function ReferralPage() {
   )
 
   return (
-    <div className="page-container largura-leitura pb-nav">
+    <div className="page-container largura-lista pb-nav">
       <div className="topbar">
         <button onClick={() => navigate(-1)} className="text-primary" aria-label="Voltar">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,10 +159,12 @@ export default function ReferralPage() {
         <div className="w-6" />
       </div>
 
-      <div className="px-4 py-4 flex flex-col gap-4">
+      {/* Computador: o link e o "como funciona" lado a lado; a lista de
+          colegas embaixo, na largura toda. */}
+      <div className="px-4 py-4 flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start">
 
         {meses > 0 && (
-          <div className="card bg-primary/5 border border-primary/20 flex items-center gap-3">
+          <div className="card bg-primary/5 border border-primary/20 flex items-center gap-3 lg:col-span-2">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
               <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -237,7 +239,7 @@ export default function ReferralPage() {
           </div>
         </div>
 
-        <div>
+        <div className="lg:col-span-2">
           <p className="section-title">Colegas indicados ({referrals?.length ?? 0})</p>
           {referrals === null ? (
             <div className="card flex justify-center py-8"><Spinner size={22} color="#375337" /></div>

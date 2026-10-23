@@ -99,7 +99,7 @@ export default function ViewRatingsPage() {
         )}
 
         {!loading && (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
             {ratings.map(r => (
               <div key={r.id} className="card">
                 <div className="flex items-center justify-between mb-2">

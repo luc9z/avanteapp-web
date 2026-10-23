@@ -9,6 +9,7 @@ import AIAssistant from '../client/AIAssistant'
 import VetAssistant from '../professional/VetAssistant'
 import { precisaDoCliente } from '../../utils/status'
 import NavRail from './NavRail'
+import { resolveUserRole } from '../../services/userRole'
 
 /* ─── Icons ──────────────────────────────────────────────────── */
 const HomeIcon = () => (
@@ -86,7 +87,7 @@ function NavItem({ to, icon, label, badge, isDark }) {
 }
 
 /* ─── Vet (Professional) Bottom Nav ──────────────────────────── */
-export function VetBottomNav() {
+export function VetBottomNav({ soLateral = false } = {}) {
   const { user } = useAuth()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -130,6 +131,7 @@ export function VetBottomNav() {
     <>
       <NavRail abas={abas} onIA={() => setAiOpen(true)} />
 
+      {!soLateral && (
       <nav className="nav-barra lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
                     backdrop-blur-md border-t border-transparent flex items-stretch"
          style={{
@@ -160,6 +162,7 @@ export function VetBottomNav() {
       <NavItem to="/reports"      icon={<ReportsIcon />} label="Desempenho" isDark={isDark} />
       <NavItem to="/edit-profile" icon={<ProfileIcon />} label="Perfil"     isDark={isDark} />
       </nav>
+      )}
 
       <VetAssistant
         open={aiOpen}
@@ -171,7 +174,7 @@ export function VetBottomNav() {
 }
 
 /* ─── Client Bottom Nav ─────────────────────────────────────── */
-export function ClientBottomNav() {
+export function ClientBottomNav({ soLateral = false } = {}) {
   const { user } = useAuth()
   const { theme } = useTheme()
   const isDark = theme === 'dark'
@@ -208,6 +211,7 @@ export function ClientBottomNav() {
     <>
       <NavRail abas={abas} onIA={() => setAiOpen(true)} />
 
+      {!soLateral && (
       <nav className="nav-barra lg:hidden fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl z-30
                       backdrop-blur-md border-t border-transparent flex items-stretch"
            style={{
@@ -240,6 +244,7 @@ export function ClientBottomNav() {
         <NavItem to="/favorites"    icon={<HeartIcon />}   label="Favoritos" isDark={isDark} />
         <NavItem to="/edit-profile" icon={<ProfileIcon />} label="Perfil"    isDark={isDark} />
       </nav>
+      )}
 
       <AIAssistant
         open={aiOpen}
@@ -259,4 +264,21 @@ export function ClientBottomNav() {
       />
     </>
   )
+}
+
+/**
+ * NavLateral - só a barra lateral (computador), do papel de quem está
+ * logado. Para telas que não têm a barra de baixo no celular, como o chat
+ * e o prontuário, mas que no computador ficavam sem navegação nenhuma.
+ */
+export function NavLateral() {
+  const { user } = useAuth()
+  const [papel, setPapel] = useState(null)
+  useEffect(() => {
+    if (!user?.uid) return
+    resolveUserRole(user.uid).then(setPapel).catch(() => setPapel(null))
+  }, [user?.uid])
+  if (papel === 'medico_veterinario') return <VetBottomNav soLateral />
+  if (papel === 'client') return <ClientBottomNav soLateral />
+  return null
 }
