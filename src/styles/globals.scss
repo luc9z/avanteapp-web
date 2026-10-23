@@ -855,8 +855,9 @@
 @media (min-width: 1024px) { .nav-rail { @apply flex; } }
 
 .nav-rail-marca {
-  @apply flex items-center gap-2 px-3 pb-4 mb-2 text-lg;
+  @apply flex items-center gap-2 px-3 pb-4 mb-2 text-lg rounded-xl no-underline transition-opacity duration-200;
   border-bottom: 1px solid var(--color-border);
+  &:hover { opacity: 0.8; }
 }
 
 .nav-rail-item {

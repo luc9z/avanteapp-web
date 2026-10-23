@@ -12,7 +12,7 @@
  * e com o mapa da IA.
  */
 import { useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import AvanteLogo from './AvanteLogo'
 
 /**
@@ -32,9 +32,11 @@ export default function NavRail({ abas, onIA, tituloIA = 'AVANTE IA' }) {
 
   return (
     <aside className="nav-rail" aria-label="Navegação principal">
-      <div className="nav-rail-marca">
+      {/* A marca leva ao início, como em quase todo site: a primeira aba
+          (Painel do vet, Buscar do tutor). */}
+      <Link to={abas[0]?.to || '/'} className="nav-rail-marca" aria-label="Ir para o início">
         <AvanteLogo variant="horizontal-sem-slogan" className="h-7 text-brand-verde dark:text-brand-creme" />
-      </div>
+      </Link>
 
       <nav className="flex flex-col gap-1 flex-1">
         {abas.map(a => (
