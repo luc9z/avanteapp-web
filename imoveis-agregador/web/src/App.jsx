@@ -24,7 +24,11 @@ function lerUrl() {
 function escreverUrl(filtros) {
   const params = new URLSearchParams(Object.entries(filtros).filter(([, v]) => v !== '' && v != null));
   const texto = params.toString();
-  window.history.replaceState(null, '', texto ? `?${texto}` : window.location.pathname);
+  try {
+    window.history.replaceState(null, '', texto ? `?${texto}` : window.location.pathname);
+  } catch {
+    // páginas em iframe isolado podem recusar mudar a URL; os filtros seguem funcionando
+  }
 }
 
 function useAtrasado(valor, ms) {
