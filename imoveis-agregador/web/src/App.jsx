@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api.js';
 import CardImovel from './components/CardImovel.jsx';
 import Filtros from './components/Filtros.jsx';
@@ -96,17 +96,21 @@ export default function App() {
 
   // Durante a coleta, acompanha o andamento e recarrega tudo ao terminar.
   const coletando = fontes?.coletando;
+  const prontasVistas = useRef(0);
   useEffect(() => {
     if (!coletando) return;
     const id = setInterval(async () => {
       const novo = await api.fontes().catch(() => null);
       if (!novo) return;
       setFontes(novo);
-      if (!novo.coletando) {
+      // recarrega a lista a cada imobiliária concluída e ao fim da coleta
+      const prontas = novo.progresso?.prontas ?? 0;
+      if (prontas !== prontasVistas.current || !novo.coletando) {
+        prontasVistas.current = prontas;
         carregarOpcoes();
         setVersaoDados((v) => v + 1);
       }
-    }, 3000);
+    }, 2000);
     return () => clearInterval(id);
   }, [coletando, carregarOpcoes]);
 
@@ -158,7 +162,9 @@ export default function App() {
               disabled={coletando}
               className="rounded-md bg-tinta px-3 py-2 font-semibold text-white hover:bg-tinta/90 disabled:cursor-wait disabled:opacity-70"
             >
-              {coletando ? 'Atualizando…' : 'Atualizar anúncios'}
+              {coletando
+                ? `Atualizando… ${fontes.progresso ? `${fontes.progresso.prontas} de ${fontes.progresso.total}` : ''}`
+                : 'Atualizar anúncios'}
             </button>
           </div>
         </div>
@@ -214,7 +220,13 @@ export default function App() {
           )}
 
           {resultado && resultado.total === 0 && !carregando && (
-            <Vazio semDados={!fontes?.atualizadoEm} coletando={coletando} limpar={limpar} temFiltros={totalFiltros > 0} />
+            <Vazio
+              semDados={!fontes?.atualizadoEm}
+              coletando={coletando}
+              progresso={fontes?.progresso}
+              limpar={limpar}
+              temFiltros={totalFiltros > 0}
+            />
           )}
 
           <ul className={`grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 ${carregando ? 'opacity-60' : ''}`} aria-busy={carregando}>
@@ -244,13 +256,15 @@ export default function App() {
   );
 }
 
-function Vazio({ semDados, coletando, limpar, temFiltros }) {
+function Vazio({ semDados, coletando, progresso, limpar, temFiltros }) {
   if (semDados) {
     return (
       <div className="rounded-lg border border-dashed border-linha bg-white px-6 py-12 text-center">
         <p className="text-lg font-semibold">{coletando ? 'Buscando anúncios nos sites das imobiliárias…' : 'Ainda não há anúncios coletados.'}</p>
         <p className="mt-1 text-tinta-suave">
-          {coletando ? 'A primeira coleta leva cerca de um minuto.' : 'Clique em "Atualizar anúncios" para buscar nos sites das imobiliárias.'}
+          {coletando
+            ? `${progresso ? `${progresso.prontas} de ${progresso.total} imobiliárias concluídas. ` : ''}Os anúncios aparecem aqui conforme cada site responde; a coleta completa leva cerca de um minuto.`
+            : 'Clique em "Atualizar anúncios" para buscar nos sites das imobiliárias.'}
         </p>
       </div>
     );

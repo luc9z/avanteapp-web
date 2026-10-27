@@ -4,9 +4,15 @@ import { CIDADE, FONTES } from './fontes/index.js';
 import { slug } from './lib/normalizar.js';
 
 let coletaAtual = null;
+let progresso = null;
 
 export function coletaEmAndamento() {
   return coletaAtual !== null;
+}
+
+/** Imobiliárias já concluídas na coleta em andamento (null fora de coleta). */
+export function progressoDaColeta() {
+  return progresso;
 }
 
 /**
@@ -17,48 +23,57 @@ export function coletaEmAndamento() {
 export function coletarTudo({ log = console.log } = {}) {
   coletaAtual ??= executar(log).finally(() => {
     coletaAtual = null;
+    progresso = null;
   });
   return coletaAtual;
 }
 
 async function executar(log) {
   const anterior = armazenamento.obter();
-  const primeiraVez = new Map(anterior.anuncios.map((a) => [a.id, a.primeiraVezEm]));
+  const anunciosAnteriores = anterior.anuncios;
+  const primeiraVez = new Map(anunciosAnteriores.map((a) => [a.id, a.primeiraVezEm]));
   const agora = new Date().toISOString();
+  const porFonte = new Map(FONTES.map((f) => [f.id, anunciosAnteriores.filter((a) => a.imobiliaria === f.id)]));
+  const fontes = { ...anterior.fontes };
+  progresso = { total: FONTES.length, prontas: 0 };
 
-  const resultados = await Promise.all(
+  // Cada imobiliária que termina já aparece na tela, sem esperar as outras.
+  const publicarParcial = () => {
+    armazenamento.substituir({ ...armazenamento.obter(), anuncios: [...porFonte.values()].flat(), fontes: { ...fontes } });
+  };
+
+  await Promise.all(
     FONTES.map(async (fonte) => {
       const inicio = Date.now();
+      let status;
       try {
-        const anuncios = (await fonte.coletar()).filter((a) => slug(a.cidade) === slug(CIDADE));
-        log(`✔ ${fonte.nome}: ${anuncios.length} apartamentos`);
-        return { fonte, anuncios, status: { ok: true, total: anuncios.length, erro: null }, duracaoMs: Date.now() - inicio };
+        const coletados = (await fonte.coletar()).filter((a) => slug(a.cidade) === slug(CIDADE));
+        const ids = new Set();
+        const lista = [];
+        for (const anuncio of coletados) {
+          if (ids.has(anuncio.id)) continue;
+          ids.add(anuncio.id);
+          lista.push({ ...anuncio, primeiraVezEm: primeiraVez.get(anuncio.id) ?? agora });
+        }
+        porFonte.set(fonte.id, lista);
+        status = { ok: true, total: lista.length, erro: null };
+        log(`✔ ${fonte.nome}: ${lista.length} apartamentos`);
       } catch (erro) {
+        status = { ok: false, total: porFonte.get(fonte.id).length, erro: erro.message };
         log(`✘ ${fonte.nome}: ${erro.message}`);
-        const antigos = anterior.anuncios.filter((a) => a.imobiliaria === fonte.id);
-        return { fonte, anuncios: antigos, status: { ok: false, total: antigos.length, erro: erro.message }, duracaoMs: Date.now() - inicio };
       }
+      fontes[fonte.id] = {
+        ...status,
+        duracaoMs: Date.now() - inicio,
+        ultimaTentativa: agora,
+        ultimoSucesso: status.ok ? agora : anterior.fontes?.[fonte.id]?.ultimoSucesso ?? null,
+      };
+      progresso.prontas++;
+      publicarParcial();
     }),
   );
 
-  const fontes = {};
-  const anuncios = [];
-  for (const { fonte, anuncios: lista, status, duracaoMs } of resultados) {
-    const statusAnterior = anterior.fontes?.[fonte.id];
-    fontes[fonte.id] = {
-      ...status,
-      duracaoMs,
-      ultimaTentativa: agora,
-      ultimoSucesso: status.ok ? agora : statusAnterior?.ultimoSucesso ?? null,
-    };
-    const ids = new Set();
-    for (const anuncio of lista) {
-      if (ids.has(anuncio.id)) continue;
-      ids.add(anuncio.id);
-      anuncios.push({ ...anuncio, primeiraVezEm: primeiraVez.get(anuncio.id) ?? agora });
-    }
-  }
-
+  const anuncios = [...porFonte.values()].flat();
   marcarRepetidos(anuncios);
   // anúncios da primeira coleta não contam como "novos"
   const estado = { anuncios, fontes, atualizadoEm: agora, primeiraColetaEm: anterior.primeiraColetaEm ?? agora };

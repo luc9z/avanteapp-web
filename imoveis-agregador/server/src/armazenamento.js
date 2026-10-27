@@ -23,6 +23,11 @@ export function obter() {
   return estado;
 }
 
+/** Troca o estado só em memória (resultados parciais durante a coleta). */
+export function substituir(novoEstado) {
+  estado = novoEstado;
+}
+
 export async function salvar(novoEstado) {
   estado = novoEstado;
   await mkdir(PASTA, { recursive: true });

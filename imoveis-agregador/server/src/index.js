@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as armazenamento from './armazenamento.js';
 import { buscar, opcoesDeFiltro } from './busca.js';
-import { coletaEmAndamento, coletarTudo } from './coletor.js';
+import { coletaEmAndamento, coletarTudo, progressoDaColeta } from './coletor.js';
 import { FONTES, FONTES_BLOQUEADAS } from './fontes/index.js';
 
 const PORTA = Number(process.env.PORT ?? 3001);
@@ -35,6 +35,7 @@ app.get('/api/fontes', (req, res) => {
     atualizadoEm,
     primeiraColetaEm,
     coletando: coletaEmAndamento(),
+    progresso: progressoDaColeta(),
     fontes: FONTES.map((f) => ({ id: f.id, nome: f.nome, site: f.site, plataforma: f.plataforma, ...fontes?.[f.id] })),
     bloqueadas: FONTES_BLOQUEADAS,
   });

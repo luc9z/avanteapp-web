@@ -13,7 +13,9 @@ export class ErroHttp extends Error {
   }
 }
 
-async function requisitar(url, { method = 'GET', headers = {}, body, timeoutMs = 25000, tentativas = 3 } = {}) {
+// A leitura do corpo fica dentro das tentativas: sites às vezes cortam a
+// conexão no meio da página (erro "terminated" do fetch).
+async function requisitar(url, ler, { method = 'GET', headers = {}, body, timeoutMs = 25000, tentativas = 3 } = {}) {
   let ultimoErro;
   for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
     try {
@@ -28,26 +30,26 @@ async function requisitar(url, { method = 'GET', headers = {}, body, timeoutMs =
         signal: AbortSignal.timeout(timeoutMs),
       });
       if (!resp.ok) throw new ErroHttp(resp.status, url);
-      return resp;
+      return await ler(resp);
     } catch (erro) {
       ultimoErro = erro;
       // 4xx (exceto 429) não melhora tentando de novo
       const definitivo = erro instanceof ErroHttp && erro.status < 500 && erro.status !== 429;
       if (definitivo || tentativa === tentativas) break;
-      await esperar(1000 * 2 ** (tentativa - 1));
+      await esperar(2000 * 2 ** (tentativa - 1));
     }
   }
-  throw ultimoErro;
+  if (ultimoErro instanceof ErroHttp) throw ultimoErro;
+  throw new Error(`${ultimoErro.cause?.message ?? ultimoErro.message} em ${url}`, { cause: ultimoErro });
 }
 
-export async function buscarTexto(url, opcoes) {
-  const resp = await requisitar(url, { ...opcoes, headers: { accept: 'text/html,*/*', ...opcoes?.headers } });
-  return resp.text();
+export function buscarTexto(url, opcoes) {
+  return requisitar(url, (resp) => resp.text(), { ...opcoes, headers: { accept: 'text/html,*/*', ...opcoes?.headers } });
 }
 
-export async function buscarJson(url, opcoes = {}) {
+export function buscarJson(url, opcoes = {}) {
   const { json, ...resto } = opcoes;
-  const resp = await requisitar(url, {
+  return requisitar(url, (resp) => resp.json(), {
     ...resto,
     method: json !== undefined ? 'POST' : resto.method,
     body: json !== undefined ? JSON.stringify(json) : resto.body,
@@ -57,5 +59,4 @@ export async function buscarJson(url, opcoes = {}) {
       ...resto.headers,
     },
   });
-  return resp.json();
 }

@@ -24,7 +24,7 @@ export default function CardImovel({ anuncio, favorito, alternarFavorito, primei
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-linha bg-white hover:border-tinta/50 has-[h2_a:focus-visible]:ring-[3px] has-[h2_a:focus-visible]:ring-tinta">
-      <div className="relative aspect-[4/3] bg-fundo">
+      <div className="relative aspect-[4/3] max-w-full bg-fundo">
         {semFoto ? (
           <div className="flex h-full items-center justify-center text-sm text-tinta-suave">Sem foto</div>
         ) : (
@@ -34,7 +34,7 @@ export default function CardImovel({ anuncio, favorito, alternarFavorito, primei
             loading="lazy"
             referrerPolicy="no-referrer"
             onError={() => setSemFoto(true)}
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         )}
         {ehNovo(anuncio, primeiraColetaEm) && (
