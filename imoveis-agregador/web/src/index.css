@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Archivo', system-ui, sans-serif;
+    font-variation-settings: 'wdth' 100;
+  }
+  body {
+    @apply bg-fundo text-tinta antialiased;
+  }
+  :focus-visible {
+    outline: 3px solid #1f2a36;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Texto condensado e pesado das placas "ALUGA" */
+  .tipo-placa {
+    font-variation-settings: 'wdth' 72;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .campo {
+    @apply w-full rounded-md border border-linha bg-white px-3 py-2 text-sm placeholder:text-tinta-suave/70 focus:border-tinta focus:outline-none;
+  }
+  .opcao {
+    @apply rounded-md border border-linha bg-white px-3 py-1.5 text-sm transition-colors hover:border-tinta;
+  }
+  .opcao-ativa {
+    @apply border-tinta bg-tinta text-white hover:border-tinta;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

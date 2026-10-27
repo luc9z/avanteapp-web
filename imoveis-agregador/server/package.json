@@ -1,0 +1,19 @@
+{
+  "name": "imoveis-agregador-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "coletar": "node src/coletar.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "express": "^4.21.1"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}
