@@ -12,8 +12,8 @@
  *  - Usuários: busca, filtros, inspeção, plano, desativar e excluir.
  *  - Solicitações: moderação dos atendimentos (ver, destravar, apagar).
  *  - Ofertas: anúncios exibidos no app (coleção offers).
- *  - Planos: valores e benefícios (config/plans), usados na página de
- *    planos do veterinário e no checkout AbacatePay.
+ *  - Planos: valores, benefícios e ofertas da Cakto (config/plans), usados
+ *    na página de planos do veterinário e na assinatura pela Cakto.
  *
  * Nenhum aviso usa `alert()`/`confirm()`: erros saem em toast e as
  * confirmações destrutivas passam pelo ConfirmDialog, que exige digitar
@@ -36,6 +36,7 @@ import { friendlyError } from '../../utils/errors'
 import { normalizeStatus, statusInfo } from '../../utils/status'
 import { contarVinculos, excluirConta } from '../../services/deleteAccount'
 import { montarLink, nomeDoCanal } from '../../utils/origem'
+import { FUNDADOR_PRICE } from '../../utils/paidVisits'
 
 /* ── Ofertas pré-moldadas (edite à vontade depois de inserir) ──── */
 const OFFER_TEMPLATES = [
@@ -1549,14 +1550,26 @@ function PlansTab() {
     setPlans(ps => ps.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
   }
 
+  function updateOferta(i, tipo, valor) {
+    setPlans(ps => ps.map((p, idx) => (idx === i
+      ? { ...p, caktoOfertas: { ...(p.caktoOfertas || {}), [tipo]: valor } } : p)))
+  }
+
   async function save() {
     setSaving(true)
     try {
-      const clean = plans.map(p => ({
-        ...p,
-        price: Number(p.price) || 0,
-        benefits: (Array.isArray(p.benefits) ? p.benefits : []).map(b => b.trim()).filter(Boolean),
-      }))
+      const clean = plans.map(p => {
+        // O ID da oferta é o que vem depois de pay.cakto.com.br/ no link.
+        const ofertas = Object.fromEntries(Object.entries(p.caktoOfertas || {})
+          .map(([tipo, id]) => [tipo, String(id || '').trim().replace(/^.*pay\.cakto\.com\.br\//, '').split(/[?#/]/)[0]])
+          .filter(([, id]) => id))
+        return {
+          ...p,
+          price: Number(p.price) || 0,
+          benefits: (Array.isArray(p.benefits) ? p.benefits : []).map(b => b.trim()).filter(Boolean),
+          caktoOfertas: ofertas,
+        }
+      })
       await setDoc(doc(db, 'config', 'plans'), { plans: clean, updatedAt: serverTimestamp() })
       showToast('Planos salvos. Já valem na página de planos do veterinário.', 'success')
     } catch (e) {
@@ -1570,7 +1583,8 @@ function PlansTab() {
       message: 'Preços e benefícios voltam aos valores de fábrica. Nada é salvo até você tocar em "Salvar planos".',
       confirmLabel: 'Restaurar',
     })
-    if (ok) setPlans(DEFAULT_PLANS)
+    // As ofertas da Cakto não têm valor de fábrica: ficam como estavam.
+    if (ok) setPlans(DEFAULT_PLANS.map(d => ({ ...d, caktoOfertas: plans.find(p => p.id === d.id)?.caktoOfertas || {} })))
   }
 
   if (plans === null) return <div className="flex justify-center py-20"><Spinner size={28} color="#375337" /></div>
@@ -1578,8 +1592,9 @@ function PlansTab() {
   return (
     <div className="px-4 pb-4 flex flex-col gap-4">
       <p className="text-xs text-gray-400">
-        Preço e benefícios valem na hora para a página de planos do veterinário
-        e para o checkout AbacatePay.
+        Preço e benefícios valem na hora para a página de planos do veterinário.
+        A cobrança é a assinatura da oferta na Cakto: cole o link (ou o ID) de cada
+        oferta e mantenha o preço da oferta igual ao daqui.
       </p>
 
       {plans.map((p, i) => (
@@ -1605,6 +1620,23 @@ function PlansTab() {
               </select>
             </div>
           </div>
+          {Number(p.price) > 0 && (
+            <div className="flex flex-col gap-2">
+              {[
+                ['mensal', 'Oferta Cakto mensal', Number(p.price)],
+                ['anual', 'Oferta Cakto anual', Number(p.price) * 10],
+                ...(p.id === 'premium' ? [['fundador', 'Oferta Cakto Vet Fundador (mensal)', FUNDADOR_PRICE]] : []),
+              ].map(([tipo, rotulo, preco]) => (
+                <div key={tipo}>
+                  <label className="field-label">
+                    {rotulo} <span className="font-normal text-gray-400">· na Cakto: R$ {preco.toFixed(2).replace('.', ',')}</span>
+                  </label>
+                  <input value={p.caktoOfertas?.[tipo] || ''} placeholder="https://pay.cakto.com.br/..."
+                    onChange={e => updateOferta(i, tipo, e.target.value)} className="input-field font-mono text-xs" />
+                </div>
+              ))}
+            </div>
+          )}
           <div>
             <label className="field-label">Benefícios (um por linha)</label>
             <textarea

@@ -1,7 +1,8 @@
 /**
  * PlansPage - planos do veterinário, estilo "premium" (referência: X/Twitter).
  * Cards escuros lado a lado, toggle Mensal/Anual (anual = 2 meses grátis),
- * selo "Melhor valor", cupom e barra fixa de pagamento via AbacatePay.
+ * selo "Melhor valor", cupom e barra fixa de assinatura pela Cakto
+ * (cobrança recorrente: o servidor ativa e renova o plano pelo webhook).
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -121,8 +122,13 @@ export default function PlansPage() {
   // últimos JANELA_RENOVACAO dias. Plano de cupom (sem vencimento) nunca.
   // O servidor confere igual (functions/pagamentos.js, podePagar).
   const renovaAPartirDe = validade ? new Date(validade.getTime() - JANELA_RENOVACAO * 864e5) : null
-  const mesmoPlanoTravado = !!selected && selected.id === currentPlan
-    && (!validade || Date.now() < renovaAPartirDe.getTime())
+  // Assinatura da Cakto em vigor: renova sozinha. Trocar de plano (ou ir
+  // para o Free) com ela ativa deixaria a Cakto cobrando junto, então a
+  // tela trava tudo até a pessoa cancelar. O servidor confere igual.
+  const assinatura = eu?.planProvedor === 'cakto' ? eu?.planAssinatura || null : null
+  const assinaturaAtiva = assinatura === 'ativa' && !!validade && validade.getTime() > Date.now()
+  const mesmoPlanoTravado = assinaturaAtiva || (!!selected && selected.id === currentPlan
+    && (!validade || Date.now() < renovaAPartirDe.getTime()))
 
   // Vet Fundador. O preço travado vale para o Premium MENSAL depois do
   // período grátis, por 12 meses (o servidor aplica; aqui só mostra).
@@ -166,6 +172,7 @@ export default function PlansPage() {
     const code = coupon.trim().toUpperCase()
     if (!code) return showToast('Digite o código do cupom', 'error')
     if (!selectedId) return showToast('Selecione um plano primeiro.', 'error')
+    if (assinaturaAtiva) return showToast('Sua assinatura está ativa. Para trocar de plano, cancele a atual primeiro.', 'error')
     if (mesmoPlanoTravado) return showToast('Este já é o seu plano atual.', 'error')
     setCouponBusy(true)
     try {
@@ -175,8 +182,9 @@ export default function PlansPage() {
         showToast(`Cupom ${code} aplicado, plano ativado!`, 'success')
         setTimeout(() => navigate('/dashboard', { replace: true }), 900)
       } else if (data?.discount > 0) {
+        // O preço é o da oferta na Cakto: o desconto é aplicado lá.
         setCupomParcial({ code, discount: data.discount })
-        showToast(`Cupom válido: ${data.discount}% de desconto no pagamento.`, 'success')
+        showToast(`Cupom válido: digite ${code} na tela de pagamento para ganhar ${data.discount}% de desconto.`, 'success')
       }
     } catch (e) {
       if (import.meta.env.DEV) console.error(e)
@@ -205,14 +213,9 @@ export default function PlansPage() {
         return
       }
 
-      // Valor, período e vencimento são decididos no servidor. Daqui só
-      // vai a escolha; a confirmação chega pelo webhook da AbacatePay.
-      const data = await chamarServidor('/checkout', {
-        planId: selected.id,
-        period,
-        origin: window.location.origin,
-        ...(cupomParcial && { coupon: cupomParcial.code }),
-      })
+      // Oferta, período e vencimento são decididos no servidor. Daqui só
+      // vai a escolha; a confirmação chega pelo webhook da Cakto.
+      const data = await chamarServidor('/checkout', { planId: selected.id, period })
       if (!data?.url) throw new Error('sem endereço de pagamento')
       window.location.assign(data.url)
     } catch (e) {
@@ -482,16 +485,20 @@ export default function PlansPage() {
             className="bg-white text-gray-900 font-bold rounded-full px-10 py-3.5 text-sm
                        hover:bg-gray-100 active:scale-[0.98] disabled:opacity-50 transition-all">
             {paying ? <Spinner size={16} />
+              : assinaturaAtiva ? 'Assinatura ativa'
               : mesmoPlanoTravado ? 'Plano já ativo'
               : selected?.id === currentPlan ? 'Renovar'
               : selected?.price > 0 ? 'Assinar e pagar' : 'Ativar grátis'}
           </button>
         </div>
         <p className="max-w-3xl mx-auto px-4 pb-4 text-white/30 text-[10px] leading-relaxed">
-          Pague com PIX ou cartão. O mensal vale 30 dias e o anual 365, em até 12x no cartão.
-          {validade && <> Seu plano atual vale até <strong className="text-white/50">{validade.toLocaleDateString('pt-BR')}</strong>{
-            mesmoPlanoTravado && <>; a renovação abre em {renovaAPartirDe.toLocaleDateString('pt-BR')}</>}.</>}
-          {cupomParcial && <> Cupom <strong className="text-white/50">{cupomParcial.code}</strong>: {cupomParcial.discount}% de desconto aplicado no pagamento.</>}
+          Assinatura com renovação automática: o mensal renova todo mês e o anual, todo ano.
+          Cancele quando quiser pelo e-mail de compra da Cakto; o plano vale até o fim do período já pago.
+          {assinaturaAtiva
+            ? <> Sua assinatura está ativa e renova sozinha. Para trocar de plano, cancele a atual primeiro.</>
+            : validade && <> Seu plano atual vale até <strong className="text-white/50">{validade.toLocaleDateString('pt-BR')}</strong>{
+              mesmoPlanoTravado && <>; a renovação abre em {renovaAPartirDe.toLocaleDateString('pt-BR')}</>}.</>}
+          {cupomParcial && <> Cupom <strong className="text-white/50">{cupomParcial.code}</strong>: digite o código na tela de pagamento para ganhar {cupomParcial.discount}% de desconto.</>}
         </p>
       </div>
       <VetBottomNav />

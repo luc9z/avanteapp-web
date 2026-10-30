@@ -568,7 +568,7 @@ Não rode `firebase deploy` sem `--only`: ele tentaria publicar as Cloud Functio
 **Antes de abrir para os vets:**
 - Vire admin: no console do Firestore, crie a coleção `admins` com um documento cujo ID seja o seu uid (a tela `/admin` mostra o uid).
 - Revise na aba Vets quem ativou o Premium pelo BEMVINDO antes da correção e decida se mantém.
-- **Chave da Groq exposta**: a IA usa `VITE_GROQ_KEY`, que vai dentro do app publicado e pode ser copiada por qualquer pessoa. No plano gratuito não há como esconder. Use uma chave com limite de gasto baixo na Groq (ou deixe a IA desligada no lançamento: sem a chave, o app mostra "IA não configurada").
+- **Chave da Groq**: fica só no servidor (`npx wrangler secret put GROQ_API_KEY` na pasta `worker`). Cada conta tem um limite diário de perguntas. Deixe também um limite de gasto no painel da Groq.
 
 Limite conhecido: cliente e vet podem editar a solicitação inteira (regra antiga de `requests`), então um vet com duas contas conseguiria inflar a própria contagem. Para 30 vets que você conhece pessoalmente, o risco é baixo; o admin mostra os números para você conferir.
 

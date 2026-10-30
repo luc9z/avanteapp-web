@@ -8,7 +8,7 @@
 
 ## O que fazer, em ordem
 
-> **Correção de 22/10.** A primeira versão destes documentos foi feita a partir de um código antigo (de junho) e mandava ativar planos à mão no admin e cobrar PIX direto. O app real já tem um servidor gratuito (Cloudflare Workers) que cobra por PIX e cartão (AbacatePay) e ativa o plano sozinho. O Vet Fundador também é automático. **Não publique a branch `claude/elegant-ramanujan-crigci`**: ela apagaria do site o pagamento, o CPF, a marca nova e a versão para computador.
+> **Correção de 22/10.** A primeira versão destes documentos foi feita a partir de um código antigo (de junho) e mandava ativar planos à mão no admin e cobrar PIX direto. O app real já tem um servidor gratuito (Cloudflare Workers) que cobra por PIX e cartão (AbacatePay) e ativa o plano sozinho. O Vet Fundador também é automático. **Publique sempre a partir da `main`**: ela é a versão que está no ar.
 
 - [ ] **Publicar o app novo** a partir da branch `integra-nuvem` (ela junta o trabalho da nuvem com o app real). No PowerShell, na pasta `avanteapp-web`:
   `npm run build` · `npx firebase deploy --only firestore:rules,hosting --project avante-pro`
@@ -16,7 +16,7 @@
 - [ ] **Admin**: você já é admin.
 - [ ] **Cupons**: o BEMVINDO deixou de existir (ele dava Premium grátis para sempre a quem digitasse). Cupom agora só vale se você criar em `config/coupons` pelo admin. Veja no Firestore quem tem `planCoupon: BEMVINDO` e decida se mantém.
 - [ ] **Testar com duas contas suas**: na tela de Planos, o vet toca em "Quero ser Vet Fundador" (ativa na hora, sem você fazer nada); o cliente faz um pedido; o vet finaliza; o cliente confirma. O painel do vet tem que mostrar "1 de 3".
-- [ ] **Antes de cobrar alguém (até 13/12)**: a conta da AbacatePay precisa estar aprovada e a chave de produção trocada no servidor. Hoje ela está em modo de teste.
+- [ ] **Antes de cobrar alguém (até 13/12)**: criar as ofertas de assinatura na Cakto, colar os links na aba Planos do admin e ligar o webhook da Cakto ao servidor (passo a passo no README, "Assinaturas pela Cakto").
 - [ ] **Até 01/11**: lista de vets de Santiago (consulta de inscritos do CRMV-RS, clínicas, curso de Veterinária da URI).
 - [ ] **02 a 06/11**: visitar 15 vets e fechar os 10 primeiros Vets Fundadores. Cadastre cada um na hora, com foto e raio de atendimento, e toque com ele em "Quero ser Vet Fundador".
 - [ ] **05 a 13/11**: cartazes com QR code em 4 pet shops e 2 agropecuárias; pauta para a rádio local; posts da lista de espera.
@@ -31,7 +31,7 @@
 | --- | --- |
 | Entrar | O vet toca em "Quero ser Vet Fundador" na tela de Planos. O servidor confere a vaga (30, em `config/fundador`) e ativa o Premium grátis na hora. |
 | Contar os 3 atendimentos | Conta o pedido finalizado **depois** da adesão e confirmado pelo cliente (ou sem resposta dele em 48h). O "Recebi o pagamento" do vet serve para medir visitas pagas, mas não entra na conta: quem está no grátis ganharia deixando de marcar. O servidor confere uma vez por dia. |
-| Fim do período grátis | Na meta, o plano ganha 5 dias para o vet pagar R$ 29,90 por PIX ou cartão, travado por 12 meses. Sem pagamento, volta ao Free sozinho. |
+| Fim do período grátis | Na meta, o plano ganha 5 dias para o vet assinar por R$ 29,90/mês na Cakto, travado por 12 meses. Sem pagamento, volta ao Free sozinho. |
 | Fechar as inscrições | Em `config/fundador`, mude `vagas` ou ponha uma data em `fechaEm`. |
 
 ## Toda sexta, olhe 3 números
@@ -44,7 +44,7 @@
 
 ## A decisão de 13/12
 
-- **Passou** (10 vets ativos, 30 pedidos, 12 atendimentos pagos): abrir o CNPJ, ativar a chave de produção da AbacatePay (os Fundadores que bateram 3 atendimentos pagam pelo próprio app) e baixar a divulgação para R$ 200 por mês.
+- **Passou** (10 vets ativos, 30 pedidos, 12 atendimentos pagos): abrir o CNPJ, deixar a assinatura da Cakto no ar (os Fundadores que bateram 3 atendimentos pagam pelo próprio app) e baixar a divulgação para R$ 200 por mês.
 - **Não passou**: não abrir empresa e não gastar mais. Rever a proposta para o tutor antes de tentar de novo.
 
 ## Os números, se alguém perguntar

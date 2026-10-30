@@ -1,5 +1,6 @@
 /**
- * npm run test:rules
+ * npm run test:rules        (scripts/testar-regras.mjs)
+ * npm run test:servidor     (scripts/testar-servidor.mjs, mesmo emulador)
  *
  * Com o sistema local rodando (npm run dev + emuladores), o
  * `emulators:exec` tentava subir OUTRO emulador na mesma porta e morria
@@ -13,7 +14,7 @@ import fs from 'fs'
 import { spawn } from 'child_process'
 
 const PORTA = 8099
-const TESTE = 'node scripts/testar-regras.mjs'
+const TESTE = `node ${process.argv[2] || 'scripts/testar-regras.mjs'}`
 
 function portaAberta(porta) {
   return new Promise(ok => {

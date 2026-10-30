@@ -12,9 +12,10 @@
     "test:status": "node scripts/testar-status.mjs",
     "semear": "node scripts/semear-local.mjs",
     "test:origem": "node scripts/testar-origem.mjs",
-    "test": "npm run test:status && npm run test:mapa && npm run test:origem && npm run test:cpf && npm run test:pagamentos && npm run test:rules",
+    "test": "npm run test:status && npm run test:mapa && npm run test:origem && npm run test:cpf && npm run test:pagamentos && npm run test:rules && npm run test:servidor",
     "test:cpf": "node scripts/testar-cpf.mjs",
-    "test:pagamentos": "node scripts/testar-pagamentos.mjs"
+    "test:pagamentos": "node scripts/testar-pagamentos.mjs",
+    "test:servidor": "node scripts/rodar-regras.mjs scripts/testar-servidor.mjs"
   },
   "dependencies": {
     "date-fns": "^3.6.0",

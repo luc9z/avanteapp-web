@@ -5,7 +5,7 @@ O Firebase continua no plano **gratuito** (sem Blaze). O que precisa de servidor
 
 | o quê | como fica |
 | --- | --- |
-| Ativar plano pago | O vet paga na tela de Planos (PIX ou cartão, AbacatePay) e o plano ativa sozinho. **A conta da AbacatePay ainda está em modo de teste**: troque para a chave de produção antes de cobrar alguém. |
+| Ativar plano pago | O vet assina na tela de Planos (assinatura recorrente da Cakto) e o plano ativa e renova sozinho. Antes de cobrar alguém, as ofertas da Cakto precisam estar coladas na aba Planos do admin e o webhook ligado ao servidor. |
 | Vet Fundador | O vet toca em "Quero ser Vet Fundador" e o servidor ativa o Premium grátis na hora, conferindo as 30 vagas (`config/fundador`). |
 | Contar os 3 atendimentos | O servidor conta uma vez por dia: pedido finalizado **depois** da adesão e confirmado pelo cliente (ou 48h sem resposta). O painel e a tela de Planos mostram "X de 3" na hora. |
 | Fim do período grátis | Na meta, o plano ganha 5 dias para o vet pagar R$ 29,90 (travado por 12 meses). Sem pagamento, volta ao Free sozinho. |
@@ -27,12 +27,12 @@ npx firebase deploy --only firestore:rules,hosting --project avante-pro
 cd worker
 npx wrangler deploy
 ```
-Não rode `firebase deploy` sem `--only`: ele tentaria publicar as Cloud Functions, o que exige o Blaze. **Nunca publique a branch `claude/elegant-ramanujan-crigci`**: ela parte do código de junho.
+Não rode `firebase deploy` sem `--only`: ele tentaria publicar as Cloud Functions, o que exige o Blaze. **Publique sempre a partir da `main`**: ela é a versão que está no ar.
 
 **Antes de abrir para os vets:**
 - Você já é admin.
 - Veja no Firestore quem tem `planCoupon: BEMVINDO` e decida se mantém.
-- **Chave da Groq exposta**: a IA usa `VITE_GROQ_KEY`, que vai dentro do app publicado e pode ser copiada por qualquer pessoa. Use uma chave com limite de gasto baixo na Groq. Dá para mover a IA para o servidor e esconder a chave (próximo passo técnico).
+- **Chave da Groq**: fica só no servidor (`npx wrangler secret put GROQ_API_KEY` na pasta `worker`), nunca em `VITE_GROQ_KEY`. Até a versão de 22/10 ela ia dentro do site publicado; deixe um limite de gasto na Groq.
 
 ## O ciclo do dia (o fundador, sozinho)
 1. 8h: ver pedidos novos da noite. **(o cliente vê)**
@@ -45,7 +45,7 @@ Não rode `firebase deploy` sem `--only`: ele tentaria publicar as Cloud Functio
 ## Fornecedores
 | item | opções | custo | observação |
 | --- | --- | --- | --- |
-| Recebimento da mensalidade | AbacatePay pelo app (PIX R$ 0,80 por cobrança; cartão, taxa a confirmar), ativação automática pelo servidor | R$ 0,80 por PIX | precisa da conta aprovada e da chave de produção; até lá, modo de teste |
+| Recebimento da mensalidade | Assinatura recorrente da Cakto pelo app, ativação e renovação automáticas pelo servidor | taxa da Cakto (confira no painel) | precisa das ofertas criadas na Cakto e do webhook ligado |
 | Contador | contador de Santiago e 2 contabilidades online | estimativa R$ 150/mês | pedir orçamento já perguntando CNAE, Anexo III ou V, fator R e pró-labore |
 | Hospedagem | Firebase no plano gratuito (Spark) + Cloudflare Workers gratuito | R$ 0 | o servidor faz o que as Cloud Functions fariam |
 | IA | Groq | estimativa R$ 20/mês | alerta de uso |
@@ -98,7 +98,7 @@ O app (já pronto: cobrança e Vet Fundador automáticos pelo servidor), uma pla
 | Vet usa o Premium sem pagar (bloqueio 1) | baixa depois de publicar as regras | alto | Publicar as regras antes de abrir; revisar quem ativou pelo BEMVINDO |
 | Vet não vê pedido com o app fechado (sem push) | alta | alto | Concierge por WhatsApp em até 1h; combinar com cada vet o aviso por WhatsApp |
 | Alguém copia a chave da Groq do app | média | baixo | Chave com limite de gasto baixo, ou IA desligada no lançamento |
-| Pagamento do Fundador não confirmar | baixa | baixo | Olhar `payments` no Firestore toda sexta; o servidor só ativa com o pagamento conferido na AbacatePay |
+| Pagamento do Fundador não confirmar | baixa | baixo | Olhar `payments` no Firestore toda sexta; o servidor só ativa com o aviso assinado pela Cakto, e o plano sai da oferta paga |
 | CRMV-RS questiona o destaque pago | baixa a média | alto | "Patrocinado" e parecer do CRMV-RS antes |
 | Tutor marca e não está em casa | média | médio | Confirmação no dia; depois, sinal via PIX |
 | Atendimento ruim vira reclamação pública | média | médio | Rotina de reclamação; orientar sobre o CRMV-RS |

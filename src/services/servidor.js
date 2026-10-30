@@ -1,8 +1,8 @@
 /**
  * Chamadas ao servidor do AVANTE (Cloudflare Worker, pasta worker/).
  *
- * Pagamento, cupom e consulta de CPF precisam de servidor: as chaves da
- * AbacatePay e da apicpf não podem ir para o navegador. O endereço vem de
+ * Pagamento, cupom, consulta de CPF e a IA precisam de servidor: as chaves
+ * da Cakto, da apicpf e da Groq não podem ir para o navegador. O endereço vem de
  * VITE_SERVIDOR_URL (.env.development.local no dev, .env.production.local
  * no build de produção).
  */
@@ -16,6 +16,10 @@ const BASE = (import.meta.env.VITE_SERVIDOR_URL || '').replace(/\/$/, '')
  */
 export class ErroServidor extends Error {
   constructor(codigo, mensagem) { super(mensagem); this.codigo = codigo }
+}
+
+export function servidorConfigurado() {
+  return !!BASE
 }
 
 export async function chamarServidor(rota, dados) {

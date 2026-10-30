@@ -453,11 +453,13 @@ export default function DashboardPage() {
         {(() => {
           const ehPremium = ['premium', 'destaque'].includes(profile?.plan)
           const plano = nomeDoPlano
-          // Plano pago vence (PIX não renova sozinho). Perto do fim, o
-          // cartão vira um lembrete de renovação.
+          // Plano pago vence. Com a assinatura da Cakto ativa ele renova
+          // sozinho; sem ela (cancelada, cupom, Fundador no fim do teste),
+          // perto do fim o cartão vira um lembrete de renovação.
           const vence = profile?.planExpiresAt?.toDate?.() || null
           const dias = vence ? Math.ceil((vence.getTime() - Date.now()) / 864e5) : null
-          const renovar = dias != null && dias <= 5
+          const renovaSozinho = profile?.planProvedor === 'cakto' && profile?.planAssinatura === 'ativa'
+          const renovar = dias != null && dias <= 5 && !renovaSozinho
           // Vet Fundador: no período grátis, o cartão mostra a meta; depois
           // dela, pede o pagamento pelo preço travado.
           const fund = profile?.fundador || null
@@ -490,6 +492,7 @@ export default function DashboardPage() {
                     : renovar
                     ? (dias <= 0 ? 'Vence hoje. Renove para não perder o plano.'
                       : `Vence em ${dias} ${dias === 1 ? 'dia' : 'dias'}. Renove para não perder o plano.`)
+                    : vence && renovaSozinho ? 'Assinatura ativa, com renovação automática'
                     : vence ? `Vale até ${vence.toLocaleDateString('pt-BR')}`
                     : ehPremium ? 'Trocar de plano quando quiser'
                     : 'Apareça no topo da busca (Patrocinado)'}

@@ -294,6 +294,59 @@ await teste('app lê as vagas do Fundador (config/fundador)', () =>
 await teste('vet NÃO mexe nas vagas', () =>
   assertFails(setDoc(doc(db(VET2), 'config', 'fundador'), { vagas: 999, usados: 0 })))
 
+console.log('\n== Dados de cliente só para vet com CRMV conferido ==')
+// "Sou veterinário" é escolha do próprio usuário no cadastro. Bastava isso
+// para ler nome, e-mail, pets e prontuários de todos os clientes.
+const NOVO_VET = 'vet_sem_crmv'
+await env.withSecurityRulesDisabled(async ctx => {
+  const d = ctx.firestore()
+  await setDoc(doc(d, 'users', NOVO_VET), { uid: NOVO_VET, name: 'Qualquer Um', profession: 'medico_veterinario', crmvVerified: false })
+  await setDoc(doc(d, 'users', CLIENTE, 'pets', 'rex'), { name: 'Rex', species: 'cao' })
+  await setDoc(doc(d, 'users', CLIENTE, 'pets', 'rex', 'records', 'r1'), { text: 'alergia a dipirona' })
+  await setDoc(doc(d, 'medicalRecords', 'rex'), { ownerId: CLIENTE, petId: 'rex' })
+  await setDoc(doc(d, 'medicalRecords', 'rex', 'entries', 'e1'), { title: 'Vacina V10' })
+})
+await teste('vet sem CRMV conferido NÃO lê o perfil de um cliente', () =>
+  assertFails(getDoc(doc(db(NOVO_VET), 'users', CLIENTE))))
+await teste('vet sem CRMV conferido NÃO lista a base de usuários', () =>
+  assertFails(getDocs(collection(db(NOVO_VET), 'users'))))
+await teste('vet sem CRMV conferido NÃO lê os pets do cliente', () =>
+  assertFails(getDocs(collection(db(NOVO_VET), 'users', CLIENTE, 'pets'))))
+await teste('vet sem CRMV conferido NÃO lê o histórico clínico', () =>
+  assertFails(getDocs(collection(db(NOVO_VET), 'users', CLIENTE, 'pets', 'rex', 'records'))))
+await teste('vet sem CRMV conferido NÃO lê o prontuário', () =>
+  assertFails(getDocs(collection(db(NOVO_VET), 'medicalRecords', 'rex', 'entries'))))
+await teste('vet conferido lê o pet e o prontuário do cliente', async () => {
+  await assertSucceeds(getDoc(doc(db(VET), 'users', CLIENTE, 'pets', 'rex')))
+  await assertSucceeds(getDocs(collection(db(VET), 'medicalRecords', 'rex', 'entries')))
+})
+await teste('vet conferido abre o prontuário de um animal novo em nome do tutor', () =>
+  assertSucceeds(setDoc(doc(db(VET), 'medicalRecords', 'mimi'), { ownerId: CLIENTE2, petId: 'mimi' })))
+await teste('tutor lê e escreve o próprio prontuário', async () => {
+  await assertSucceeds(getDocs(collection(db(CLIENTE), 'medicalRecords', 'rex', 'entries')))
+  await assertSucceeds(setDoc(doc(db(CLIENTE), 'medicalRecords', 'rex', 'entries', 'e2'), { title: 'Peso' }))
+})
+await teste('outra conta NÃO cria registro clínico no animal dos outros', () =>
+  assertFails(setDoc(doc(db(CLIENTE2), 'users', CLIENTE, 'pets', 'rex', 'records', 'falso'), { text: 'falso' })))
+await teste('outra conta NÃO toma o prontuário trocando o dono', () =>
+  assertFails(setDoc(doc(db(CLIENTE2), 'medicalRecords', 'rex'), { ownerId: CLIENTE2 }, { merge: true })))
+await teste('outra conta NÃO cria prontuário em nome de terceiro', () =>
+  assertFails(setDoc(doc(db(CLIENTE2), 'medicalRecords', 'bob'), { ownerId: CLIENTE, petId: 'bob' })))
+await teste('ninguém grava entrada de prontuário sem o documento-pai', () =>
+  assertFails(setDoc(doc(db(CLIENTE2), 'medicalRecords', 'sem_pai', 'entries', 'x'), { title: 'x' })))
+await teste('coleção legada professionals não aceita plan/featured', () =>
+  assertFails(setDoc(doc(db(VET), 'professionals', VET), { plan: 'premium', featured: true })))
+
+console.log('\n== Assinatura (Cakto) só pelo servidor ==')
+await teste('vet NÃO marca a própria assinatura como ativa', () =>
+  assertFails(updateDoc(doc(db(VET), 'users', VET), { planAssinatura: 'ativa' })))
+await teste('vet NÃO troca o provedor do plano', () =>
+  assertFails(updateDoc(doc(db(VET), 'users', VET), { planProvedor: 'cakto' })))
+await teste('ninguém lê assinaturasCakto nem o uso da IA', async () => {
+  await assertFails(getDoc(doc(db(VET), 'assinaturasCakto', 'sub_1')))
+  await assertFails(getDoc(doc(db(VET), 'iaUso', VET)))
+})
+
 console.log('\n== Admin ==')
 await teste('admin lê a base inteira', () =>
   assertSucceeds(getDocs(collection(db(ADMIN), 'users'))))

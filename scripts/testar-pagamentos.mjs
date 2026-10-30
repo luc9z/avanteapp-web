@@ -107,5 +107,39 @@ ok(pg.planoDoCatalogo(null, 'premium')?.price === 49.9, 'sem config/plans (banco
 ok(pg.planoDoCatalogo([{ id: 'premium', price: 79.9 }], 'premium').price === 79.9, 'com config/plans: vale o do admin')
 ok(pg.planoDoCatalogo(null, 'inexistente') === null, 'plano inventado não existe')
 
+console.log('\n=== assinatura recorrente (Cakto) ===')
+const C = pg.CARENCIA_ASSINATURA_DIAS
+const primeira = pg.novaExpiracao({ agora: AGORA, planoAtual: 'free', planoNovo: 'premium', periodo: 'mensal', carenciaDias: C })
+ok(primeira.getTime() === AGORA + (30 + C) * DIA, `primeira cobrança: 30 dias + ${C} de folga para a renovação chegar`)
+const renovada = pg.novaExpiracao({ agora: AGORA + 30 * DIA, expiraAtual: primeira, planoAtual: 'premium', planoNovo: 'premium', periodo: 'mensal', carenciaDias: C })
+ok(renovada.getTime() === primeira.getTime() + 30 * DIA, 'renovação: +30 dias sobre o vencimento, sem somar a folga de novo')
+let venc = primeira
+for (let mes = 1; mes <= 12; mes++) {
+  venc = pg.novaExpiracao({ agora: AGORA + mes * 30 * DIA, expiraAtual: venc, planoAtual: 'premium', planoNovo: 'premium', periodo: 'mensal', carenciaDias: C })
+}
+ok(venc.getTime() === AGORA + (13 * 30 + C) * DIA, '12 renovações: a folga continua sendo só a do começo (não vira mês grátis)')
+ok(pg.novaExpiracao({ agora: AGORA, planoAtual: 'free', planoNovo: 'premium', periodo: 'anual', carenciaDias: C }).getTime()
+  === AGORA + (365 + C) * DIA, 'anual: 365 dias + folga')
+
+const catalogoCakto = [
+  { id: 'free', price: 0 },
+  { id: 'essencial', price: 29.9, caktoOfertas: { mensal: 'ess-m', anual: 'ess-a' } },
+  { id: 'premium', price: 49.9, caktoOfertas: { mensal: ' prem-m ', anual: 'prem-a', fundador: 'prem-f' } },
+]
+const [, essencial, premium] = catalogoCakto
+ok(pg.ofertaCakto(premium, 'mensal') === 'prem-m', 'Premium mensal → oferta mensal (sem espaços)')
+ok(pg.ofertaCakto(premium, 'anual') === 'prem-a', 'Premium anual → oferta anual')
+ok(pg.ofertaCakto(premium, 'mensal', true) === 'prem-f', 'Fundador → oferta de preço travado')
+ok(pg.ofertaCakto(essencial, 'mensal', true) === null, 'sem oferta de Fundador: não cai na oferta cheia sem querer')
+ok(pg.ofertaCakto({ id: 'x', caktoOfertas: { mensal: 'a/b?c' } }, 'mensal') === null, 'ID com caractere estranho é recusado')
+ok(pg.ofertaCakto(premium, 'qualquer') === 'prem-m', 'período desconhecido vira mensal')
+ok(JSON.stringify(pg.planoDaOferta(catalogoCakto, 'prem-a')) === JSON.stringify({ planId: 'premium', periodo: 'anual', fundador: false }),
+  'oferta anual paga libera Premium anual')
+ok(pg.planoDaOferta(catalogoCakto, 'prem-f')?.planId === 'premium' && pg.planoDaOferta(catalogoCakto, 'prem-f').periodo === 'mensal',
+  'oferta de Fundador libera Premium mensal')
+ok(pg.planoDaOferta(catalogoCakto, 'ess-m')?.planId === 'essencial', 'pagou a oferta do Essencial: é Essencial, qualquer que fosse o link')
+ok(pg.planoDaOferta(catalogoCakto, 'outra-oferta') === null, 'oferta que não é do AVANTE não libera nada')
+ok(pg.planoDaOferta(null, 'prem-m') === null, 'sem config/plans não há oferta conhecida')
+
 console.log(`\n${erros === 0 ? 'regras de pagamento consistentes' : erros + ' problema(s)'}`)
 process.exit(erros ? 1 : 0)

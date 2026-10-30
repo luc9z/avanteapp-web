@@ -6,7 +6,7 @@ import LegalLayout, { LegalSection } from './LegalLayout'
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="Termos de Uso" updatedAt="22 de junho de 2026">
+    <LegalLayout title="Termos de Uso" updatedAt="30 de outubro de 2026">
       <p>
         Bem-vindo ao <strong>AVANTE</strong>. Estes Termos de Uso regem o acesso e a
         utilização da plataforma (aplicativo web) que conecta tutores de animais a
@@ -62,6 +62,15 @@ export default function TermsPage() {
           distintos. Valores e benefícios são exibidos na tela de planos e podem ser
           atualizados. Pagamentos, quando aplicáveis, são processados por provedores
           terceiros; o AVANTE não armazena dados de cartão.
+        </p>
+        <p className="mt-2">
+          Os planos pagos são <strong>assinaturas com renovação automática</strong>,
+          cobradas pela Cakto no valor e no período contratados (mensal ou anual) até o
+          cancelamento. O Veterinário pode cancelar a qualquer momento: as próximas
+          cobranças param e o plano continua valendo até o fim do período já pago. Nos
+          7 dias seguintes à contratação, é possível desistir e pedir o reembolso
+          (art. 49 do Código de Defesa do Consumidor). Pagamento reembolsado ou
+          contestado encerra o plano pago, que volta ao Free.
         </p>
         <p className="mt-2">
           Veterinários do plano Premium aparecem no topo da busca com a marcação

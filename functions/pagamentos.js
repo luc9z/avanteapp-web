@@ -52,11 +52,53 @@ function valorEmCentavos(preco, periodo, descontoPct = 0) {
  * Mesmo plano ainda em vigor: soma ao que falta (quem renova antes não
  * perde dias). Plano diferente ou vencido: conta a partir de agora.
  */
-function novaExpiracao({ agora, expiraAtual, planoAtual, planoNovo, periodo }) {
+function novaExpiracao({ agora, expiraAtual, planoAtual, planoNovo, periodo, carenciaDias = 0 }) {
   const dias = DIAS_POR_PERIODO[periodoValido(periodo)]
   const atual = expiraAtual ? new Date(expiraAtual).getTime() : 0
   const base = planoAtual === planoNovo && atual > agora ? atual : agora
-  return new Date(base + dias * 864e5)
+  // A folga entra só quando o plano começa agora. Numa renovação ela já
+  // está no vencimento atual; somar de novo daria dias grátis a cada mês.
+  const folga = base === agora ? Number(carenciaDias) || 0 : 0
+  return new Date(base + (dias + folga) * 864e5)
+}
+
+/**
+ * Assinatura recorrente (Cakto): a cobrança da renovação cai perto do
+ * vencimento e o aviso pode atrasar. Com esta folga no início, o plano
+ * não volta ao Free na madrugada antes de a renovação chegar.
+ */
+const CARENCIA_ASSINATURA_DIAS = 3
+
+const OFERTA_RE = /^[A-Za-z0-9_-]{3,64}$/
+
+/**
+ * Oferta da Cakto que cobra este plano. Configurada pelo admin em
+ * config/plans: plano.caktoOfertas = { mensal, anual, fundador }.
+ * O preço cobrado é o da oferta na Cakto; o admin mantém os dois iguais.
+ */
+function ofertaCakto(plano, periodo, fundador = false) {
+  const o = (plano && plano.caktoOfertas) || {}
+  const id = String((fundador ? o.fundador : o[periodoValido(periodo)]) || '').trim()
+  return OFERTA_RE.test(id) ? id : null
+}
+
+/**
+ * Qual plano uma oferta PAGA libera. É isto que decide o plano no webhook,
+ * nunca o checkout que a pessoa abriu: pagar a oferta do Essencial com o
+ * link do Premium dá Essencial. Oferta de Fundador = Premium mensal.
+ */
+function planoDaOferta(catalogo, ofertaId) {
+  const id = String(ofertaId || '').trim()
+  if (!OFERTA_RE.test(id) || !Array.isArray(catalogo)) return null
+  for (const p of catalogo) {
+    const o = (p && p.caktoOfertas) || {}
+    for (const tipo of ['mensal', 'anual', 'fundador']) {
+      if (String(o[tipo] || '').trim() === id) {
+        return { planId: p.id, periodo: tipo === 'anual' ? 'anual' : 'mensal', fundador: tipo === 'fundador' }
+      }
+    }
+  }
+  return null
 }
 
 function origemSegura(origem) {
@@ -150,4 +192,5 @@ module.exports = {
   PLANOS_PADRAO, DIAS_POR_PERIODO, PLANOS_DESTAQUE, ORIGENS,
   planoDoCatalogo, periodoValido, valorEmCentavos, novaExpiracao,
   origemSegura, chaveProduto, pagamentoConfere,
+  CARENCIA_ASSINATURA_DIAS, ofertaCakto, planoDaOferta,
 }
