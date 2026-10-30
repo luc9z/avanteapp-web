@@ -1466,6 +1466,9 @@ export async function downloadReceiptPDF(req) {
 
 
 /* ── QuoteComposer - vet envia orçamento ─────────────────────── */
+/** Valor em reais no formato brasileiro (R$ 180,00, não R$ 180.00). */
+const reais = v => (Number(v) || 0).toFixed(2).replace('.', ',')
+
 function QuoteComposer({ requestId, req, onSent, rotulo = 'Enviar Orçamento', primario = false }) {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState([{ desc: '', qty: 1, price: '' }])
@@ -1559,7 +1562,7 @@ function QuoteComposer({ requestId, req, onSent, rotulo = 'Enviar Orçamento', p
             {sugestao.items.map((i, idx) => (
               <li key={idx} className="flex justify-between gap-3">
                 <span className="truncate">{i.desc}{i.qty > 1 ? ` × ${i.qty}` : ''}</span>
-                <span className="font-semibold flex-shrink-0">R$ {i.price || '-'}</span>
+                <span className="font-semibold flex-shrink-0">{i.price ? `R$ ${reais(i.price)}` : 'R$ -'}</span>
               </li>
             ))}
           </ul>
@@ -1590,7 +1593,7 @@ function QuoteComposer({ requestId, req, onSent, rotulo = 'Enviar Orçamento', p
         + Adicionar item
       </button>
       <div className="flex items-center justify-between border-t border-primary/20 pt-2">
-        <p className="text-sm font-bold text-gray-800">Total: R$ {total.toFixed(2)}</p>
+        <p className="text-sm font-bold text-gray-800">Total: R$ {reais(total)}</p>
         <div className="flex gap-2">
           <button onClick={() => setOpen(false)} className="text-xs text-gray-400 px-3 py-1.5 hover:text-gray-600">Cancelar</button>
           <button onClick={handleSend} disabled={saving}
@@ -1613,12 +1616,12 @@ function QuoteViewer({ quote, onApprove, onReject }) {
         {quote.items.map((item, i) => (
           <div key={i} className="flex justify-between text-sm">
             <span className="text-gray-700">{item.desc} {item.qty > 1 ? `× ${item.qty}` : ''}</span>
-            <span className="font-semibold text-gray-800">R$ {(Number(item.price) * Number(item.qty)).toFixed(2)}</span>
+            <span className="font-semibold text-gray-800">R$ {reais(Number(item.price) * Number(item.qty))}</span>
           </div>
         ))}
         <div className="flex justify-between border-t border-amber-200 pt-2 font-bold">
           <span className="text-gray-800">Total</span>
-          <span className="text-primary">R$ {Number(quote.total).toFixed(2)}</span>
+          <span className="text-primary">R$ {reais(quote.total)}</span>
         </div>
       </div>
       <div className="flex gap-2">
